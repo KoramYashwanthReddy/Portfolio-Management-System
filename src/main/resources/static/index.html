@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio Management System</title>
+    <meta name="description" content="A software product experience built on a portfolio management backend.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/api/v1/assets/css/variables.css">
+    <link rel="stylesheet" href="/api/v1/assets/css/global.css">
+    <link rel="stylesheet" href="/api/v1/assets/css/components.css">
+    <link rel="stylesheet" href="/api/v1/assets/css/animations.css">
+    <link rel="stylesheet" href="/api/v1/assets/css/responsive.css">
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/js/all.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.7/gsap.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.7/ScrollTrigger.min.js"></script>
+    <script type="module" src="/api/v1/assets/js/main.js"></script>
+</head>
+
+<body data-page="public">
+    <header class="site-header">
+        <a class="brand" href="#command-center">
+            <span class="logo-circle">KY</span> Yashwanth<span class="highlight-blue">.</span>
+        </a>
+        <nav class="site-nav">
+            <a href="#systems">Work</a>
+            <a href="#overview">About</a>
+            <a href="#ecosystem">Stack</a>
+            <a href="#knowledge">Resume</a>
+            <a href="#collaboration">Contact</a>
+            <a href="/api/v1/admin/login.html">Admin</a>
+        </nav>
+        <div class="header-actions">
+            <a href="#" id="header-github" target="_blank" aria-label="GitHub"><i class="fa-brands fa-github"></i></a>
+            <a href="#" id="header-linkedin" target="_blank" aria-label="LinkedIn"><i class="fa-brands fa-linkedin-in"></i></a>
+            <button class="theme-toggle" aria-label="Toggle theme"><i class="fa-solid fa-moon"></i></button>
+        </div>
+        <button class="nav-toggle" type="button" aria-label="Toggle navigation">
+            <span></span><span></span>
+        </button>
+    </header>
+
+    <main>
+        <section id="command-center" class="hero section">
+            <div class="section-shell hero-grid">
+                <div class="hero-copy" data-reveal>
+                    <div class="availability-pill">
+                        <span class="status-dot"></span> Available for full-time roles
+                        <span class="separator">·</span>
+                        <i class="fa-solid fa-location-dot"></i> <span id="hero-location-pill">Loading location...</span>
+                    </div>
+                    <h1 id="hero-name-header">Hi, I'm <span class="highlight-violet">Yashwanth</span>.<br>I architect <span class="highlight-violet">backends</span> that scale.</h1>
+
+                    <div class="hero-typewriter">
+                        &gt; System Architect<span class="cursor">|</span>
+                    </div>
+
+                    <p id="hero-biography" class="hero-text" style="font-size: 1.05rem; line-height: 1.6; color: var(--muted); margin-bottom: 32px; max-width: 480px;">Loading about information from the backend...</p>
+
+                    <div class="hero-actions" style="margin-bottom: 48px;">
+                        <a class="button button-primary" href="#systems" style="background: var(--accent-alt); border-color: var(--accent-alt); border-radius: 99px;">Explore my work &rarr;</a>
+                        <a id="resume-download-link-hero" class="button button-secondary" href="#knowledge" style="border-radius: 99px;"><i class="fa-solid fa-file-pdf" style="color: var(--accent-alt);"></i> View resume</a>
+                    </div>
+
+                    <div id="hero-metrics" class="hero-metrics"></div>
+                </div>
+
+                <div class="hero-image-pane" data-reveal>
+                    <div class="profile-card-container">
+                        <div class="profile-card-glow"></div>
+                        <div class="floating-badge top-left">
+                            <span class="badge-label">JWT</span>
+                            <span class="badge-value" style="color: var(--accent-alt);">Secured</span>
+                        </div>
+                        <div class="floating-badge bottom-right">
+                            <span class="badge-label">REST</span>
+                            <span class="badge-value" style="color: var(--accent-alt);">200 OK</span>
+                        </div>
+
+                        <div class="profile-card">
+                            <div class="profile-image-container">
+                                <img id="hero-profile-img" src="/api/v1/assets/images/profile-placeholder.jpg" alt="Yashwanth Profile">
+                                <div class="image-overlay-pill">
+                                    <span class="overlay-label">CURRENTLY BUILDING</span>
+                                    <span class="overlay-value" id="hero-profile-title-inline">Loading...</span>
+                                </div>
+                            </div>
+
+                            <div class="profile-card-footer">
+                                <div class="profile-info">
+                                    <h3 id="hero-profile-name">Loading...</h3>
+                                    <p id="hero-profile-title">Loading...</p>
+                                </div>
+                                <div class="profile-tech-tags">
+                                    <span class="micro-tag">Java</span>
+                                    <span class="micro-tag">Spring Boot</span>
+                                    <span class="micro-tag">REST</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="marquee-container">
+            <div class="marquee-content">
+                <span>Spring Boot</span>
+                <span>REST APIs</span>
+                <span>Microservices</span>
+                <span>Backend Architecture</span>
+                <span>Systems Engineering</span>
+                <span>Java Enterprise</span>
+                <span>Spring Boot</span>
+                <span>REST APIs</span>
+                <span>Microservices</span>
+                <span>Backend Architecture</span>
+                <span>Systems Engineering</span>
+                <span>Java Enterprise</span>
+            </div>
+        </div>
+
+        <section id="overview" class="section">
+            <div class="section-shell split-grid">
+                <div class="about-pane-left" data-reveal>
+                    <p class="eyebrow" style="color: var(--accent-alt); margin-bottom: 16px;">ABOUT</p>
+                    <div class="about-image-wrapper">
+                        <div class="about-image-glow"></div>
+                        <img id="about-profile-img" src="/api/v1/assets/images/profile-placeholder.jpg" alt="Yashwanth About">
+                    </div>
+                    <h2 style="margin-top: 32px; letter-spacing: -0.02em;">Backend is my <span class="highlight-violet">native language.</span></h2>
+                    <p id="overview-copy" class="section-copy" style="margin-top: 16px; font-size: 0.95rem; line-height: 1.6;">Loading about section from the database...</p>
+                    <div class="tech-pill-container" style="margin-top: 24px; display: flex; flex-wrap: wrap; gap: 8px;">
+                        <span class="tech-pill">Java</span>
+                        <span class="tech-pill">Spring Boot</span>
+                        <span class="tech-pill">REST</span>
+                        <span class="tech-pill">JWT</span>
+                        <span class="tech-pill">MySQL</span>
+                        <span class="tech-pill">Solidity</span>
+                    </div>
+                </div>
+
+                <div class="about-pane-right stack" data-reveal>
+                    <div id="about-metrics-grid" class="metric-grid-6">
+                        <div class="metric-card-box">
+                            <div class="icon-circle"><i class="fa-solid fa-layer-group"></i></div>
+                            <h3 id="about-total-projects">0</h3>
+                            <p>Total projects</p>
+                        </div>
+                        <div class="metric-card-box">
+                            <div class="icon-circle"><i class="fa-solid fa-trophy"></i></div>
+                            <h3 id="about-featured-projects">0</h3>
+                            <p>Featured projects</p>
+                        </div>
+                        <div class="metric-card-box">
+                            <div class="icon-circle"><i class="fa-solid fa-rocket"></i></div>
+                            <h3 id="about-skills">0</h3>
+                            <p>Skills tracked</p>
+                        </div>
+                        <div class="metric-card-box">
+                            <div class="icon-circle"><i class="fa-solid fa-code"></i></div>
+                            <h3 id="about-experience">0y</h3>
+                            <p>Years coding</p>
+                        </div>
+                        <div class="metric-card-box">
+                            <div class="icon-circle"><i class="fa-solid fa-code-commit"></i></div>
+                            <h3 id="about-certifications">0</h3>
+                            <p>Certifications</p>
+                        </div>
+                        <div class="metric-card-box">
+                            <div class="icon-circle"><i class="fa-solid fa-microchip"></i></div>
+                            <h3 id="about-messages">0</h3>
+                            <p>Messages</p>
+                        </div>
+                    </div>
+
+                    <div class="principles-panel panel" style="margin-top: 24px; padding: 24px;">
+                        <p class="eyebrow" style="font-size: 0.7rem; margin-bottom: 16px;">ENGINEERING PRINCIPLES</p>
+                        <div class="principles-grid">
+                            <div class="principle-item">
+                                <h4>Secure by default</h4>
+                                <p>JWT, RBAC, audit</p>
+                            </div>
+                            <div class="principle-item">
+                                <h4>Built to scale</h4>
+                                <p>Optimized schemas</p>
+                            </div>
+                            <div class="principle-item">
+                                <h4>Clean architecture</h4>
+                                <p>MVC, layered</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="ecosystem" class="section">
+            <div class="section-shell">
+                <div class="section-heading" data-reveal>
+                    <p class="eyebrow" style="color: var(--accent-alt);">TECH STACK</p>
+                    <h2 style="letter-spacing: -0.02em;">Tools I reach for to ship <span class="highlight-violet">production code.</span></h2>
+                </div>
+                <div class="explorer-controls" style="margin-top: 24px; margin-bottom: 24px;">
+                    <input id="skill-search" class="input" type="search" placeholder="Search tools...">
+                    <select id="skill-category" class="input">
+                        <option value="">All Categories</option>
+                    </select>
+                </div>
+                <div id="skill-clusters" class="masonry-skills-grid"></div>
+            </div>
+        </section>
+
+        <section id="systems" class="section">
+            <div class="section-shell">
+                <div class="section-heading" data-reveal>
+                    <p class="eyebrow">Systems Catalog</p>
+                    <h2>Projects that prove the <span class="text-gradient">engineering</span>.</h2>
+                </div>
+                <div id="featured-projects" class="featured-projects"></div>
+                <div class="panel explorer-panel" data-reveal style="margin-top: 40px;">
+                    <div class="explorer-controls">
+                        <input id="project-search" class="input" type="search" placeholder="Search systems">
+                        <select id="project-category" class="input"></select>
+                        <select id="project-status" class="input"></select>
+                        <select id="project-featured" class="input">
+                            <option value="">All visibility</option>
+                            <option value="true">Featured only</option>
+                            <option value="false">Non-featured</option>
+                        </select>
+                    </div>
+                    <div id="project-catalog" class="catalog-grid" style="margin-top: 24px;"></div>
+                    <div class="pagination-bar" style="margin-top: 24px;">
+                        <button id="projects-prev" class="button button-ghost" type="button">Previous</button>
+                        <span id="projects-page-label">Page 1</span>
+                        <button id="projects-next" class="button button-ghost" type="button">Next</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="knowledge" class="section">
+            <div class="section-shell split-grid" style="align-items: center;">
+                <div class="resume-info" data-reveal>
+                    <p class="eyebrow">RESUME</p>
+                    <h2 style="letter-spacing: -0.02em;">The full <span class="highlight-violet">story.</span></h2>
+                    <p class="section-copy" style="margin-top: 16px; margin-bottom: 24px;">View it as a beautifully rendered native UI, or grab the original PDF. Both stay in sync.</p>
+                    <div id="resume-actions-container" style="display: flex; gap: 16px;"></div>
+                </div>
+                <div id="resume-preview-wrapper" data-reveal></div>
+            </div>
+            <div class="section-shell" style="margin-top: 60px;">
+                <p class="eyebrow" style="margin-bottom: 24px;">Verified Credentials</p>
+                <div id="certification-grid" class="catalog-grid"></div>
+            </div>
+        </section>
+
+        <section id="collaboration" class="section">
+            <div class="section-shell" style="display: flex; justify-content: center;">
+                <div class="cta-card-container" data-reveal>
+                    <p class="eyebrow cta-eyebrow">LET'S BUILD</p>
+                    <h2 class="cta-heading">Looking for a backend<br>engineer who <span class="highlight-violet">ships?</span></h2>
+                    <p class="cta-subtitle">I'm open to full-time roles and backend-heavy projects. Let's talk.</p>
+
+                    <div class="cta-actions">
+                        <a href="mailto:koramyashwanthr@gmail.com" class="button button-primary button-glow" style="border-radius: 99px; padding: 12px 24px;">
+                            <i class="fa-regular fa-envelope"></i> koramyashwanthr@gmail.com <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.8em; margin-left: 8px;"></i>
+                        </a>
+                        <a href="https://github.com/KoramYashwanthReddy" target="_blank" rel="noreferrer" class="button button-outline" style="border-radius: 99px;">
+                            <i class="fa-brands fa-github"></i> GitHub
+                        </a>
+                        <a href="https://linkedin.com/in/koramyashwanthreddy" target="_blank" rel="noreferrer" class="button button-outline" style="border-radius: 99px;">
+                            <i class="fa-brands fa-linkedin"></i> LinkedIn
+                        </a>
+                    </div>
+
+                    <div class="cta-meta">
+                        <span><i class="fa-solid fa-phone" style="margin-right: 4px;"></i> +91 90320 44158</span>
+                        <span>Hyderabad, India</span>
+                        <span><span class="status-dot"></span> Available now</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="resume-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-toggle-group">
+                    <button id="toggle-styled" class="modal-toggle-btn active">Styled</button>
+                    <button id="toggle-pdf" class="modal-toggle-btn">PDF</button>
+                </div>
+                <div class="modal-actions">
+                    <a id="modal-download-btn" class="button button-outline" style="border-radius: 99px; padding: 8px 16px; font-size: 0.85rem;" href="#" target="_blank" rel="noreferrer"><i class="fa-solid fa-download"></i> Download</a>
+                    <button id="modal-close-btn" class="modal-close"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+            <div id="resume-viewer-container" class="modal-body">
+                <div id="resume-doc" class="resume-doc"></div>
+                <iframe id="resume-pdf-iframe" class="resume-pdf-viewer hidden" src=""></iframe>
+            </div>
+        </div>
+    </div>
+
+    <div id="login-modal" class="modal-overlay hidden" style="align-items: center;">
+        <div class="panel auth-panel" style="max-width: 480px; width: 100%; position: relative;">
+            <button id="login-close-btn" class="modal-close" style="position: absolute; top: 16px; right: 16px;"><i class="fa-solid fa-xmark"></i></button>
+            <p class="eyebrow">ADMIN SECURE LOGIN</p>
+            <h2 style="font-size: 2rem; margin-bottom: 8px;">Access the <span class="highlight-violet">control plane.</span></h2>
+            <p class="section-copy" style="margin-bottom: 32px;">Please authenticate to access the portfolio dashboard.</p>
+
+            <form id="index-login-form" class="stack" novalidate>
+                <label>
+                    <span style="font-weight: 600; font-size: 0.85rem;">Email or Mobile Number</span>
+                    <input id="login-identifier" class="input" type="text" name="identifier" required placeholder="koramsuguna@gmail.com" value="koramsuguna@gmail.com">
+                </label>
+                <label style="margin-top: 16px;">
+                    <span style="font-weight: 600; font-size: 0.85rem;">Password</span>
+                    <input id="login-password" class="input" type="password" name="password" required value="suguna@2025">
+                </label>
+                <button id="index-login-submit" class="button button-primary" style="margin-top: 24px; width: 100%; justify-content: center;" type="submit">Secure Login</button>
+                <p id="index-login-status" class="form-status" aria-live="polite" style="margin-top: 16px; text-align: center; font-size: 0.85rem; color: #ef4444;"></p>
+            </form>
+        </div>
+    </div>
+
+    <footer class="site-footer">
+        <div class="section-shell footer-shell" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>&copy; 2026 Koram Yashwanth Reddy - Built with Spring in mind.</span>
+            <span>Hyderabad • Anywhere</span>
+        </div>
+    </footer>
+</body>
+
+</html>

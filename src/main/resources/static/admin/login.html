@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script>
+        if (localStorage.getItem("pms-auth") && JSON.parse(localStorage.getItem("pms-auth")).accessToken) {
+            window.location.replace("/api/v1/admin/dashboard.html");
+        }
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/api/v1/assets/css/variables.css">
+    <link rel="stylesheet" href="/api/v1/assets/css/global.css">
+    <link rel="stylesheet" href="/api/v1/assets/css/components.css">
+    <link rel="stylesheet" href="/api/v1/assets/css/animations.css">
+    <link rel="stylesheet" href="/api/v1/assets/css/responsive.css">
+    <script type="module" src="/api/v1/assets/js/login.js"></script>
+</head>
+<body data-page="login" class="admin-login-body">
+    <main class="auth-layout">
+        <section class="panel auth-panel">
+            <p class="eyebrow">Admin Authentication</p>
+            <h1>Access the control plane.</h1>
+            <p class="section-copy">JWT login, refresh, validation, and logout all use the live auth endpoints.</p>
+            <form id="login-form" class="stack" novalidate>
+                <label>
+                    <span>Email or Mobile</span>
+                    <input class="input" type="text" name="identifier" required placeholder="admin@portfolio.local">
+                </label>
+                <label>
+                    <span>Password</span>
+                    <input class="input" type="password" name="password" required placeholder="Enter admin password">
+                </label>
+                <button id="login-submit" class="button button-primary" type="submit">Log In</button>
+                <p id="login-status" class="form-status" aria-live="polite"></p>
+            </form>
+        </section>
+    </main>
+</body>
+</html>

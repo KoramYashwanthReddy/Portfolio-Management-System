@@ -1,0 +1,137 @@
+/* Enterprise Admin Layout */
+.admin-header {
+    margin-bottom: 32px;
+}
+
+.admin-header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-top: 4px;
+}
+
+.admin-sidebar {
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+    padding: 32px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+
+.sidebar-brand {
+    padding: 0 8px;
+}
+
+.sidebar-brand h2 {
+    font-size: 1.5rem;
+    color: var(--text);
+}
+
+.sidebar-links {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex-grow: 1;
+}
+
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    color: var(--muted);
+    font-family: "IBM Plex Sans", sans-serif;
+    font-weight: 500;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+}
+
+.sidebar-link i {
+    font-size: 1.1rem;
+    width: 24px;
+    text-align: center;
+}
+
+.sidebar-link.active,
+.sidebar-link:hover {
+    background: var(--surface-soft);
+    color: var(--accent);
+}
+
+.sidebar-note {
+    color: var(--muted);
+    font-size: 0.85rem;
+    line-height: 1.4;
+    margin-top: 8px;
+}
+
+/* Data Lists */
+.table-list,
+.message-list {
+    display: grid;
+    gap: 12px;
+}
+
+.table-card,
+.message-card {
+    display: grid;
+    gap: 12px;
+    padding: 20px 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+    transition: all 0.2s ease;
+}
+
+.table-card:hover,
+.message-card:hover {
+    border-color: rgba(99, 102, 241, 0.2);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.04);
+}
+
+.table-card header,
+.message-card header {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.table-card header strong {
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 1.15rem;
+    color: var(--text);
+}
+
+.table-actions {
+    margin-top: 8px;
+    display: flex;
+    gap: 8px;
+}
+
+.table-actions .button {
+    padding: 6px 14px;
+    font-size: 0.85rem;
+}
+
+/* Forms */
+.auth-panel {
+    width: min(100%, 420px);
+}
+
+.form-panel {
+    display: grid;
+    gap: 20px;
+}
+
+.form-panel .eyebrow {
+    margin-bottom: -12px;
+}
+
+.form-panel h2 {
+    font-size: 1.75rem;
+    margin-bottom: 8px;
+}

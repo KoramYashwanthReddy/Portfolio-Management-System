@@ -1,0 +1,23 @@
+[data-reveal] {
+    opacity: 0;
+    transform: translateY(18px);
+}
+
+body.ready [data-reveal] {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 480ms ease, transform 480ms ease;
+}
+
+.floating {
+    animation: floaty 6s ease-in-out infinite;
+}
+
+@keyframes floaty {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
