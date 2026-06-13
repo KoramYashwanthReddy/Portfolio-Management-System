@@ -10,5 +10,9 @@ public interface SkillRepository extends JpaRepository<Skill, Long> {
 
     List<Skill> findByCategoryAndDeletedFalseOrderByDisplayOrderAscSkillNameAsc(SkillCategory category);
 
+    boolean existsBySkillNameIgnoreCaseAndDeletedFalse(String skillName);
+
+    boolean existsBySkillNameIgnoreCaseAndDeletedFalseAndIdNot(String skillName, Long id);
+
     long countByDeletedFalse();
 }

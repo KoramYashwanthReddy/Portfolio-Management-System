@@ -3,6 +3,7 @@ package com.yashwanth.portfolio.service.impl;
 import com.yashwanth.portfolio.dto.request.CertificationRequest;
 import com.yashwanth.portfolio.dto.response.CertificationResponse;
 import com.yashwanth.portfolio.entity.Certification;
+import com.yashwanth.portfolio.exception.BadRequestException;
 import com.yashwanth.portfolio.exception.ResourceNotFoundException;
 import com.yashwanth.portfolio.mapper.PortfolioMapper;
 import com.yashwanth.portfolio.repository.CertificationRepository;
@@ -25,6 +26,7 @@ public class CertificationServiceImpl implements CertificationService {
     public CertificationResponse create(CertificationRequest request) {
         Certification certification = new Certification();
         apply(certification, request);
+        validateUnique(certification.getTitle(), certification.getIssuer(), null);
         return PortfolioMapper.toCertification(certificationRepository.save(certification));
     }
 
@@ -33,6 +35,7 @@ public class CertificationServiceImpl implements CertificationService {
     public CertificationResponse update(Long id, CertificationRequest request) {
         Certification certification = getEntity(id);
         apply(certification, request);
+        validateUnique(certification.getTitle(), certification.getIssuer(), id);
         return PortfolioMapper.toCertification(certificationRepository.save(certification));
     }
 
@@ -59,12 +62,21 @@ public class CertificationServiceImpl implements CertificationService {
     }
 
     private void apply(Certification certification, CertificationRequest request) {
-        certification.setTitle(request.title());
-        certification.setIssuer(request.issuer());
+        certification.setTitle(request.title().trim());
+        certification.setIssuer(request.issuer().trim());
         certification.setIssueDate(request.issueDate());
         certification.setExpiryDate(request.expiryDate());
         certification.setCredentialId(request.credentialId());
         certification.setCredentialUrl(request.credentialUrl());
         certification.setCertificateFile(request.certificateFileId() != null ? fileStorageService.getById(request.certificateFileId()) : null);
+    }
+
+    private void validateUnique(String title, String issuer, Long id) {
+        boolean exists = id == null
+                ? certificationRepository.existsByTitleIgnoreCaseAndIssuerIgnoreCaseAndDeletedFalse(title, issuer)
+                : certificationRepository.existsByTitleIgnoreCaseAndIssuerIgnoreCaseAndDeletedFalseAndIdNot(title, issuer, id);
+        if (exists) {
+            throw new BadRequestException("Certification already exists.");
+        }
     }
 }

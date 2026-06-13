@@ -7,5 +7,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface CertificationRepository extends JpaRepository<Certification, Long> {
     List<Certification> findByDeletedFalseOrderByIssueDateDesc();
 
+    boolean existsByTitleIgnoreCaseAndIssuerIgnoreCaseAndDeletedFalse(String title, String issuer);
+
+    boolean existsByTitleIgnoreCaseAndIssuerIgnoreCaseAndDeletedFalseAndIdNot(String title, String issuer, Long id);
+
     long countByDeletedFalse();
 }

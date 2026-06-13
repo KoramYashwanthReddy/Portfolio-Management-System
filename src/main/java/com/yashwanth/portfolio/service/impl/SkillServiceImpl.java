@@ -4,6 +4,7 @@ import com.yashwanth.portfolio.dto.request.SkillRequest;
 import com.yashwanth.portfolio.dto.response.SkillResponse;
 import com.yashwanth.portfolio.entity.Skill;
 import com.yashwanth.portfolio.entity.SkillCategory;
+import com.yashwanth.portfolio.exception.BadRequestException;
 import com.yashwanth.portfolio.exception.ResourceNotFoundException;
 import com.yashwanth.portfolio.mapper.PortfolioMapper;
 import com.yashwanth.portfolio.repository.SkillRepository;
@@ -24,6 +25,7 @@ public class SkillServiceImpl implements SkillService {
     public SkillResponse create(SkillRequest request) {
         Skill skill = new Skill();
         apply(skill, request);
+        validateUnique(skill.getSkillName(), null);
         return PortfolioMapper.toSkill(skillRepository.save(skill));
     }
 
@@ -32,6 +34,7 @@ public class SkillServiceImpl implements SkillService {
     public SkillResponse update(Long id, SkillRequest request) {
         Skill skill = getEntity(id);
         apply(skill, request);
+        validateUnique(skill.getSkillName(), id);
         return PortfolioMapper.toSkill(skillRepository.save(skill));
     }
 
@@ -58,9 +61,18 @@ public class SkillServiceImpl implements SkillService {
     }
 
     private void apply(Skill skill, SkillRequest request) {
-        skill.setSkillName(request.skillName());
+        skill.setSkillName(request.skillName().trim());
         skill.setCategory(request.category());
         skill.setProficiencyPercentage(request.proficiencyPercentage());
         skill.setDisplayOrder(request.displayOrder());
+    }
+
+    private void validateUnique(String skillName, Long id) {
+        boolean exists = id == null
+                ? skillRepository.existsBySkillNameIgnoreCaseAndDeletedFalse(skillName)
+                : skillRepository.existsBySkillNameIgnoreCaseAndDeletedFalseAndIdNot(skillName, id);
+        if (exists) {
+            throw new BadRequestException("Skill already exists.");
+        }
     }
 }

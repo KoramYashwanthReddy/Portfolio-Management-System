@@ -89,8 +89,22 @@ public class FileStorageServiceImpl implements FileStorageService {
         }
         String contentType = file.getContentType();
         List<String> allowedTypes = fileType == FileType.PROJECT_IMAGE ? properties.allowedImageTypes() : properties.allowedDocumentTypes();
-        if (contentType == null || !allowedTypes.contains(contentType)) {
+        boolean allowedByType = contentType != null && allowedTypes.contains(contentType);
+        boolean allowedByExtension = fileType != FileType.PROJECT_IMAGE && hasAllowedDocumentExtension(file.getOriginalFilename());
+        if (!allowedByType && !allowedByExtension) {
             throw new FileStorageException("Invalid file type: " + contentType);
         }
+    }
+
+    private boolean hasAllowedDocumentExtension(String originalFilename) {
+        if (originalFilename == null) {
+            return false;
+        }
+        String fileName = originalFilename.toLowerCase();
+        return fileName.endsWith(".pdf")
+                || fileName.endsWith(".doc")
+                || fileName.endsWith(".docx")
+                || fileName.endsWith(".txt")
+                || fileName.endsWith(".rtf");
     }
 }

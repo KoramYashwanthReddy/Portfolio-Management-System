@@ -5,6 +5,7 @@ import jakarta.validation.ConstraintViolationException;
 import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -24,6 +25,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({BadRequestException.class, ConstraintViolationException.class})
     public ResponseEntity<ErrorResponse> handleBadRequest(Exception exception) {
         return build(HttpStatus.BAD_REQUEST, exception.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler({FileStorageException.class, DataIntegrityViolationException.class})
+    public ResponseEntity<ErrorResponse> handleStorageAndConstraint(Exception exception) {
+        String message = exception instanceof DataIntegrityViolationException
+                ? "A record with this name already exists."
+                : exception.getMessage();
+        return build(HttpStatus.BAD_REQUEST, message, Map.of());
     }
 
     @ExceptionHandler(UnauthorizedException.class)

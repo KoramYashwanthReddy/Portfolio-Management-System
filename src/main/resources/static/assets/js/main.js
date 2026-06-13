@@ -22,7 +22,9 @@ const state = {
     skills: [],
     resume: null,
     projectFeaturedFilter: "",
-    projectEscapeBound: false
+    projectEscapeBound: false,
+    starredProjects: JSON.parse(localStorage.getItem("starred_projects") || "[]"),
+    comparedProjects: []
 };
 
 function element(id) {
@@ -243,32 +245,48 @@ function renderSkills(skills) {
     `).join("") || `<div class="empty-state">No skills published yet.</div>`);
 }
 
-function projectCard(project, featured = false) {
-    const image = project.imageFile?.downloadUrl || project.imageUrl;
+function mncProjectCard(project) {
     const technologies = splitTechnologies(project);
-    const insightRows = projectInsightRows(project);
+    const isCompleted = project.status === "COMPLETED";
+    const statusColor = isCompleted ? "#10b981" : "#8b5cf6";
+    const statusBg = isCompleted ? "rgba(16, 185, 129, 0.1)" : "rgba(139, 92, 246, 0.1)";
+    const statusBorder = isCompleted ? "rgba(16, 185, 129, 0.2)" : "rgba(139, 92, 246, 0.2)";
+    const statusText = isCompleted ? "Completed" : "In development";
+    const year = project.completionDate ? project.completionDate.substring(0, 4) : new Date().getFullYear();
+    
+    const isStarred = state.starredProjects.includes(String(project.id));
+    const starClass = isStarred ? "fa-solid starred" : "fa-regular";
+    const starTitle = isStarred ? "Unstar project" : "Star project";
+
+    const isCompared = state.comparedProjects.includes(String(project.id));
+    const compareClass = isCompared ? "fa-solid selected" : "fa-regular";
+
     return `
-        <article class="project-card ${featured ? "featured" : ""}" data-project-card data-project-id="${project.id ?? ""}">
-            <div class="project-card-media">
-                ${image ? `<img src="${image}" alt="${project.title} preview">` : `<div class="project-card-fallback">No preview uploaded</div>`}
-                <div class="project-card-top-strip">
-                    <span class="project-card-badge">${enumLabel(project.status, "Project")}</span>
-                    <span class="project-card-year">${project.completionDate ? project.completionDate.substring(0, 4) : "Live"}</span>
+        <article class="mnc-card" data-category="${project.category || ''}" data-status="${project.status || ''}">
+            <div class="mnc-card-header">
+                <div class="mnc-card-header-left">
+                    <span class="mnc-status-badge" style="background:${statusBg};color:${statusColor};border:1px solid ${statusBorder};">
+                        <span class="mnc-status-dot" style="background:${statusColor};"></span>
+                        ${statusText}
+                    </span>
+                    <span class="mnc-card-year">${year}</span>
+                </div>
+                <div class="mnc-card-header-right" style="font-size: 0.85rem; display: flex; gap: 14px;">
+                    <i class="${compareClass} fa-code-fork mnc-compare-btn" data-id="${project.id}" title="Toggle compare" style="cursor:pointer; opacity: 0.7;"></i>
+                    <i class="${starClass} fa-star mnc-star-btn" data-id="${project.id}" title="${starTitle}" style="cursor:pointer; opacity: 0.7;"></i>
                 </div>
             </div>
-            <div class="project-card-body">
-                <div class="project-card-topline">
-                    <p class="eyebrow">${enumLabel(project.category, "Project")}</p>
-                    <span class="project-card-grade">${projectGrade(project)}</span>
-                </div>
-                <h3>${project.title}</h3>
-                <p class="section-copy">${project.shortDescription}</p>
-                <div class="chip-row">${techChipMarkup(technologies)}</div>
-                <div class="project-card-actions">
-                    <button class="button button-ghost project-more-toggle" type="button" aria-expanded="false">View more</button>
-                    ${project.githubUrl ? `<a class="button button-outline" href="${project.githubUrl}" target="_blank" rel="noreferrer">GitHub</a>` : ""}
-                    ${project.liveUrl ? `<a class="button button-outline" href="${project.liveUrl}" target="_blank" rel="noreferrer">Live</a>` : ""}
-                </div>
+            <div class="mnc-card-body">
+                <h3 class="mnc-card-title">${project.title}</h3>
+                <p class="mnc-card-desc">${project.shortDescription || ''}</p>
+            </div>
+            <div class="mnc-card-tags">
+                ${technologies.map((tech) => `<span class="mnc-tech-tag">${tech}</span>`).join("")}
+            </div>
+            <div class="mnc-card-footer">
+                ${project.githubUrl ? `<a class="mnc-link" href="${project.githubUrl}" target="_blank" rel="noreferrer"><i class="fa-brands fa-github"></i> GitHub</a>` : `<span class="mnc-link mnc-link-disabled"><i class="fa-brands fa-github"></i> GitHub</span>`}
+                <button class="mnc-link project-more-toggle" type="button" aria-expanded="false" style="background:none;border:none;cursor:pointer;padding:0;font-family:inherit;"><i class="fa-solid fa-circle-info"></i> View More</button>
+                <button class="mnc-arrow-link project-more-toggle" type="button" aria-expanded="false" title="View details"><i class="fa-solid fa-arrow-right"></i></button>
             </div>
             <div class="project-card-popup" aria-hidden="true">
                 <div class="project-card-popup-header">
@@ -279,7 +297,7 @@ function projectCard(project, featured = false) {
                     <button class="project-card-close" type="button" aria-label="Close details">×</button>
                 </div>
                 <div class="project-card-popup-grid">
-                    ${insightRows.map((row) => `
+                    ${projectInsightRows(project).map((row) => `
                         <div class="project-insight">
                             <span>${row.label}</span>
                             <strong>${row.value}</strong>
@@ -296,10 +314,10 @@ function projectCard(project, featured = false) {
     `;
 }
 
+
 function renderFeaturedProjects(projects) {
-    const uniqueProjects = uniqueById(projects).slice(0, 3);
+    const uniqueProjects = uniqueById(projects);
     state.featuredProjects = uniqueProjects;
-    setHtml("featured-projects", uniqueProjects.map((project) => projectCard(project, true)).join("") || `<div class="empty-state">No featured projects available.</div>`);
 }
 
 function renderTimeline(projects) {
@@ -332,18 +350,8 @@ function renderTimeline(projects) {
 
 function renderProjectCatalog(pageData) {
     const uniqueProjects = uniqueById(pageData.content || []);
-    const featuredKeys = new Set((state.featuredProjects || []).map(projectKey));
-    state.projects = uniqueProjects.filter((project) => !featuredKeys.has(projectKey(project)) && !project.featured);
-    setHtml("project-catalog", state.projects.map((project) => projectCard(project)).join("") || `<div class="empty-state">No projects matched this query.</div>`);
-    setText("projects-page-label", `Page ${pageData.page + 1} of ${Math.max(pageData.totalPages, 1)}`);
-    if (element("projects-prev")) {
-        element("projects-prev").disabled = pageData.first;
-    }
-    if (element("projects-next")) {
-        element("projects-next").disabled = pageData.last;
-    }
-    renderTimeline(state.projects);
-    bindProjectInteractions();
+    state.projects = uniqueProjects;
+    renderAllProjectsMnc();
 }
 
 function buildHtmlResume(certifications, resume) {
@@ -539,13 +547,93 @@ function renderKnowledge(resume, certifications) {
     `).join("") || `<div class="empty-state">No certifications published yet.</div>`);
 }
 
+function renderAllProjectsMnc() {
+    updateMncProjectsDisplay(false);
+}
+
+function updateMncProjectsDisplay(showShimmer = true) {
+    const grid = element("projects-mnc-grid");
+    if (!grid) return;
+
+    const searchInput = element("projects-search-input");
+    const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
+    
+    const activePill = document.querySelector(".filter-pill.active");
+    const filter = activePill ? activePill.dataset.filter : "all";
+
+    const allProjects = uniqueById([...(state.featuredProjects || []), ...(state.projects || [])]);
+
+    const filtered = allProjects.filter((project) => {
+        const status = project.status || "";
+        const category = project.category || "";
+        
+        let matchesPill = false;
+        if (filter === "all") {
+            matchesPill = true;
+        } else if (filter === "COMPLETED") {
+            matchesPill = status === "COMPLETED";
+        } else if (filter === "IN_PROGRESS") {
+            matchesPill = (status === "IN_PROGRESS" || status === "PLANNED");
+        } else if (filter === "BLOCKCHAIN") {
+            const titleText = (project.title || "").toLowerCase();
+            const descText = (project.shortDescription || "").toLowerCase();
+            const tagsText = (project.technologies || "").toLowerCase();
+            matchesPill = category === "BLOCKCHAIN" || titleText.includes("blockchain") || descText.includes("blockchain") || tagsText.includes("solidity");
+        } else {
+            matchesPill = category === filter;
+        }
+
+        if (!matchesPill) return false;
+
+        if (!query) return true;
+        const titleText = (project.title || "").toLowerCase();
+        const descText = (project.shortDescription || "").toLowerCase();
+        const tagsText = (project.technologies || "").toLowerCase();
+        return titleText.includes(query) || descText.includes(query) || tagsText.includes(query);
+    });
+
+    if (showShimmer) {
+        grid.innerHTML = Array(3).fill(0).map(() => `
+            <div class="shimmer-card">
+                <div class="shimmer-line header-left" style="height: 24px; width: 120px; border-radius: 12px; background: var(--border);"></div>
+                <div class="shimmer-line title" style="height: 20px; width: 70%; margin-top: 8px; background: var(--border);"></div>
+                <div class="shimmer-line desc-1" style="width: 90%; background: var(--border);"></div>
+                <div class="shimmer-line desc-2" style="width: 80%; background: var(--border);"></div>
+                <div class="shimmer-line tags" style="height: 24px; width: 50%; border-radius: 6px; margin-top: 12px; background: var(--border);"></div>
+            </div>
+        `).join("");
+
+        setTimeout(() => {
+            renderFilteredList(grid, filtered);
+        }, 350);
+    } else {
+        renderFilteredList(grid, filtered);
+    }
+}
+
+function renderFilteredList(grid, filtered) {
+    grid.innerHTML = filtered.map((project) => mncProjectCard(project)).join("") || `<div class="empty-state">No matching projects found.</div>`;
+    bindProjectInteractions();
+    bindCardFeatureEvents();
+}
+
+function bindFilterPills() {
+    const container = element("project-filter-pills");
+    if (!container) return;
+    container.querySelectorAll(".filter-pill").forEach((pill) => {
+        pill.addEventListener("click", () => {
+            container.querySelectorAll(".filter-pill").forEach((p) => p.classList.remove("active"));
+            pill.classList.add("active");
+            updateMncProjectsDisplay(true);
+        });
+    });
+}
+
 function bindProjectInteractions() {
     document.querySelectorAll(".project-more-toggle").forEach((button) => {
         button.addEventListener("click", (event) => {
-            const card = event.currentTarget.closest(".project-card");
-            if (!card) {
-                return;
-            }
+            const card = event.currentTarget.closest(".mnc-card");
+            if (!card) return;
             const expanded = card.classList.toggle("is-expanded");
             button.setAttribute("aria-expanded", String(expanded));
         });
@@ -553,80 +641,196 @@ function bindProjectInteractions() {
 
     document.querySelectorAll(".project-card-close").forEach((button) => {
         button.addEventListener("click", (event) => {
-            const card = event.currentTarget.closest(".project-card");
-            if (!card) {
-                return;
-            }
-            const toggle = card.querySelector(".project-more-toggle");
+            const card = event.currentTarget.closest(".mnc-card");
+            if (!card) return;
             card.classList.remove("is-expanded");
-            toggle?.setAttribute("aria-expanded", "false");
+            card.querySelectorAll(".project-more-toggle").forEach(toggle => {
+                toggle.setAttribute("aria-expanded", "false");
+            });
         });
     });
 
     if (!state.projectEscapeBound) {
         document.addEventListener("keydown", (event) => {
-            if (event.key !== "Escape") {
-                return;
-            }
-            document.querySelectorAll(".project-card.is-expanded").forEach((card) => {
+            if (event.key !== "Escape") return;
+            document.querySelectorAll(".mnc-card.is-expanded").forEach((card) => {
                 card.classList.remove("is-expanded");
-                card.querySelector(".project-more-toggle")?.setAttribute("aria-expanded", "false");
+                card.querySelectorAll(".project-more-toggle").forEach(toggle => {
+                    toggle.setAttribute("aria-expanded", "false");
+                });
             });
         });
         state.projectEscapeBound = true;
     }
 }
 
-async function loadProjects() {
-    if (!element("project-search") || !element("project-category") || !element("project-status") || !element("project-featured")) {
-        return;
+function bindCardFeatureEvents() {
+    document.querySelectorAll(".mnc-star-btn").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const projectId = String(e.currentTarget.dataset.id);
+            let starred = JSON.parse(localStorage.getItem("starred_projects") || "[]");
+            if (starred.includes(projectId)) {
+                starred = starred.filter(id => id !== projectId);
+                e.currentTarget.classList.remove("fa-solid", "starred");
+                e.currentTarget.classList.add("fa-regular");
+                e.currentTarget.title = "Star project";
+            } else {
+                starred.push(projectId);
+                e.currentTarget.classList.remove("fa-regular");
+                e.currentTarget.classList.add("fa-solid", "starred");
+                e.currentTarget.title = "Unstar project";
+            }
+            localStorage.setItem("starred_projects", JSON.stringify(starred));
+            state.starredProjects = starred;
+        });
+    });
+
+    document.querySelectorAll(".mnc-compare-btn").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const projectId = String(e.currentTarget.dataset.id);
+            const idx = state.comparedProjects.indexOf(projectId);
+            if (idx > -1) {
+                state.comparedProjects.splice(idx, 1);
+                e.currentTarget.classList.remove("selected", "fa-solid");
+                e.currentTarget.classList.add("fa-regular");
+            } else {
+                if (state.comparedProjects.length >= 3) {
+                    alert("You can compare up to 3 projects at once.");
+                    return;
+                }
+                state.comparedProjects.push(projectId);
+                e.currentTarget.classList.remove("fa-regular");
+                e.currentTarget.classList.add("fa-solid", "selected");
+            }
+            updateCompareBanner();
+        });
+    });
+}
+
+function updateCompareBanner() {
+    const banner = element("project-compare-banner");
+    const countSpan = element("compare-count");
+    if (!banner || !countSpan) return;
+
+    const count = state.comparedProjects.length;
+    countSpan.textContent = count;
+
+    if (count > 0) {
+        banner.classList.remove("hidden");
+    } else {
+        banner.classList.add("hidden");
+    }
+}
+
+function showComparisonModal() {
+    const modal = element("project-compare-modal");
+    const table = element("compare-table");
+    if (!modal || !table) return;
+
+    const allProjects = uniqueById([...(state.featuredProjects || []), ...(state.projects || [])]);
+    const selected = allProjects.filter(p => state.comparedProjects.includes(String(p.id)));
+
+    if (selected.length === 0) return;
+
+    let html = `
+        <thead>
+            <tr>
+                <th style="border-top-left-radius: 12px;">Feature</th>
+                ${selected.map((p, i) => `<th style="${i === selected.length - 1 ? 'border-top-right-radius: 12px;' : ''}">${p.title}</th>`).join("")}
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Status</strong></td>
+                ${selected.map(p => `<td>${p.status === 'COMPLETED' ? 'Completed' : 'In development'}</td>`).join("")}
+            </tr>
+            <tr>
+                <td><strong>Category</strong></td>
+                ${selected.map(p => `<td>${enumLabel(p.category)}</td>`).join("")}
+            </tr>
+            <tr>
+                <td><strong>Grade</strong></td>
+                ${selected.map(p => `<td><strong>${projectGrade(p)}</strong></td>`).join("")}
+            </tr>
+            <tr>
+                <td><strong>Tech Stack</strong></td>
+                ${selected.map(p => `<td>${splitTechnologies(p).map(t => `<span class="mnc-tech-tag" style="margin-right:4px; margin-bottom:4px; display:inline-block;">${t}</span>`).join("")}</td>`).join("")}
+            </tr>
+            <tr>
+                <td><strong>Description</strong></td>
+                ${selected.map(p => `<td>${p.shortDescription || "No description available."}</td>`).join("")}
+            </tr>
+            <tr>
+                <td><strong>Detailed Insights</strong></td>
+                ${selected.map(p => `<td>${p.detailedDescription || "No details provided."}</td>`).join("")}
+            </tr>
+            <tr>
+                <td style="border-bottom-left-radius: 12px;"><strong>Repository</strong></td>
+                ${selected.map((p, i) => `<td style="${i === selected.length - 1 ? 'border-bottom-right-radius: 12px;' : ''}">${p.githubUrl ? `<a class="mnc-link" href="${p.githubUrl}" target="_blank"><i class="fa-brands fa-github"></i> Repository</a>` : "Not available"}</td>`).join("")}
+            </tr>
+        </tbody>
+    `;
+
+    table.innerHTML = html;
+    modal.classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+}
+
+function bindCompareControls() {
+    const bannerClear = element("compare-clear-btn");
+    const bannerTrigger = element("compare-trigger-btn");
+    const modalClose = element("compare-close-btn");
+    const modal = element("project-compare-modal");
+
+    if (bannerClear) {
+        bannerClear.addEventListener("click", () => {
+            state.comparedProjects = [];
+            updateCompareBanner();
+            document.querySelectorAll(".mnc-compare-btn").forEach(btn => {
+                btn.classList.remove("selected", "fa-solid");
+                btn.classList.add("fa-regular");
+            });
+        });
     }
 
+    if (bannerTrigger) {
+        bannerTrigger.addEventListener("click", showComparisonModal);
+    }
+
+    if (modalClose && modal) {
+        modalClose.addEventListener("click", () => {
+            modal.classList.add("hidden");
+            document.body.style.overflow = "";
+        });
+    }
+}
+
+async function loadProjects() {
     const response = await projectsApi.getPublic({
         page: state.page,
-        size: state.size,
-        search: element("project-search").value.trim(),
-        category: element("project-category").value,
-        status: element("project-status").value,
-        featured: element("project-featured").value
+        size: 50,
+        search: "",
+        category: "",
+        status: "",
+        featured: ""
     });
-    state.projectFeaturedFilter = element("project-featured").value;
-
     renderProjectCatalog(response.data);
 }
 
 function bindProjectControls() {
-    if (!element("project-category") || !element("project-status")) {
-        return;
+    const searchInput = element("projects-search-input");
+    if (searchInput) {
+        let debounceTimer;
+        searchInput.addEventListener("input", () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                updateMncProjectsDisplay(true);
+            }, 300);
+        });
     }
-
-    element("project-category").innerHTML = optionMarkup(PROJECT_CATEGORIES, "All categories");
-    element("project-status").innerHTML = optionMarkup(PROJECT_STATUSES, "All statuses");
-
-    ["project-search", "project-category", "project-status", "project-featured"].forEach((id) => {
-        const node = element(id);
-        if (!node) {
-            return;
-        }
-        node.addEventListener("input", async () => {
-            state.page = 0;
-            await loadProjects();
-        });
-        node.addEventListener("change", async () => {
-            state.page = 0;
-            await loadProjects();
-        });
-    });
-
-    element("projects-prev")?.addEventListener("click", async () => {
-        state.page = Math.max(0, state.page - 1);
-        await loadProjects();
-    });
-
-    element("projects-next")?.addEventListener("click", async () => {
-        state.page += 1;
-        await loadProjects();
-    });
+    bindCompareControls();
 }
 
 function bindContactForm() {

@@ -218,29 +218,26 @@
 
         <section id="systems" class="section">
             <div class="section-shell">
-                <div class="section-heading" data-reveal>
-                    <p class="eyebrow">Systems Catalog</p>
-                    <h2>Projects that prove the <span class="text-gradient">engineering</span>.</h2>
-                </div>
-                <div id="featured-projects" class="featured-projects"></div>
-                <div class="panel explorer-panel" data-reveal style="margin-top: 40px;">
-                    <div class="explorer-controls">
-                        <input id="project-search" class="input" type="search" placeholder="Search systems">
-                        <select id="project-category" class="input"></select>
-                        <select id="project-status" class="input"></select>
-                        <select id="project-featured" class="input">
-                            <option value="">All visibility</option>
-                            <option value="true">Featured only</option>
-                            <option value="false">Non-featured</option>
-                        </select>
+                <div class="projects-section-header" data-reveal>
+                    <div class="projects-section-header-left">
+                        <p class="eyebrow" style="color: var(--accent-alt);">• SELECTED WORK</p>
+                        <h2>Projects that prove the<br><span class="highlight-violet">engineering.</span></h2>
                     </div>
-                    <div id="project-catalog" class="catalog-grid" style="margin-top: 24px;"></div>
-                    <div class="pagination-bar" style="margin-top: 24px;">
-                        <button id="projects-prev" class="button button-ghost" type="button">Previous</button>
-                        <span id="projects-page-label">Page 1</span>
-                        <button id="projects-next" class="button button-ghost" type="button">Next</button>
+                    <div class="projects-header-actions" style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+                        <div class="projects-search-wrapper" style="position: relative; display: flex; align-items: center;">
+                            <i class="fa-solid fa-magnifying-glass search-icon" style="position: absolute; left: 16px; color: var(--muted); font-size: 0.9rem;"></i>
+                            <input type="text" id="projects-search-input" placeholder="Search tech stack, title, description..." style="padding: 10px 16px 10px 42px; border-radius: 99px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-family: 'IBM Plex Sans', sans-serif; font-size: 0.85rem; width: 280px; transition: all 0.2s ease;">
+                        </div>
+                        <div class="projects-filter-pills" id="project-filter-pills">
+                            <button class="filter-pill active" data-filter="all">All</button>
+                            <button class="filter-pill" data-filter="COMPLETED">Completed</button>
+                            <button class="filter-pill" data-filter="IN_PROGRESS">In progress</button>
+                            <button class="filter-pill" data-filter="BACKEND">Backend</button>
+                            <button class="filter-pill" data-filter="BLOCKCHAIN">Blockchain</button>
+                        </div>
                     </div>
                 </div>
+                <div id="projects-mnc-grid" class="projects-mnc-grid"></div>
             </div>
         </section>
 
@@ -336,6 +333,33 @@
             <span>Hyderabad • Anywhere</span>
         </div>
     </footer>
+
+    <!-- Floating Project Comparison Banner -->
+    <div id="project-compare-banner" class="compare-banner hidden">
+        <div class="compare-banner-content">
+            <span class="compare-count-text"><i class="fa-solid fa-code-compare"></i> <strong id="compare-count">0</strong> projects selected for comparison</span>
+            <div class="compare-banner-actions">
+                <button id="compare-clear-btn" class="button button-ghost" style="border-radius: 99px; font-size: 0.85rem; padding: 6px 16px;">Clear</button>
+                <button id="compare-trigger-btn" class="button button-primary" style="border-radius: 99px; font-size: 0.85rem; padding: 6px 18px;">Compare Now</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Project Comparison Modal -->
+    <div id="project-compare-modal" class="modal-overlay hidden" style="align-items: center; justify-content: center; z-index: 9999;">
+        <div class="panel compare-panel" style="max-width: 90%; width: 1000px; max-height: 85vh; overflow-y: auto; position: relative; border-radius: 20px;">
+            <button id="compare-close-btn" class="modal-close" style="position: absolute; top: 20px; right: 20px;"><i class="fa-solid fa-xmark"></i></button>
+            <p class="eyebrow" style="color: var(--accent);">‹ BENCHMARK ›</p>
+            <h2 style="font-size: 2.2rem; margin-bottom: 8px;">System <span class="highlight-violet">Comparison.</span></h2>
+            <p class="section-copy" style="margin-bottom: 24px;">Side-by-side technical evaluation of selected engineering systems.</p>
+            
+            <div class="compare-table-wrapper" style="overflow-x: auto; margin-top: 16px; border-radius: 12px; border: 1px solid var(--border);">
+                <table id="compare-table" style="width: 100%; border-collapse: collapse; text-align: left; font-family: 'IBM Plex Sans', sans-serif;">
+                    <!-- Dynamically populated -->
+                </table>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>
