@@ -38,4 +38,9 @@ public class About extends AuditableEntity {
     private String githubUrl;
 
     private String portfolioUrl;
+
+    private String profileImageUrl;
+
+    @Column(columnDefinition = "TEXT")
+    private String headlineTicker;
 }

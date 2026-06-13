@@ -78,7 +78,7 @@ public final class PortfolioMapper {
     }
 
     public static ResumeResponse toResume(Resume resume) {
-        return new ResumeResponse(resume.getId(), resume.getVersionLabel(), resume.getCreatedAt(), toStoredFile(resume.getStoredFile()));
+        return new ResumeResponse(resume.getId(), resume.getVersionLabel(), resume.getCreatedAt(), toStoredFile(resume.getStoredFile()), resume.isActive());
     }
 
     public static ContactMessageResponse toContactMessage(ContactMessage message) {
@@ -105,7 +105,9 @@ public final class PortfolioMapper {
                 about.getPhone(),
                 about.getLinkedinUrl(),
                 about.getGithubUrl(),
-                about.getPortfolioUrl()
+                about.getPortfolioUrl(),
+                about.getProfileImageUrl(),
+                about.getHeadlineTicker()
         );
     }
 }

@@ -15,6 +15,8 @@ public record AboutRequest(
         String phone,
         String linkedinUrl,
         String githubUrl,
-        String portfolioUrl
+        String portfolioUrl,
+        String profileImageUrl,
+        String headlineTicker
 ) {
 }

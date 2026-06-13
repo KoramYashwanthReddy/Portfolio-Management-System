@@ -9,6 +9,7 @@ import com.yashwanth.portfolio.mapper.PortfolioMapper;
 import com.yashwanth.portfolio.repository.ResumeRepository;
 import com.yashwanth.portfolio.service.FileStorageService;
 import com.yashwanth.portfolio.service.ResumeService;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,35 +25,62 @@ public class ResumeServiceImpl implements ResumeService {
     @Override
     @Transactional
     public ResumeResponse upload(MultipartFile file, String versionLabel) {
-        resumeRepository.findTopByDeletedFalseOrderByCreatedAtDesc().ifPresent(existing -> {
-            existing.setDeleted(true);
+        resumeRepository.findByDeletedFalseOrderByCreatedAtDesc().forEach(existing -> {
+            existing.setActive(false);
             resumeRepository.save(existing);
         });
         StoredFile storedFile = fileStorageService.store(file, FileType.RESUME);
         Resume resume = new Resume();
         resume.setStoredFile(storedFile);
         resume.setVersionLabel(versionLabel);
+        resume.setActive(true);
         return PortfolioMapper.toResume(resumeRepository.save(resume));
     }
 
     @Override
     @Transactional(readOnly = true)
     public ResumeResponse getCurrent() {
-        return PortfolioMapper.toResume(getEntity());
+        return PortfolioMapper.toResume(getCurrentEntity());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ResumeResponse> getAll() {
+        return resumeRepository.findByDeletedFalseOrderByCreatedAtDesc().stream()
+                .map(PortfolioMapper::toResume)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public ResumeResponse activate(Long id) {
+        Resume selected = getEntity(id);
+        resumeRepository.findByDeletedFalseOrderByCreatedAtDesc().forEach(resume -> resume.setActive(false));
+        selected.setActive(true);
+        resumeRepository.save(selected);
+        return PortfolioMapper.toResume(selected);
     }
 
     @Override
     @Transactional(readOnly = true)
     public StoredFile download() {
-        StoredFile storedFile = getEntity().getStoredFile();
+        StoredFile storedFile = getCurrentEntity().getStoredFile();
         storedFile.getStoragePath();
         storedFile.getContentType();
         storedFile.getOriginalFileName();
         return storedFile;
     }
 
-    private Resume getEntity() {
-        return resumeRepository.findTopByDeletedFalseOrderByCreatedAtDesc()
+    private Resume getCurrentEntity() {
+        return resumeRepository.findFirstByActiveTrueAndDeletedFalseOrderByCreatedAtDesc()
+                .orElseGet(() -> resumeRepository.findTopByDeletedFalseOrderByCreatedAtDesc()
+                        .orElseThrow(() -> new ResourceNotFoundException("Resume not found")));
+    }
+
+    private Resume getEntity(Long id) {
+        return resumeRepository.findById(id)
+                .filter(resume -> !resume.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Resume not found"));
     }
+
 }

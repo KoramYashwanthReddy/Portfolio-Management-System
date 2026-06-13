@@ -49,22 +49,29 @@ function createSidebar() {
         ["resume", "Resume", "fa-solid fa-file-pdf"]
     ];
     sidebar.innerHTML = `
-        <div class="sidebar-brand">
-            <p class="eyebrow">Admin Console</p>
-            <h2>PMS/OS</h2>
-            <p class="sidebar-note">JWT-protected backend operations.</p>
-        </div>
-        <nav class="sidebar-links">
-            ${links.map(([slug, label, icon]) => `
-                <a class="sidebar-link ${slug === page ? "active" : ""}" href="/api/v1/admin/${slug}.html">
-                    <i class="${icon}"></i> ${label}
-                </a>
-            `).join("")}
-            <div style="flex-grow: 1;"></div>
-            <a class="sidebar-link" href="/api/v1/index.html" style="margin-top: 24px; border-top: 1px solid var(--border); padding-top: 16px;">
-                <i class="fa-solid fa-arrow-up-right-from-square"></i> View Public Site
+        <div class="admin-topbar-shell">
+            <a class="admin-topbar-brand" href="/api/v1/admin/dashboard.html">
+                <span class="logo-circle">P</span>
+                <div class="admin-brand-copy">
+                    <p class="eyebrow">Admin Console</p>
+                    <h2>PMS/OS</h2>
+                </div>
             </a>
-        </nav>
+            <nav class="site-nav admin-topbar-links">
+                ${links.map(([slug, label, icon]) => `
+                    <a class="admin-nav-link ${slug === page ? "active" : ""}" href="/api/v1/admin/${slug}.html">
+                        <span class="sidebar-link-icon"><i class="${icon}"></i></span>
+                        <span>${label}</span>
+                    </a>
+                `).join("")}
+            </nav>
+            <div class="sidebar-footer admin-topbar-actions">
+                <a class="admin-nav-link admin-nav-cta" href="/api/v1/portfolio.html">
+                    <span class="sidebar-link-icon"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>
+                    <span>View Public Site</span>
+                </a>
+            </div>
+        </div>
     `;
 }
 
@@ -270,10 +277,11 @@ async function loadProjectsAdmin() {
         status: document.getElementById("admin-project-status").value
     });
     const data = response.data;
-    document.getElementById("admin-project-list").innerHTML = (data.content || []).map((project) => `
+    document.getElementById("admin-project-list").innerHTML = (data.content || []).map((project, index) => `
         <article class="table-card">
             <header>
                 <div>
+                    <span class="card-number">No ${String(index + 1).padStart(2, "0")}</span>
                     <strong>${project.title}</strong>
                     <p class="section-copy">${project.shortDescription}</p>
                 </div>
@@ -465,10 +473,11 @@ function bindSkillForm() {
 async function loadSkillsAdmin() {
     const response = await skillsApi.listAdmin(document.getElementById("admin-skill-category").value);
     const skills = response.data || [];
-    document.getElementById("admin-skill-list").innerHTML = skills.map((skill) => `
+    document.getElementById("admin-skill-list").innerHTML = skills.map((skill, index) => `
         <article class="table-card">
             <header>
                 <div>
+                    <span class="card-number">No ${String(index + 1).padStart(2, "0")}</span>
                     <strong>${skill.skillName}</strong>
                     <p class="section-copy">Order ${skill.displayOrder}</p>
                 </div>
@@ -741,6 +750,12 @@ async function initProfile() {
             <span class="chip">Controlled access</span>
         </div>
         <div class="summary-grid">
+            <div class="summary-card summary-image-card">
+                <span class="muted-label">Profile Image</span>
+                <div class="summary-portrait">
+                    <img src="${state.aboutSnapshot?.profileImageUrl || "/api/v1/assets/images/profile-placeholder.jpg"}" alt="Profile preview">
+                </div>
+            </div>
             <div class="summary-card">
                 <span class="muted-label">Current Profile</span>
                 <strong>${state.aboutSnapshot?.name || "Loading..."}</strong>
@@ -784,6 +799,8 @@ async function initProfile() {
             <label><span>GitHub URL</span><input class="input" name="githubUrl"></label>
         </div>
         <label><span>Portfolio URL</span><input class="input" name="portfolioUrl"></label>
+        <label><span>Profile Image URL</span><input class="input" name="profileImageUrl" placeholder="/api/v1/assets/images/profile-placeholder.jpg"></label>
+        <label><span>Headline ticker items</span><textarea class="input textarea" name="headlineTicker" placeholder="System Architecture, Backend Engineering, REST APIs, JWT Security, Microservices"></textarea></label>
         <div class="form-actions">
             <button class="button button-primary" type="submit">Save profile</button>
         </div>
@@ -809,6 +826,12 @@ async function initProfile() {
         state.aboutSnapshot = aboutResponse.value.data || {};
         fillForm(aboutForm, state.aboutSnapshot);
         profileSummary.querySelector(".summary-grid").innerHTML = `
+            <div class="summary-card summary-image-card">
+                <span class="muted-label">Profile Image</span>
+                <div class="summary-portrait">
+                    <img src="${state.aboutSnapshot.profileImageUrl || "/api/v1/assets/images/profile-placeholder.jpg"}" alt="Profile preview">
+                </div>
+            </div>
             <div class="summary-card">
                 <span class="muted-label">Current Profile</span>
                 <strong>${state.aboutSnapshot.name || "Admin profile"}</strong>
@@ -852,6 +875,12 @@ async function initProfile() {
             state.aboutSnapshot = { ...state.aboutSnapshot, ...payload };
             closeEditor();
             profileSummary.querySelector(".summary-grid").innerHTML = `
+                <div class="summary-card summary-image-card">
+                    <span class="muted-label">Profile Image</span>
+                    <div class="summary-portrait">
+                        <img src="${payload.profileImageUrl || "/api/v1/assets/images/profile-placeholder.jpg"}" alt="Profile preview">
+                    </div>
+                </div>
                 <div class="summary-card">
                     <span class="muted-label">Current Profile</span>
                     <strong>${payload.name || "Admin profile"}</strong>
@@ -862,6 +891,12 @@ async function initProfile() {
                     <span class="muted-label">Public Links</span>
                     <strong>${payload.email || "Email unavailable"}</strong>
                     <p class="section-copy">${payload.githubUrl || "GitHub not linked"}</p>
+                </div>
+                <div class="summary-card summary-image-card">
+                    <span class="muted-label">Profile Image</span>
+                    <div class="summary-portrait">
+                        <img src="${payload.profileImageUrl || "/api/v1/assets/images/profile-placeholder.jpg"}" alt="Profile preview">
+                    </div>
                 </div>
             `;
         } catch (error) {
@@ -904,44 +939,95 @@ async function initResume() {
 
     async function loadMetadata() {
         try {
-            const response = await resumeApi.adminMetadata();
-            const data = response.data;
+            const [currentResponse, allResponse] = await Promise.all([
+                resumeApi.adminMetadata(),
+                resumeApi.listAdmin()
+            ]);
+            const data = currentResponse.data;
+            const resumes = allResponse.data || [];
             state.resumeSnapshot = data;
+            const activeResume = resumes.find((resume) => resume.active) || data;
             document.getElementById("resume-metadata").innerHTML = data ? `
                 <div class="summary-stack">
                     <div class="form-hero" style="padding-bottom: 0; border-bottom: 0;">
                         <div>
                             <p class="eyebrow">Current Resume</p>
-                            <h2>${data.versionLabel}</h2>
-                            <p class="form-help">Latest upload is active everywhere on the public site.</p>
+                            <h2>${activeResume?.versionLabel || data.versionLabel}</h2>
+                            <p class="form-help">One resume is always marked as the live display version for the public site.</p>
                         </div>
-                        <span class="chip">Live asset</span>
+                        <span class="chip">${activeResume?.active ? "Displayed" : "Available"}</span>
                     </div>
                     <div class="summary-card">
-                        <span class="muted-label">File</span>
-                        <strong>${data.file?.originalFileName || "Resume file"}</strong>
-                        <p class="section-copy">${data.file?.contentType || "Document"}${data.file?.size ? ` | ${formatBytes(data.file.size)}` : ""}</p>
-                        <p class="section-copy">Uploaded ${new Date(data.uploadedAt).toLocaleString()}</p>
+                        <span class="muted-label">Active File</span>
+                        <strong>${activeResume?.file?.originalFileName || data.file?.originalFileName || "Resume file"}</strong>
+                        <p class="section-copy">${activeResume?.file?.contentType || data.file?.contentType || "Document"}${(activeResume?.file?.size || data.file?.size) ? ` | ${formatBytes(activeResume?.file?.size || data.file?.size)}` : ""}</p>
+                        <p class="section-copy">Uploaded ${new Date(activeResume?.uploadedAt || data.uploadedAt).toLocaleString()}</p>
                     </div>
                     <div class="chip-row">
                         <span class="chip">Stored in backend</span>
-                        ${data.file?.fileType ? `<span class="chip">${String(data.file.fileType).replaceAll("_", " ")}</span>` : ""}
+                        <span class="chip">${resumes.length} version${resumes.length === 1 ? "" : "s"}</span>
                     </div>
                     <div class="table-actions">
-                        <a class="button button-primary" href="${data.file?.downloadUrl || resumeApi.downloadUrl()}" target="_blank" rel="noreferrer">Open resume</a>
-                        <a class="button button-ghost" href="${data.file?.downloadUrl || resumeApi.downloadUrl()}" download>Download</a>
+                        <a class="button button-primary" href="${activeResume?.file?.downloadUrl || data.file?.downloadUrl || resumeApi.downloadUrl()}" target="_blank" rel="noreferrer">Open resume</a>
+                        <a class="button button-ghost" href="${activeResume?.file?.downloadUrl || data.file?.downloadUrl || resumeApi.downloadUrl()}" download>Download</a>
                         <button class="button button-ghost" id="copy-resume-link" type="button">Copy link</button>
                     </div>
                 </div>
             ` : emptyMarkup("No resume uploaded.");
             document.getElementById("copy-resume-link")?.addEventListener("click", async () => {
-                const link = data?.file?.downloadUrl || resumeApi.downloadUrl();
+                const link = activeResume?.file?.downloadUrl || data?.file?.downloadUrl || resumeApi.downloadUrl();
                 try {
                     await navigator.clipboard.writeText(`${window.location.origin}${link}`);
                     setFormStatus(form, "Resume link copied to clipboard.", "success");
                 } catch {
                     setFormStatus(form, "Could not copy the resume link.", "error");
                 }
+            });
+
+            const listMarkup = resumes.map((resume) => `
+                <article class="table-card ${resume.active ? "active-resume" : ""}">
+                    <header>
+                        <div>
+                            <strong>${resume.versionLabel}</strong>
+                            <p class="section-copy">${resume.file?.originalFileName || "Resume file"}</p>
+                        </div>
+                        <span class="chip">${resume.active ? "Displayed" : "Stored"}</span>
+                    </header>
+                    <div class="chip-row">
+                        <span class="chip">${new Date(resume.uploadedAt).toLocaleDateString()}</span>
+                        ${resume.file?.size ? `<span class="chip">${formatBytes(resume.file.size)}</span>` : ""}
+                        ${resume.file?.contentType ? `<span class="chip">${resume.file.contentType}</span>` : ""}
+                    </div>
+                    <div class="table-actions">
+                        ${resume.active
+                            ? `<button class="button button-primary" type="button" disabled>Displayed</button>`
+                            : `<button class="button button-primary" data-resume-display="${resume.id}" type="button">Display</button>`}
+                        <a class="button button-ghost" href="${resume.file?.downloadUrl || resumeApi.downloadUrl()}" target="_blank" rel="noreferrer">Open</a>
+                    </div>
+                </article>
+            `).join("") || emptyMarkup("No resume uploaded.");
+            const listContainer = document.createElement("div");
+            listContainer.className = "stack";
+            listContainer.innerHTML = `
+                <div class="form-hero" style="padding-bottom: 0; border-bottom: 0;">
+                    <div>
+                        <p class="eyebrow">Resume Versions</p>
+                        <h2>Display selection</h2>
+                        <p class="form-help">Choose which uploaded resume should appear on the public site.</p>
+                    </div>
+                    <span class="chip">Version history</span>
+                </div>
+                <div class="resume-version-list">${listMarkup}</div>
+            `;
+            document.getElementById("resume-metadata").append(listContainer);
+            resumes.forEach((resume) => {
+                document.querySelector(`[data-resume-display="${resume.id}"]`)?.addEventListener("click", async () => {
+                    if (!confirmDanger(`Display "${resume.versionLabel}" on the public site?`)) {
+                        return;
+                    }
+                    await resumeApi.display(resume.id);
+                    await loadMetadata();
+                });
             });
         } catch (error) {
             const message = error?.status === 404

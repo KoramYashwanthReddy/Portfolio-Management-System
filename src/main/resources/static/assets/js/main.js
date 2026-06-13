@@ -23,6 +23,7 @@ const state = {
     resume: null,
     projectFeaturedFilter: "",
     projectEscapeBound: false,
+    projectDetail: null,
     starredProjects: JSON.parse(localStorage.getItem("starred_projects") || "[]"),
     comparedProjects: JSON.parse(localStorage.getItem("compared_projects") || "[]")
         .filter(Boolean)
@@ -53,6 +54,32 @@ function setHref(id, value, fallback = "#") {
     if (node) {
         node.href = value || fallback;
     }
+}
+
+function setSrc(id, value, fallback = "") {
+    const node = element(id);
+    if (node) {
+        node.src = value || fallback;
+    }
+}
+
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+}
+
+function buildTickerItems(rawTicker) {
+    const fallback = ["System Architecture", "Backend Design", "Spring Boot", "JWT Security", "Microservices"];
+    const items = String(rawTicker || "")
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+    const sequence = items.length ? items : fallback;
+    return [...sequence, ...sequence];
 }
 
 function optionMarkup(values, label) {
@@ -187,18 +214,43 @@ function renderAbout(about) {
     setText("hero-location", about?.currentLocation || "Unavailable");
     setText("hero-email", about?.email || "Unavailable");
     setText("hero-location-pill", about?.currentLocation || "Unavailable");
+    setText("welcome-experience-years", `${about?.experienceYears || 0}+`);
+    setText("welcome-email", about?.email || "Unavailable");
+    setText("welcome-location", about?.currentLocation || "Unavailable");
     setText("hero-profile-name", about?.name || "Loading...");
     setText("hero-profile-title", about?.designation || "Loading...");
     setText("hero-profile-title-inline", about?.designation || "Loading...");
+    setSrc("hero-profile-img", about?.profileImageUrl, "/api/v1/assets/images/profile-placeholder.jpg");
+    setSrc("about-profile-img", about?.profileImageUrl, "/api/v1/assets/images/profile-placeholder.jpg");
+    setSrc("feedback-profile-img", about?.profileImageUrl, "/api/v1/assets/images/profile-placeholder.jpg");
     setHref("linkedin-link", about?.linkedinUrl);
     setText("linkedin-link", about?.linkedinUrl || "Unavailable");
     setHref("github-link", about?.githubUrl);
     setText("github-link", about?.githubUrl || "Unavailable");
     setHref("portfolio-link", about?.portfolioUrl);
     setText("portfolio-link", about?.portfolioUrl || "Unavailable");
+    setText("hero-full-name", about?.name || "Koram Yashwanth Reddy");
+    setText("feedback-full-name", about?.name || "Koram Yashwanth Reddy");
+    setText("feedback-designation", about?.designation || "Backend Engineer");
+    setText("feedback-location", about?.currentLocation || "Unavailable");
+    setText("feedback-email", about?.email || "Unavailable");
+    setText("feedback-bio", about?.biography || "Production-grade Java + Spring Boot engineer.");
+
+    const tickerTrack = element("hero-ticker-track");
+    if (tickerTrack) {
+        const tickerItems = buildTickerItems(about?.headlineTicker);
+        tickerTrack.innerHTML = tickerItems.map((item) => `<span class="hero-ticker-item">${escapeHtml(item)}</span>`).join("");
+    }
+
+    const feedbackTickerTrack = element("feedback-ticker-track");
+    if (feedbackTickerTrack) {
+        const tickerItems = buildTickerItems(about?.headlineTicker);
+        feedbackTickerTrack.innerHTML = tickerItems.map((item) => `<span class="hero-ticker-item">${escapeHtml(item)}</span>`).join("");
+    }
+
     const heroHeader = element("hero-name-header");
-    if (heroHeader && about?.name) {
-        heroHeader.innerHTML = `Hi, I'm <span class="highlight-violet">${about.name}</span>.`;
+    if (heroHeader && !element("hero-full-name") && about?.name) {
+        heroHeader.innerHTML = `Hi, I'm <span class="highlight-violet">${escapeHtml(about.name)}</span>.`;
     }
     setHref("header-github", about?.githubUrl);
     setHref("header-linkedin", about?.linkedinUrl);
@@ -232,10 +284,13 @@ function renderSkills(skills) {
                 <span class="skill-count">${items.length} skills</span>
             </div>
             <div class="skill-list-container">
-                ${items.sort((a, b) => a.displayOrder - b.displayOrder).map((skill) => `
+                ${items.sort((a, b) => a.displayOrder - b.displayOrder).map((skill, index) => `
                     <div class="masonry-skill-item">
                         <div class="masonry-skill-header">
-                            <span class="masonry-skill-name">${skill.skillName}</span>
+                            <span class="masonry-skill-name">
+                                <span class="skill-order-chip">${String(index + 1).padStart(2, "0")}</span>
+                                ${skill.skillName}
+                            </span>
                             <span class="masonry-skill-percent">${skill.proficiencyPercentage}%</span>
                         </div>
                         <div class="masonry-progress-track">
@@ -248,7 +303,7 @@ function renderSkills(skills) {
     `).join("") || `<div class="empty-state">No skills published yet.</div>`);
 }
 
-function mncProjectCard(project) {
+function mncProjectCard(project, index = 0) {
     const technologies = splitTechnologies(project);
     const isCompleted = project.status === "COMPLETED";
     const statusColor = isCompleted ? "#10b981" : "#8b5cf6";
@@ -268,6 +323,7 @@ function mncProjectCard(project) {
         <article class="mnc-card" data-category="${project.category || ''}" data-status="${project.status || ''}">
             <div class="mnc-card-header">
                 <div class="mnc-card-header-left">
+                    <span class="mnc-card-rank">${String(index ?? 0).padStart(2, "0")}</span>
                     <span class="mnc-status-badge" style="background:${statusBg};color:${statusColor};border:1px solid ${statusBorder};">
                         <span class="mnc-status-dot" style="background:${statusColor};"></span>
                         ${statusText}
@@ -292,32 +348,44 @@ function mncProjectCard(project) {
             </div>
             <div class="mnc-card-footer">
                 ${project.githubUrl ? `<a class="mnc-link" href="${project.githubUrl}" target="_blank" rel="noreferrer"><i class="fa-brands fa-github"></i> GitHub</a>` : `<span class="mnc-link mnc-link-disabled"><i class="fa-brands fa-github"></i> GitHub</span>`}
-                <button class="mnc-link project-more-toggle" type="button" aria-expanded="false" style="background:none;border:none;cursor:pointer;padding:0;font-family:inherit;"><i class="fa-solid fa-circle-info"></i> View More</button>
-                <button class="mnc-arrow-link project-more-toggle" type="button" aria-expanded="false" title="View details"><i class="fa-solid fa-arrow-right"></i></button>
-            </div>
-            <div class="project-card-popup" aria-hidden="true">
-                <div class="project-card-popup-header">
-                    <div>
-                        <span class="project-card-popup-kicker">Project details</span>
-                        <strong>${project.title}</strong>
-                    </div>
-                    <button class="project-card-close" type="button" aria-label="Close details">×</button>
-                </div>
-                <div class="project-card-popup-grid">
-                    ${projectInsightRows(project).map((row) => `
-                        <div class="project-insight">
-                            <span>${row.label}</span>
-                            <strong>${row.value}</strong>
-                        </div>
-                    `).join("")}
-                </div>
-                <p class="project-card-detail-copy">${project.detailedDescription || ""}</p>
-                <div class="project-card-popup-actions">
-                    ${project.githubUrl ? `<a class="button button-outline" href="${project.githubUrl}" target="_blank" rel="noreferrer">GitHub</a>` : ""}
-                    ${project.liveUrl ? `<a class="button button-outline" href="${project.liveUrl}" target="_blank" rel="noreferrer">Live</a>` : ""}
-                </div>
+                <button class="mnc-link project-more-toggle" type="button" data-project-detail="${project.id}" aria-expanded="false" style="background:none;border:none;cursor:pointer;padding:0;font-family:inherit;"><i class="fa-solid fa-circle-info"></i> View More</button>
+                <button class="mnc-arrow-link project-more-toggle" type="button" data-project-detail="${project.id}" aria-expanded="false" title="View details"><i class="fa-solid fa-arrow-right"></i></button>
             </div>
         </article>
+    `;
+}
+
+function buildProjectDetailMarkup(project) {
+    const technologies = splitTechnologies(project);
+    return `
+        <div class="project-detail-shell">
+            <div class="project-detail-header">
+                <div>
+                    <p class="eyebrow" style="color: var(--accent-alt); margin-bottom: 8px;">PROJECT DETAILS</p>
+                    <h2 style="margin: 0;">${project.title}</h2>
+                </div>
+                <span class="chip">${project.featured ? "Featured" : "Selected work"}</span>
+            </div>
+            <div class="project-detail-grid">
+                ${projectInsightRows(project).map((row) => `
+                    <article class="project-detail-card">
+                        <span>${row.label}</span>
+                        <strong>${row.value}</strong>
+                    </article>
+                `).join("")}
+            </div>
+            <div class="project-detail-body">
+                <p>${project.shortDescription || ""}</p>
+                <p>${project.detailedDescription || ""}</p>
+                <div class="mnc-card-tags" style="margin-top: 12px;">
+                    ${technologies.map((tech) => `<span class="mnc-tech-tag">${tech}</span>`).join("")}
+                </div>
+            </div>
+            <div class="project-detail-actions">
+                ${project.githubUrl ? `<a class="button button-outline" href="${project.githubUrl}" target="_blank" rel="noreferrer">GitHub</a>` : ""}
+                ${project.liveUrl ? `<a class="button button-outline" href="${project.liveUrl}" target="_blank" rel="noreferrer">Live</a>` : ""}
+            </div>
+        </div>
     `;
 }
 
@@ -627,7 +695,7 @@ function updateMncProjectsDisplay(showShimmer = true) {
 }
 
 function renderFilteredList(grid, filtered) {
-    grid.innerHTML = filtered.map((project) => mncProjectCard(project)).join("") || `<div class="empty-state">No matching projects found.</div>`;
+    grid.innerHTML = filtered.map((project, index) => mncProjectCard(project, index + 1)).join("") || `<div class="empty-state">No matching projects found.</div>`;
     bindProjectInteractions();
     bindCardFeatureEvents();
 }
@@ -645,35 +713,53 @@ function bindFilterPills() {
 }
 
 function bindProjectInteractions() {
-    document.querySelectorAll(".project-more-toggle").forEach((button) => {
+    const detailModal = element("project-detail-modal");
+    const detailContent = element("project-detail-content");
+    const detailClose = element("project-detail-close");
+
+    document.querySelectorAll("[data-project-detail]").forEach((button) => {
         button.addEventListener("click", (event) => {
-            const card = event.currentTarget.closest(".mnc-card");
-            if (!card) return;
-            const expanded = card.classList.toggle("is-expanded");
-            button.setAttribute("aria-expanded", String(expanded));
+            const projectId = String(event.currentTarget.dataset.projectDetail);
+            const allProjects = uniqueById([...(state.featuredProjects || []), ...(state.projects || [])]);
+            const project = allProjects.find((item) => String(item.id) === projectId);
+            if (!project || !detailModal || !detailContent) {
+                return;
+            }
+            state.projectDetail = project;
+            detailContent.innerHTML = buildProjectDetailMarkup(project);
+            detailModal.classList.remove("hidden");
+            document.body.style.overflow = "hidden";
+            document.querySelectorAll(".project-more-toggle").forEach((toggle) => {
+                toggle.setAttribute("aria-expanded", String(toggle.dataset.projectDetail === projectId));
+            });
         });
     });
 
-    document.querySelectorAll(".project-card-close").forEach((button) => {
-        button.addEventListener("click", (event) => {
-            const card = event.currentTarget.closest(".mnc-card");
-            if (!card) return;
-            card.classList.remove("is-expanded");
-            card.querySelectorAll(".project-more-toggle").forEach(toggle => {
-                toggle.setAttribute("aria-expanded", "false");
-            });
+    function closeDetailModal() {
+        if (!detailModal) {
+            return;
+        }
+        detailModal.classList.add("hidden");
+        document.body.style.overflow = "";
+        state.projectDetail = null;
+        document.querySelectorAll(".project-more-toggle").forEach((toggle) => {
+            toggle.setAttribute("aria-expanded", "false");
         });
+    }
+
+    detailClose?.addEventListener("click", closeDetailModal);
+    detailModal?.addEventListener("click", (event) => {
+        if (event.target === detailModal) {
+            closeDetailModal();
+        }
     });
 
     if (!state.projectEscapeBound) {
         document.addEventListener("keydown", (event) => {
             if (event.key !== "Escape") return;
-            document.querySelectorAll(".mnc-card.is-expanded").forEach((card) => {
-                card.classList.remove("is-expanded");
-                card.querySelectorAll(".project-more-toggle").forEach(toggle => {
-                    toggle.setAttribute("aria-expanded", "false");
-                });
-            });
+            if (!detailModal?.classList.contains("hidden")) {
+                closeDetailModal();
+            }
         });
         state.projectEscapeBound = true;
     }
@@ -862,28 +948,28 @@ function bindProjectControls() {
     bindCompareControls();
 }
 
-function bindContactForm() {
-    const form = element("contact-form");
-    const status = element("contact-status");
-    const submit = element("contact-submit");
-    if (!form || !status || !submit) {
-        return;
-    }
+function bindContactForms() {
+    const forms = [
+        { form: element("contact-form"), status: element("contact-status"), submit: element("contact-submit") },
+        { form: element("feedback-form"), status: element("feedback-status"), submit: element("feedback-submit") }
+    ].filter(({ form, status, submit }) => form && status && submit);
 
-    form.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        setStatus(status, "Transmitting...");
-        submit.disabled = true;
-        try {
-            const payload = Object.fromEntries(new FormData(form).entries());
-            await contactApi.submit(payload);
-            form.reset();
-            setStatus(status, "Message delivered to the backend.", "success");
-        } catch (error) {
-            setStatus(status, error.message, "error");
-        } finally {
-            submit.disabled = false;
-        }
+    forms.forEach(({ form, status, submit }) => {
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            setStatus(status, "Transmitting...");
+            submit.disabled = true;
+            try {
+                const payload = Object.fromEntries(new FormData(form).entries());
+                await contactApi.submit(payload);
+                form.reset();
+                setStatus(status, "Message delivered to the backend.", "success");
+            } catch (error) {
+                setStatus(status, error.message, "error");
+            } finally {
+                submit.disabled = false;
+            }
+        });
     });
 }
 
@@ -921,10 +1007,29 @@ async function bootstrap() {
     initNavigation();
     initAnimations();
 
-    bindContactForm();
+    bindContactForms();
+    updateCompareBanner();
+
+    if (document.body.dataset.page === "welcome") {
+        const about = await aboutApi.getPublic().catch(() => null);
+        if (about?.data) {
+            renderAbout(about.data);
+        }
+        renderAboutMetrics(null);
+        return;
+    }
+
+    if (document.body.dataset.page === "feedback") {
+        const about = await aboutApi.getPublic().catch(() => null);
+        if (about?.data) {
+            renderAbout(about.data);
+        }
+        renderAboutMetrics(null);
+        return;
+    }
+
     bindProjectControls();
     bindSkillControls();
-    updateCompareBanner();
 
     const [dashboard, about, featured, skills, certifications, resume] = await Promise.allSettled([
         dashboardApi.getPublic(),

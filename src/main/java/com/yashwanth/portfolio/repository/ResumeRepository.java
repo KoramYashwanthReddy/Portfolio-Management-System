@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ResumeRepository extends JpaRepository<Resume, Long> {
     Optional<Resume> findTopByDeletedFalseOrderByCreatedAtDesc();
+    Optional<Resume> findFirstByActiveTrueAndDeletedFalseOrderByCreatedAtDesc();
+    java.util.List<Resume> findByDeletedFalseOrderByCreatedAtDesc();
 }

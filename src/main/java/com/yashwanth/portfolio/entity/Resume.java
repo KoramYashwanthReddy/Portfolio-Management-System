@@ -20,4 +20,6 @@ public class Resume extends AuditableEntity {
     private StoredFile storedFile;
 
     private String versionLabel;
+
+    private boolean active = true;
 }

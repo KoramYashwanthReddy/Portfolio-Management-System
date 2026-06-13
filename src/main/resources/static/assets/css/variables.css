@@ -2,8 +2,10 @@
     --bg: #fdfdfd;
     --bg-rgb: 253, 253, 253;
     --surface: #ffffff;
+    --surface-rgb: 255, 255, 255;
     --surface-strong: #f5f3ff;
     --surface-soft: #f8fafc;
+    --surface-soft-rgb: 248, 250, 252;
     --border: rgba(99, 102, 241, 0.08);
     --border-hover: rgba(99, 102, 241, 0.25);
     --text: #0f172a;
@@ -27,8 +29,10 @@
     --bg: #000000;
     --bg-rgb: 0, 0, 0;
     --surface: #0a0a0a;
+    --surface-rgb: 10, 10, 10;
     --surface-strong: rgba(255, 255, 255, 0.03);
     --surface-soft: rgba(255, 255, 255, 0.02);
+    --surface-soft-rgb: 255, 255, 255;
     --border: rgba(255, 255, 255, 0.08);
     --border-hover: rgba(255, 255, 255, 0.15);
     --text: #fafafa;

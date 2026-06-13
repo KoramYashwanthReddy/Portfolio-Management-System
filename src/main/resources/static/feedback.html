@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yashwanth | Feedback</title>
+    <meta name="description" content="Send feedback directly to Yashwanth from a dedicated public page.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/api/v1/assets/css/variables.css">
+    <link rel="stylesheet" href="/api/v1/assets/css/global.css">
+    <link rel="stylesheet" href="/api/v1/assets/css/components.css">
+    <link rel="stylesheet" href="/api/v1/assets/css/animations.css">
+    <link rel="stylesheet" href="/api/v1/assets/css/responsive.css">
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/js/all.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.7/gsap.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.7/ScrollTrigger.min.js"></script>
+    <script type="module" src="/api/v1/assets/js/main.js"></script>
+</head>
+
+<body data-page="feedback">
+    <main>
+        <section class="section welcome-hero">
+            <div class="section-shell split-grid" style="align-items: center; gap: 36px;">
+                <div class="welcome-copy" data-reveal>
+                    <p class="eyebrow">FEEDBACK</p>
+                    <h1>
+                        <span class="hero-title-kicker" style="display:block; margin-bottom: 8px;">Hi, I'm</span>
+                        <span id="feedback-full-name" class="hero-title-name highlight-violet" style="display:block; white-space: nowrap;">Yashwanth</span>
+                    </h1>
+                    <p id="feedback-designation" class="welcome-text" style="font-size: 1rem; margin-top: 10px;">Backend Engineer</p>
+                    <p id="feedback-bio" class="welcome-text">Leave feedback, ask a question, or send an opportunity note. The admin inbox gets it directly.</p>
+
+                    <div class="welcome-badges">
+                        <span class="chip" id="feedback-location">Hyderabad, India</span>
+                        <span class="chip" id="feedback-email">email@example.com</span>
+                        <span class="chip">Delivered to admin</span>
+                    </div>
+
+                    <div class="hero-ticker" style="margin-top: 24px;">
+                        <span class="hero-ticker-label">Focused on</span>
+                        <div id="feedback-ticker-track" class="hero-ticker-track" aria-label="Scrolling focus areas"></div>
+                    </div>
+
+                    <div class="welcome-actions" style="margin-top: 28px;">
+                        <a class="button button-primary" href="/api/v1/portfolio.html">Go to portfolio</a>
+                        <a class="button button-secondary" href="/api/v1/index.html">Back to welcome</a>
+                    </div>
+                </div>
+
+                <div class="welcome-preview" data-reveal>
+                    <div class="welcome-preview-card">
+                        <div class="welcome-preview-topline">
+                            <div>
+                                <p class="eyebrow">START A CONVERSATION</p>
+                                <h2>Send feedback from this dedicated page.</h2>
+                            </div>
+                            <span class="chip">Admin inbox</span>
+                        </div>
+                        <div class="profile-card-container" style="padding: 0; margin-bottom: 20px; width: min(100%, 420px);">
+                            <div class="profile-card" style="padding: 14px;">
+                                <div class="profile-image-container">
+                                    <img id="feedback-profile-img" src="/api/v1/assets/images/profile-placeholder.jpg" alt="Yashwanth profile">
+                                </div>
+                            </div>
+                        </div>
+                        <form id="contact-form" class="welcome-contact-form" novalidate>
+                            <div class="field-grid">
+                                <label>
+                                    <span>Your name</span>
+                                    <input class="input" name="name" required placeholder="Your full name">
+                                </label>
+                                <label>
+                                    <span>Your email</span>
+                                    <input class="input" type="email" name="email" required placeholder="you@example.com">
+                                </label>
+                            </div>
+                            <label>
+                                <span>Subject</span>
+                                <input class="input" name="subject" required maxlength="150" placeholder="Feedback, referral, opportunity...">
+                            </label>
+                            <label>
+                                <span>Message</span>
+                                <textarea class="input textarea" name="message" required maxlength="5000" placeholder="Write your feedback, question, or proposal here."></textarea>
+                            </label>
+                            <div class="welcome-form-actions">
+                                <button id="contact-submit" class="button button-primary" type="submit">Send feedback</button>
+                                <a class="button button-secondary" href="/api/v1/portfolio.html">Open portfolio</a>
+                            </div>
+                            <p id="contact-status" class="form-status" aria-live="polite"></p>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+</body>
+
+</html>

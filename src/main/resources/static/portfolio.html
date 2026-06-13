@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yashwanth | Portfolio</title>
+    <meta name="description" content="Full portfolio experience for Yashwanth.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/api/v1/assets/css/variables.css">
+    <link rel="stylesheet" href="/api/v1/assets/css/global.css">
+    <link rel="stylesheet" href="/api/v1/assets/css/components.css">
+    <link rel="stylesheet" href="/api/v1/assets/css/animations.css">
+    <link rel="stylesheet" href="/api/v1/assets/css/responsive.css">
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/js/all.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.7/gsap.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.7/ScrollTrigger.min.js"></script>
+    <script type="module" src="/api/v1/assets/js/main.js"></script>
+</head>
+
+<body data-page="portfolio">
+    <header class="site-header">
+        <a class="brand" href="/api/v1/index.html">
+            <span class="logo-circle">KY</span> Yashwanth<span class="highlight-blue">.</span>
+        </a>
+        <nav class="site-nav">
+            <a href="#systems">Work</a>
+            <a href="#overview">About</a>
+            <a href="#ecosystem">Stack</a>
+            <a href="#knowledge">Resume</a>
+            <a href="#collaboration">Contact</a>
+            <a href="/api/v1/feedback.html">Feedback</a>
+            <a href="/api/v1/admin/login.html">Admin</a>
+        </nav>
+        <div class="header-actions">
+            <a href="#" id="header-github" target="_blank" aria-label="GitHub"><i class="fa-brands fa-github"></i></a>
+            <a href="#" id="header-linkedin" target="_blank" aria-label="LinkedIn"><i class="fa-brands fa-linkedin-in"></i></a>
+            <button class="theme-toggle" aria-label="Toggle theme"><i class="fa-solid fa-moon"></i></button>
+        </div>
+        <button class="nav-toggle" type="button" aria-label="Toggle navigation">
+            <span></span><span></span>
+        </button>
+    </header>
+
+    <main>
+        <section id="command-center" class="hero section">
+            <div class="section-shell hero-grid">
+                <div class="hero-copy" data-reveal>
+                    <div class="availability-pill">
+                        <span class="status-dot"></span> Available for full-time roles
+                        <span class="separator">-</span>
+                        <i class="fa-solid fa-location-dot"></i> <span id="hero-location-pill">Loading location...</span>
+                    </div>
+                    <h1 id="hero-name-header" class="hero-title-stack">
+                        <span class="hero-title-kicker">Hi, I'm</span>
+                        <span id="hero-full-name" class="hero-title-name highlight-violet">Yashwanth</span>
+                        <span class="hero-title-subline">I architect <span class="highlight-violet">backends</span> that scale.</span>
+                    </h1>
+
+                    <div class="hero-ticker">
+                        <span class="hero-ticker-label">Systems stream</span>
+                        <div id="hero-ticker-track" class="hero-ticker-track" aria-label="Scrolling focus areas"></div>
+                    </div>
+
+                    <p id="hero-biography" class="hero-text" style="font-size: 1.05rem; line-height: 1.6; color: var(--muted); margin-bottom: 32px; max-width: 480px;">Loading about information from the backend...</p>
+
+                    <div class="hero-actions" style="margin-bottom: 48px;">
+                        <a class="button button-primary" href="#systems" style="background: var(--accent-alt); border-color: var(--accent-alt); border-radius: 99px;">Explore my work &rarr;</a>
+                        <a id="resume-download-link-hero" class="button button-secondary" href="#knowledge" style="border-radius: 99px;"><i class="fa-solid fa-file-pdf" style="color: var(--accent-alt);"></i> View resume</a>
+                    </div>
+
+                    <div id="hero-metrics" class="hero-metrics"></div>
+                </div>
+
+                <div class="hero-image-pane" data-reveal>
+                    <div class="profile-card-container">
+                        <div class="profile-card-glow"></div>
+                        <div class="floating-badge top-left">
+                            <span class="badge-label">JWT</span>
+                            <span class="badge-value" style="color: var(--accent-alt);">Secured</span>
+                        </div>
+                        <div class="floating-badge bottom-right">
+                            <span class="badge-label">REST</span>
+                            <span class="badge-value" style="color: var(--accent-alt);">200 OK</span>
+                        </div>
+
+                        <div class="profile-card">
+                            <div class="profile-image-container">
+                                <img id="hero-profile-img" src="/api/v1/assets/images/profile-placeholder.jpg" alt="Yashwanth Profile">
+                                <div class="image-overlay-pill">
+                                    <span class="overlay-label">CURRENTLY BUILDING</span>
+                                    <span class="overlay-value" id="hero-profile-title-inline">Loading...</span>
+                                </div>
+                            </div>
+
+                            <div class="profile-card-footer">
+                                <div class="profile-info">
+                                    <h3 id="hero-profile-name">Loading...</h3>
+                                    <p id="hero-profile-title">Loading...</p>
+                                </div>
+                                <div class="profile-tech-tags">
+                                    <span class="micro-tag">Java</span>
+                                    <span class="micro-tag">Spring Boot</span>
+                                    <span class="micro-tag">REST</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="marquee-container">
+            <div class="marquee-content">
+                <span>Spring Boot</span>
+                <span>REST APIs</span>
+                <span>Microservices</span>
+                <span>Backend Architecture</span>
+                <span>Systems Engineering</span>
+                <span>Java Enterprise</span>
+                <span>Spring Boot</span>
+                <span>REST APIs</span>
+                <span>Microservices</span>
+                <span>Backend Architecture</span>
+                <span>Systems Engineering</span>
+                <span>Java Enterprise</span>
+            </div>
+        </div>
+
+        <section id="overview" class="section">
+            <div class="section-shell split-grid">
+                <div class="about-pane-left" data-reveal>
+                    <p class="eyebrow" style="color: var(--accent-alt); margin-bottom: 16px;">ABOUT</p>
+                    <div class="about-image-wrapper">
+                        <div class="about-image-glow"></div>
+                        <img id="about-profile-img" src="/api/v1/assets/images/profile-placeholder.jpg" alt="Yashwanth About">
+                    </div>
+                    <h2 style="margin-top: 32px; letter-spacing: -0.02em;">Backend is my <span class="highlight-violet">native language.</span></h2>
+                    <p id="overview-copy" class="section-copy" style="margin-top: 16px; font-size: 0.95rem; line-height: 1.6;">Loading about section from the database...</p>
+                    <div class="tech-pill-container" style="margin-top: 24px; display: flex; flex-wrap: wrap; gap: 8px;">
+                        <span class="tech-pill">Java</span>
+                        <span class="tech-pill">Spring Boot</span>
+                        <span class="tech-pill">REST</span>
+                        <span class="tech-pill">JWT</span>
+                        <span class="tech-pill">MySQL</span>
+                        <span class="tech-pill">Solidity</span>
+                    </div>
+                </div>
+
+                <div class="about-pane-right stack" data-reveal>
+                    <div id="about-metrics-grid" class="metric-grid-6">
+                        <div class="metric-card-box">
+                            <div class="icon-circle"><i class="fa-solid fa-layer-group"></i></div>
+                            <h3 id="about-total-projects">0</h3>
+                            <p>Total projects</p>
+                        </div>
+                        <div class="metric-card-box">
+                            <div class="icon-circle"><i class="fa-solid fa-trophy"></i></div>
+                            <h3 id="about-featured-projects">0</h3>
+                            <p>Featured projects</p>
+                        </div>
+                        <div class="metric-card-box">
+                            <div class="icon-circle"><i class="fa-solid fa-rocket"></i></div>
+                            <h3 id="about-skills">0</h3>
+                            <p>Skills tracked</p>
+                        </div>
+                        <div class="metric-card-box">
+                            <div class="icon-circle"><i class="fa-solid fa-code"></i></div>
+                            <h3 id="about-experience">0y</h3>
+                            <p>Years coding</p>
+                        </div>
+                        <div class="metric-card-box">
+                            <div class="icon-circle"><i class="fa-solid fa-code-commit"></i></div>
+                            <h3 id="about-certifications">0</h3>
+                            <p>Certifications</p>
+                        </div>
+                        <div class="metric-card-box">
+                            <div class="icon-circle"><i class="fa-solid fa-microchip"></i></div>
+                            <h3 id="about-messages">0</h3>
+                            <p>Messages</p>
+                        </div>
+                    </div>
+
+                    <div class="principles-panel panel" style="margin-top: 24px; padding: 24px;">
+                        <p class="eyebrow" style="font-size: 0.7rem; margin-bottom: 16px;">ENGINEERING PRINCIPLES</p>
+                        <div class="principles-grid">
+                            <div class="principle-item">
+                                <h4>Secure by default</h4>
+                                <p>JWT, RBAC, audit</p>
+                            </div>
+                            <div class="principle-item">
+                                <h4>Built to scale</h4>
+                                <p>Optimized schemas</p>
+                            </div>
+                            <div class="principle-item">
+                                <h4>Clean architecture</h4>
+                                <p>MVC, layered</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="ecosystem" class="section">
+            <div class="section-shell">
+                <div class="section-heading" data-reveal>
+                    <p class="eyebrow" style="color: var(--accent-alt);">TECH STACK</p>
+                    <h2 style="letter-spacing: -0.02em;">Tools I reach for to ship <span class="highlight-violet">production code.</span></h2>
+                </div>
+                <div class="explorer-controls" style="margin-top: 24px; margin-bottom: 24px;">
+                    <input id="skill-search" class="input" type="search" placeholder="Search tools...">
+                    <select id="skill-category" class="input">
+                        <option value="">All Categories</option>
+                    </select>
+                </div>
+                <div id="skill-clusters" class="masonry-skills-grid"></div>
+            </div>
+        </section>
+
+        <section id="systems" class="section">
+            <div class="section-shell">
+                <div class="projects-section-header" data-reveal>
+                    <div class="projects-section-header-left">
+                        <p class="eyebrow" style="color: var(--accent-alt);">- SELECTED WORK</p>
+                        <h2>Projects that prove the<br><span class="highlight-violet">engineering.</span></h2>
+                    </div>
+                    <div class="projects-header-actions" style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+                        <div class="projects-search-wrapper" style="position: relative; display: flex; align-items: center;">
+                            <i class="fa-solid fa-magnifying-glass search-icon" style="position: absolute; left: 16px; color: var(--muted); font-size: 0.9rem;"></i>
+                            <input type="text" id="projects-search-input" placeholder="Search tech stack, title, description..." style="padding: 10px 16px 10px 42px; border-radius: 99px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-family: 'IBM Plex Sans', sans-serif; font-size: 0.85rem; width: 280px; transition: all 0.2s ease;">
+                        </div>
+                        <div class="projects-filter-pills" id="project-filter-pills">
+                            <button class="filter-pill active" data-filter="all">All</button>
+                            <button class="filter-pill" data-filter="COMPLETED">Completed</button>
+                            <button class="filter-pill" data-filter="IN_PROGRESS">In progress</button>
+                            <button class="filter-pill" data-filter="BACKEND">Backend</button>
+                            <button class="filter-pill" data-filter="BLOCKCHAIN">Blockchain</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="projects-mnc-grid" class="projects-mnc-grid"></div>
+            </div>
+        </section>
+
+        <section id="knowledge" class="section">
+            <div class="section-shell split-grid" style="align-items: center;">
+                <div class="resume-info" data-reveal>
+                    <p class="eyebrow">RESUME</p>
+                    <h2 style="letter-spacing: -0.02em;">The full <span class="highlight-violet">story.</span></h2>
+                    <p class="section-copy" style="margin-top: 16px; margin-bottom: 24px;">View it as a beautifully rendered native UI, or grab the original PDF. Both stay in sync.</p>
+                    <div id="resume-actions-container" style="display: flex; gap: 16px;"></div>
+                </div>
+                <div id="resume-preview-wrapper" data-reveal></div>
+            </div>
+            <div class="section-shell" style="margin-top: 60px;">
+                <p class="eyebrow" style="margin-bottom: 24px;">Verified Credentials</p>
+                <div id="certification-grid" class="catalog-grid"></div>
+            </div>
+        </section>
+
+        <section id="collaboration" class="section">
+            <div class="section-shell" style="display: flex; justify-content: center;">
+                <div class="cta-card-container" data-reveal>
+                    <p class="eyebrow cta-eyebrow">LET'S BUILD</p>
+                    <h2 class="cta-heading">Looking for a backend<br>engineer who <span class="highlight-violet">ships?</span></h2>
+                    <p class="cta-subtitle">I'm open to full-time roles and backend-heavy projects. Let's talk.</p>
+
+                    <div class="cta-actions">
+                        <a href="mailto:koramyashwanthr@gmail.com" class="button button-primary button-glow" style="border-radius: 99px; padding: 12px 24px;">
+                            <i class="fa-regular fa-envelope"></i> koramyashwanthr@gmail.com <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.8em; margin-left: 8px;"></i>
+                        </a>
+                        <a href="https://github.com/KoramYashwanthReddy" target="_blank" rel="noreferrer" class="button button-outline" style="border-radius: 99px;">
+                            <i class="fa-brands fa-github"></i> GitHub
+                        </a>
+                        <a href="https://linkedin.com/in/koramyashwanthreddy" target="_blank" rel="noreferrer" class="button button-outline" style="border-radius: 99px;">
+                            <i class="fa-brands fa-linkedin"></i> LinkedIn
+                        </a>
+                    </div>
+
+                    <div class="cta-meta">
+                        <span><i class="fa-solid fa-phone" style="margin-right: 4px;"></i> +91 90320 44158</span>
+                        <span>Hyderabad, India</span>
+                        <span><span class="status-dot"></span> Available now</span>
+                    </div>
+                </div>
+            </div>
+            <div class="section-shell" style="margin-top: 32px; display: flex; justify-content: center;">
+                <div class="panel feedback-panel" data-reveal style="width: min(100%, 980px);">
+                    <div class="form-hero" style="margin-bottom: 24px;">
+                        <div>
+                            <p class="eyebrow">FEEDBACK</p>
+                            <h2>Leave a message for the portfolio owner</h2>
+                            <p class="form-help">This uses the same backend message pipeline, so the admin inbox receives it instantly.</p>
+                        </div>
+                        <span class="chip">Delivered to admin</span>
+                    </div>
+                    <form id="feedback-form" class="welcome-contact-form" novalidate>
+                        <div class="field-grid">
+                            <label>
+                                <span>Your name</span>
+                                <input class="input" name="name" required placeholder="Your full name">
+                            </label>
+                            <label>
+                                <span>Your email</span>
+                                <input class="input" type="email" name="email" required placeholder="you@example.com">
+                            </label>
+                        </div>
+                        <label>
+                            <span>Subject</span>
+                            <input class="input" name="subject" required maxlength="150" placeholder="Feedback, referral, opportunity...">
+                        </label>
+                        <label>
+                            <span>Message</span>
+                            <textarea class="input textarea" name="message" required maxlength="5000" placeholder="Write your feedback, question, or proposal here."></textarea>
+                        </label>
+                        <div class="welcome-form-actions">
+                            <button id="feedback-submit" class="button button-primary" type="submit">Send feedback</button>
+                            <a class="button button-secondary" href="/api/v1/index.html">Back to welcome</a>
+                        </div>
+                        <p id="feedback-status" class="form-status" aria-live="polite"></p>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="resume-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-toggle-group">
+                    <button id="toggle-styled" class="modal-toggle-btn active">Styled</button>
+                    <button id="toggle-pdf" class="modal-toggle-btn">PDF</button>
+                </div>
+                <div class="modal-actions">
+                    <a id="modal-download-btn" class="button button-outline" style="border-radius: 99px; padding: 8px 16px; font-size: 0.85rem;" href="#" target="_blank" rel="noreferrer"><i class="fa-solid fa-download"></i> Download</a>
+                    <button id="modal-close-btn" class="modal-close"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+            <div id="resume-viewer-container" class="modal-body">
+                <div id="resume-doc" class="resume-doc"></div>
+                <iframe id="resume-pdf-iframe" class="resume-pdf-viewer hidden" src=""></iframe>
+            </div>
+        </div>
+    </div>
+
+    <div id="project-compare-banner" class="compare-banner hidden">
+        <div class="compare-banner-content">
+            <span class="compare-count-text"><i class="fa-solid fa-code-compare"></i> <strong id="compare-count">0</strong> projects selected for comparison</span>
+            <div class="compare-banner-actions">
+                <button id="compare-clear-btn" class="button button-ghost" style="border-radius: 99px; font-size: 0.85rem; padding: 6px 16px;">Clear</button>
+                <button id="compare-trigger-btn" class="button button-primary" style="border-radius: 99px; font-size: 0.85rem; padding: 6px 18px;">Compare Now</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="project-compare-modal" class="modal-overlay hidden" style="align-items: center; justify-content: center; z-index: 9999;">
+        <div class="panel compare-panel" style="max-width: 90%; width: 1000px; max-height: 85vh; overflow-y: auto; position: relative; border-radius: 20px;">
+            <button id="compare-close-btn" class="modal-close" style="position: absolute; top: 20px; right: 20px;"><i class="fa-solid fa-xmark"></i></button>
+            <p class="eyebrow" style="color: var(--accent);">&lt; BENCHMARK &gt;</p>
+            <h2 style="font-size: 2.2rem; margin-bottom: 8px;">System <span class="highlight-violet">Comparison.</span></h2>
+            <p class="section-copy" style="margin-bottom: 24px;">Side-by-side technical evaluation of selected engineering systems.</p>
+            <div class="compare-table-wrapper" style="overflow-x: auto; margin-top: 16px; border-radius: 12px; border: 1px solid var(--border);">
+                <table id="compare-table" style="width: 100%; border-collapse: collapse; text-align: left; font-family: 'IBM Plex Sans', sans-serif;">
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="project-detail-modal" class="modal-overlay hidden" style="align-items: center; justify-content: center; z-index: 9998;">
+        <div class="panel project-detail-modal" style="max-width: min(1000px, 96vw); width: 1000px; max-height: 88vh; overflow: hidden; position: relative; border-radius: 24px; padding: 0;">
+            <button id="project-detail-close" class="modal-close" style="position: absolute; top: 20px; right: 20px; z-index: 2;"><i class="fa-solid fa-xmark"></i></button>
+            <div id="project-detail-content" class="project-detail-content"></div>
+        </div>
+    </div>
+</body>
+
+</html>

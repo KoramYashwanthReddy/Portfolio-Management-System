@@ -31,6 +31,8 @@ public class AboutServiceImpl implements AboutService {
         about.setLinkedinUrl(request.linkedinUrl());
         about.setGithubUrl(request.githubUrl());
         about.setPortfolioUrl(request.portfolioUrl());
+        about.setProfileImageUrl(request.profileImageUrl());
+        about.setHeadlineTicker(request.headlineTicker());
         return PortfolioMapper.toAbout(aboutRepository.save(about));
     }
 

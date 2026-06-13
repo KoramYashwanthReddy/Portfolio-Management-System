@@ -1,5 +1,6 @@
 package com.yashwanth.portfolio.mail;
 
+import com.yashwanth.portfolio.config.AdminProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.mail.SimpleMailMessage;
@@ -12,10 +13,11 @@ import org.springframework.stereotype.Service;
 public class SmtpMailService implements MailService {
 
     private final JavaMailSender mailSender;
+    private final AdminProperties adminProperties;
 
     @Override
     public void sendContactNotification(String subject, String body) {
-        send("admin@portfolio.local", subject, body);
+        send(adminProperties.email(), subject, body);
     }
 
     @Override

@@ -30,7 +30,14 @@ public class ContactServiceImpl implements ContactService {
         message.setMessage(request.message());
         message.setReadStatus(false);
         ContactMessage saved = contactMessageRepository.save(message);
-        mailService.sendContactNotification(request.subject(), request.message());
+        String notificationBody = String.format(
+                "New message from the welcome page.\n\nName: %s\nEmail: %s\nSubject: %s\n\nMessage:\n%s",
+                request.name(),
+                request.email(),
+                request.subject(),
+                request.message()
+        );
+        mailService.sendContactNotification("New portfolio message: " + request.subject(), notificationBody);
         mailService.sendAutoReply(request.email(), "Thank you for contacting me", "Your message has been received.");
         return PortfolioMapper.toContactMessage(saved);
     }

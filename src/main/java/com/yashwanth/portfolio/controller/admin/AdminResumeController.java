@@ -7,8 +7,10 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -32,5 +34,15 @@ public class AdminResumeController {
     @GetMapping
     public ResponseEntity<ApiResponse<ResumeResponse>> metadata() {
         return ResponseEntity.ok(ApiResponse.success("Resume metadata fetched successfully", resumeService.getCurrent()));
+    }
+
+    @GetMapping("/all")
+    public ResponseEntity<ApiResponse<java.util.List<ResumeResponse>>> listAll() {
+        return ResponseEntity.ok(ApiResponse.success("Resumes fetched successfully", resumeService.getAll()));
+    }
+
+    @PatchMapping("/{id}/display")
+    public ResponseEntity<ApiResponse<ResumeResponse>> activate(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success("Resume displayed successfully", resumeService.activate(id)));
     }
 }

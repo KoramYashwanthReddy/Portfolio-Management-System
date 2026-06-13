@@ -11,6 +11,8 @@ public final class AppConstants {
     public static final List<String> PUBLIC_ENDPOINTS = List.of(
             "/",
             "/index.html",
+            "/portfolio.html",
+            "/feedback.html",
             "/assets/**",
             "/admin/*.html",
             "/auth/login",

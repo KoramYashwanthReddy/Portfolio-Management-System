@@ -6,6 +6,7 @@ public record ResumeResponse(
         Long id,
         String versionLabel,
         Instant uploadedAt,
-        StoredFileResponse file
+        StoredFileResponse file,
+        boolean active
 ) {
 }
