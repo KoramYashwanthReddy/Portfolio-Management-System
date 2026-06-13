@@ -36,13 +36,19 @@ public class ResumeServiceImpl implements ResumeService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ResumeResponse getCurrent() {
         return PortfolioMapper.toResume(getEntity());
     }
 
     @Override
+    @Transactional(readOnly = true)
     public StoredFile download() {
-        return getEntity().getStoredFile();
+        StoredFile storedFile = getEntity().getStoredFile();
+        storedFile.getStoragePath();
+        storedFile.getContentType();
+        storedFile.getOriginalFileName();
+        return storedFile;
     }
 
     private Resume getEntity() {

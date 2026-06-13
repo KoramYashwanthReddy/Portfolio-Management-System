@@ -499,9 +499,21 @@ p {
     align-items: start;
 }
 
+.admin-stack-layout {
+    grid-template-columns: 1fr;
+}
+
+.admin-stack-layout > .panel {
+    width: 100%;
+}
+
 .admin-grid.form-layout > .panel,
 .admin-grid.form-layout > .auth-panel {
     min-width: 0;
+}
+
+.is-hidden {
+    display: none !important;
 }
 
 .auth-layout {

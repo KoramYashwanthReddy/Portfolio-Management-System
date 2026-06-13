@@ -142,12 +142,13 @@
 }
 
 .form-panel .eyebrow {
-    margin-bottom: -12px;
+    margin-bottom: 6px;
 }
 
 .form-panel h2 {
     font-size: 1.75rem;
-    margin-bottom: 8px;
+    margin: 0;
+    line-height: 1.15;
 }
 
 .form-hero {
@@ -155,7 +156,7 @@
     justify-content: space-between;
     align-items: flex-start;
     gap: 16px;
-    padding-bottom: 18px;
+    padding-bottom: 20px;
     border-bottom: 1px solid var(--border);
 }
 
@@ -176,6 +177,12 @@
     gap: 14px;
 }
 
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
 .summary-card {
     display: grid;
     gap: 8px;
@@ -188,4 +195,75 @@
 .summary-card strong {
     font-family: "Space Grotesk", sans-serif;
     font-size: 1rem;
+}
+
+/* Profile editor modal */
+.profile-modal {
+    width: min(1100px, calc(100vw - 32px));
+}
+
+.profile-modal-shell {
+    padding: 28px;
+    display: grid;
+    gap: 20px;
+}
+
+.profile-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+.profile-modal-header h2 {
+    font-size: 2rem;
+    margin: 0;
+}
+
+.profile-modal-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 4px;
+    border-radius: 999px;
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    width: fit-content;
+}
+
+.profile-modal-tabs .modal-toggle-btn {
+    border: none;
+    background: transparent;
+}
+
+.profile-modal-tabs .modal-toggle-btn.active {
+    background: var(--accent-alt);
+    color: #fff;
+}
+
+.profile-modal-body {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.profile-editor-panel {
+    min-height: 100%;
+}
+
+.profile-editor-panel.is-hidden {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-modal-body {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-modal-header {
+        flex-direction: column;
+    }
 }

@@ -24,7 +24,10 @@ const state = {
     projectFeaturedFilter: "",
     projectEscapeBound: false,
     starredProjects: JSON.parse(localStorage.getItem("starred_projects") || "[]"),
-    comparedProjects: []
+    comparedProjects: JSON.parse(localStorage.getItem("compared_projects") || "[]")
+        .filter(Boolean)
+        .map((id) => String(id))
+        .slice(0, 3)
 };
 
 function element(id) {
@@ -255,11 +258,11 @@ function mncProjectCard(project) {
     const year = project.completionDate ? project.completionDate.substring(0, 4) : new Date().getFullYear();
     
     const isStarred = state.starredProjects.includes(String(project.id));
-    const starClass = isStarred ? "fa-solid starred" : "fa-regular";
+    const starClass = isStarred ? "fa-solid" : "fa-regular";
     const starTitle = isStarred ? "Unstar project" : "Star project";
 
     const isCompared = state.comparedProjects.includes(String(project.id));
-    const compareClass = isCompared ? "fa-solid selected" : "fa-regular";
+    const compareClass = isCompared ? "fa-solid" : "fa-regular";
 
     return `
         <article class="mnc-card" data-category="${project.category || ''}" data-status="${project.status || ''}">
@@ -271,9 +274,13 @@ function mncProjectCard(project) {
                     </span>
                     <span class="mnc-card-year">${year}</span>
                 </div>
-                <div class="mnc-card-header-right" style="font-size: 0.85rem; display: flex; gap: 14px;">
-                    <i class="${compareClass} fa-code-fork mnc-compare-btn" data-id="${project.id}" title="Toggle compare" style="cursor:pointer; opacity: 0.7;"></i>
-                    <i class="${starClass} fa-star mnc-star-btn" data-id="${project.id}" title="${starTitle}" style="cursor:pointer; opacity: 0.7;"></i>
+                <div class="mnc-card-header-right">
+                    <button class="mnc-icon-btn mnc-compare-btn ${isCompared ? "selected" : ""}" type="button" data-id="${project.id}" title="Toggle compare" aria-label="Toggle compare" aria-pressed="${isCompared}">
+                        <i class="${compareClass} fa-code-fork"></i>
+                    </button>
+                    <button class="mnc-icon-btn mnc-star-btn ${isStarred ? "starred" : ""}" type="button" data-id="${project.id}" title="${starTitle}" aria-label="${starTitle}" aria-pressed="${isStarred}">
+                        <i class="${starClass} fa-star"></i>
+                    </button>
                 </div>
             </div>
             <div class="mnc-card-body">
@@ -489,7 +496,7 @@ function bindResumeModal(resume) {
     });
 }
 
-function renderKnowledge(resume, certifications) {
+function renderKnowledge(resume, certifications, resumeError = "") {
     state.resume = resume;
     const actionsContainer = element("resume-actions-container");
     const previewWrapper = element("resume-preview-wrapper");
@@ -527,6 +534,14 @@ function renderKnowledge(resume, certifications) {
 
         buildHtmlResume(certifications, resume);
         bindResumeModal(resume);
+    } else if (resumeError) {
+        actionsContainer.innerHTML = `<button class="button button-primary" disabled style="border-radius: 99px; opacity: 0.5;">Resume unavailable</button>`;
+        previewWrapper.innerHTML = `
+            <div class="empty-state" style="display:grid; gap:10px;">
+                <strong>Resume could not be loaded.</strong>
+                <span>${resumeError}</span>
+            </div>
+        `;
     } else {
         actionsContainer.innerHTML = `<button class="button button-primary" disabled style="border-radius: 99px; opacity: 0.5;">No resume uploaded</button>`;
         previewWrapper.innerHTML = `<div class="empty-state">No resume is currently uploaded in the system.</div>`;
@@ -672,14 +687,20 @@ function bindCardFeatureEvents() {
             let starred = JSON.parse(localStorage.getItem("starred_projects") || "[]");
             if (starred.includes(projectId)) {
                 starred = starred.filter(id => id !== projectId);
-                e.currentTarget.classList.remove("fa-solid", "starred");
-                e.currentTarget.classList.add("fa-regular");
+                e.currentTarget.classList.remove("starred");
+                e.currentTarget.querySelector("i")?.classList.remove("fa-solid");
+                e.currentTarget.querySelector("i")?.classList.add("fa-regular");
                 e.currentTarget.title = "Star project";
+                e.currentTarget.setAttribute("aria-label", "Star project");
+                e.currentTarget.setAttribute("aria-pressed", "false");
             } else {
                 starred.push(projectId);
-                e.currentTarget.classList.remove("fa-regular");
-                e.currentTarget.classList.add("fa-solid", "starred");
+                e.currentTarget.classList.add("starred");
+                e.currentTarget.querySelector("i")?.classList.remove("fa-regular");
+                e.currentTarget.querySelector("i")?.classList.add("fa-solid");
                 e.currentTarget.title = "Unstar project";
+                e.currentTarget.setAttribute("aria-label", "Unstar project");
+                e.currentTarget.setAttribute("aria-pressed", "true");
             }
             localStorage.setItem("starred_projects", JSON.stringify(starred));
             state.starredProjects = starred;
@@ -693,17 +714,22 @@ function bindCardFeatureEvents() {
             const idx = state.comparedProjects.indexOf(projectId);
             if (idx > -1) {
                 state.comparedProjects.splice(idx, 1);
-                e.currentTarget.classList.remove("selected", "fa-solid");
-                e.currentTarget.classList.add("fa-regular");
+                e.currentTarget.classList.remove("selected");
+                e.currentTarget.querySelector("i")?.classList.remove("fa-solid");
+                e.currentTarget.querySelector("i")?.classList.add("fa-regular");
+                e.currentTarget.setAttribute("aria-pressed", "false");
             } else {
                 if (state.comparedProjects.length >= 3) {
                     alert("You can compare up to 3 projects at once.");
                     return;
                 }
                 state.comparedProjects.push(projectId);
-                e.currentTarget.classList.remove("fa-regular");
-                e.currentTarget.classList.add("fa-solid", "selected");
+                e.currentTarget.classList.add("selected");
+                e.currentTarget.querySelector("i")?.classList.remove("fa-regular");
+                e.currentTarget.querySelector("i")?.classList.add("fa-solid");
+                e.currentTarget.setAttribute("aria-pressed", "true");
             }
+            localStorage.setItem("compared_projects", JSON.stringify(state.comparedProjects));
             updateCompareBanner();
         });
     });
@@ -787,10 +813,13 @@ function bindCompareControls() {
     if (bannerClear) {
         bannerClear.addEventListener("click", () => {
             state.comparedProjects = [];
+            localStorage.setItem("compared_projects", JSON.stringify(state.comparedProjects));
             updateCompareBanner();
             document.querySelectorAll(".mnc-compare-btn").forEach(btn => {
-                btn.classList.remove("selected", "fa-solid");
-                btn.classList.add("fa-regular");
+                btn.classList.remove("selected");
+                btn.querySelector("i")?.classList.remove("fa-solid");
+                btn.querySelector("i")?.classList.add("fa-regular");
+                btn.setAttribute("aria-pressed", "false");
             });
         });
     }
@@ -895,6 +924,7 @@ async function bootstrap() {
     bindContactForm();
     bindProjectControls();
     bindSkillControls();
+    updateCompareBanner();
 
     const [dashboard, about, featured, skills, certifications, resume] = await Promise.allSettled([
         dashboardApi.getPublic(),
@@ -927,9 +957,14 @@ async function bootstrap() {
         renderSkills([]);
     }
 
+    const resumeError = resume.status === "rejected" && resume.reason?.status !== 404
+        ? (resume.reason?.message || "Resume metadata is unavailable.")
+        : "";
+
     renderKnowledge(
         resume.status === "fulfilled" ? resume.value.data : null,
-        certifications.status === "fulfilled" ? (certifications.value.data || []) : []
+        certifications.status === "fulfilled" ? (certifications.value.data || []) : [],
+        resumeError
     );
 
     renderMetrics([
@@ -944,6 +979,8 @@ async function bootstrap() {
     } catch (error) {
         setHtml("project-catalog", `<div class="empty-state">${error.message}</div>`);
     }
+
+    updateCompareBanner();
 }
 
 bootstrap();

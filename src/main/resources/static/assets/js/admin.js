@@ -91,6 +91,10 @@ function normalizeKey(value) {
     return normalizeValue(value).toLowerCase();
 }
 
+function confirmDanger(message) {
+    return window.confirm(message);
+}
+
 function formatBytes(size) {
     if (!size && size !== 0) {
         return "";
@@ -299,6 +303,9 @@ async function loadProjectsAdmin() {
             fillForm(document.getElementById("project-form"), project);
         });
         document.querySelector(`[data-project-delete="${project.id}"]`)?.addEventListener("click", async () => {
+            if (!confirmDanger(`Delete "${project.title}"? This cannot be undone.`)) {
+                return;
+            }
             await projectsApi.remove(project.id);
             await loadProjectsAdmin();
         });
@@ -313,6 +320,12 @@ function bindProjectForm() {
             const fd = new FormData(form);
             let imageFileId = state.currentProject?.imageFile?.id ?? null;
             const isEditing = Boolean(state.editingProjectId);
+            const confirmLabel = isEditing
+                ? `Update "${normalizeValue(fd.get("title")) || state.currentProject?.title || "this project"}"?`
+                : `Create "${normalizeValue(fd.get("title")) || "this project"}"?`;
+            if (!confirmDanger(confirmLabel)) {
+                return;
+            }
             const upload = fd.get("projectImage");
             if (upload && upload.size) {
                 const uploadResponse = await filesApi.upload(upload, "PROJECT_IMAGE");
@@ -484,6 +497,9 @@ async function loadSkillsAdmin() {
             fillForm(document.getElementById("skill-form"), skill);
         });
         document.querySelector(`[data-skill-delete="${skill.id}"]`)?.addEventListener("click", async () => {
+            if (!confirmDanger(`Delete skill "${skill.skillName}"? This cannot be undone.`)) {
+                return;
+            }
             await skillsApi.remove(skill.id);
             await refreshSkillsCache();
             await loadSkillsAdmin();
@@ -632,6 +648,9 @@ async function loadCertificationsAdmin() {
             fillForm(document.getElementById("certification-form"), certification);
         });
         document.querySelector(`[data-cert-delete="${certification.id}"]`)?.addEventListener("click", async () => {
+            if (!confirmDanger(`Delete certification "${certification.title}"? This cannot be undone.`)) {
+                return;
+            }
             await certificationsApi.remove(certification.id);
             await loadCertificationsAdmin();
         });
@@ -678,6 +697,66 @@ async function initMessages() {
 async function initProfile() {
     const aboutForm = document.getElementById("about-form");
     const passwordForm = document.getElementById("password-form");
+    const profileSummary = document.getElementById("profile-summary");
+    const profileModal = document.getElementById("profile-editor-modal");
+    const profileModalTitle = document.getElementById("profile-modal-title");
+    const profileModalCopy = document.getElementById("profile-modal-copy");
+    const profileTabBtn = document.getElementById("profile-tab-btn");
+    const passwordTabBtn = document.getElementById("password-tab-btn");
+    const profileModalClose = document.getElementById("profile-modal-close");
+
+    function setEditorMode(section = "about") {
+        const isAbout = section === "about";
+        aboutForm.classList.toggle("is-hidden", !isAbout);
+        passwordForm.classList.toggle("is-hidden", isAbout);
+        profileTabBtn.classList.toggle("active", isAbout);
+        passwordTabBtn.classList.toggle("active", !isAbout);
+        profileModalTitle.textContent = isAbout ? "Update profile" : "Change password";
+        profileModalCopy.textContent = isAbout
+            ? "Edit the public identity in a focused popup without leaving the control plane."
+            : "Rotate credentials from the same popup so the workflow stays intentional and secure.";
+    }
+
+    function openEditor(section = "about") {
+        setEditorMode(section);
+        profileModal.classList.remove("hidden");
+        profileModal.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+        (section === "about" ? aboutForm : passwordForm).querySelector(".input")?.focus();
+    }
+
+    function closeEditor() {
+        profileModal.classList.add("hidden");
+        profileModal.setAttribute("aria-hidden", "true");
+        document.body.style.overflow = "";
+    }
+
+    profileSummary.innerHTML = `
+        <div class="form-hero">
+            <div>
+                <p class="eyebrow">Profile Overview</p>
+                <h2>Managed identity</h2>
+                <p class="form-help">Keep the public profile and admin credentials behind explicit actions, just like a polished control plane.</p>
+            </div>
+            <span class="chip">Controlled access</span>
+        </div>
+        <div class="summary-grid">
+            <div class="summary-card">
+                <span class="muted-label">Current Profile</span>
+                <strong>${state.aboutSnapshot?.name || "Loading..."}</strong>
+                <p class="section-copy">${state.aboutSnapshot?.designation || "Loading..."}</p>
+            </div>
+            <div class="summary-card">
+                <span class="muted-label">Security</span>
+                <strong>${state.aboutSnapshot?.email || "Admin credential"}</strong>
+                <p class="section-copy">Password change is available only through the action button.</p>
+            </div>
+        </div>
+        <div class="table-actions" style="margin-top: 18px;">
+            <button id="profile-edit-btn" class="button button-primary" type="button">Update profile</button>
+            <button id="password-edit-btn" class="button button-ghost" type="button">Change password</button>
+        </div>
+    `;
     aboutForm.innerHTML = `
         <div class="form-hero">
             <div>
@@ -729,10 +808,39 @@ async function initProfile() {
     if (aboutResponse.status === "fulfilled") {
         state.aboutSnapshot = aboutResponse.value.data || {};
         fillForm(aboutForm, state.aboutSnapshot);
+        profileSummary.querySelector(".summary-grid").innerHTML = `
+            <div class="summary-card">
+                <span class="muted-label">Current Profile</span>
+                <strong>${state.aboutSnapshot.name || "Admin profile"}</strong>
+                <p class="section-copy">${state.aboutSnapshot.designation || "No designation set"}</p>
+                <p class="section-copy">${state.aboutSnapshot.currentLocation || "Location unavailable"}</p>
+            </div>
+            <div class="summary-card">
+                <span class="muted-label">Public Links</span>
+                <strong>${state.aboutSnapshot.email || "Email unavailable"}</strong>
+                <p class="section-copy">${state.aboutSnapshot.githubUrl || "GitHub not linked"}</p>
+            </div>
+        `;
     }
     if (meResponse.status === "fulfilled") {
         setFormStatus(passwordForm, `Authenticated as ${(meResponse.value.data?.email || "admin")}.`);
     }
+
+    document.getElementById("profile-edit-btn").addEventListener("click", () => openEditor("about"));
+    document.getElementById("password-edit-btn").addEventListener("click", () => openEditor("password"));
+    profileTabBtn.addEventListener("click", () => setEditorMode("about"));
+    passwordTabBtn.addEventListener("click", () => setEditorMode("password"));
+    profileModalClose.addEventListener("click", closeEditor);
+    profileModal.addEventListener("click", (event) => {
+        if (event.target === profileModal) {
+            closeEditor();
+        }
+    });
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !profileModal.classList.contains("hidden")) {
+            closeEditor();
+        }
+    });
 
     aboutForm.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -741,6 +849,21 @@ async function initProfile() {
             payload.experienceYears = Number(payload.experienceYears);
             await aboutApi.update(payload);
             setFormStatus(aboutForm, "Profile updated successfully.", "success");
+            state.aboutSnapshot = { ...state.aboutSnapshot, ...payload };
+            closeEditor();
+            profileSummary.querySelector(".summary-grid").innerHTML = `
+                <div class="summary-card">
+                    <span class="muted-label">Current Profile</span>
+                    <strong>${payload.name || "Admin profile"}</strong>
+                    <p class="section-copy">${payload.designation || "No designation set"}</p>
+                    <p class="section-copy">${payload.currentLocation || "Location unavailable"}</p>
+                </div>
+                <div class="summary-card">
+                    <span class="muted-label">Public Links</span>
+                    <strong>${payload.email || "Email unavailable"}</strong>
+                    <p class="section-copy">${payload.githubUrl || "GitHub not linked"}</p>
+                </div>
+            `;
         } catch (error) {
             setFormStatus(aboutForm, error.message, "error");
         }
@@ -753,6 +876,7 @@ async function initProfile() {
             await authApi.changePassword(payload);
             passwordForm.reset();
             setFormStatus(passwordForm, "Password updated successfully.", "success");
+            closeEditor();
         } catch (error) {
             setFormStatus(passwordForm, error.message, "error");
         }
@@ -785,19 +909,54 @@ async function initResume() {
             state.resumeSnapshot = data;
             document.getElementById("resume-metadata").innerHTML = data ? `
                 <div class="summary-stack">
-                    <span class="chip">Current Resume</span>
-                    <h2>${data.versionLabel}</h2>
-                    <p class="section-copy">Uploaded ${new Date(data.uploadedAt).toLocaleString()}</p>
+                    <div class="form-hero" style="padding-bottom: 0; border-bottom: 0;">
+                        <div>
+                            <p class="eyebrow">Current Resume</p>
+                            <h2>${data.versionLabel}</h2>
+                            <p class="form-help">Latest upload is active everywhere on the public site.</p>
+                        </div>
+                        <span class="chip">Live asset</span>
+                    </div>
                     <div class="summary-card">
                         <span class="muted-label">File</span>
                         <strong>${data.file?.originalFileName || "Resume file"}</strong>
                         <p class="section-copy">${data.file?.contentType || "Document"}${data.file?.size ? ` | ${formatBytes(data.file.size)}` : ""}</p>
+                        <p class="section-copy">Uploaded ${new Date(data.uploadedAt).toLocaleString()}</p>
                     </div>
-                    <a class="button button-ghost" href="${data.file?.downloadUrl || resumeApi.downloadUrl()}">Download</a>
+                    <div class="chip-row">
+                        <span class="chip">Stored in backend</span>
+                        ${data.file?.fileType ? `<span class="chip">${String(data.file.fileType).replaceAll("_", " ")}</span>` : ""}
+                    </div>
+                    <div class="table-actions">
+                        <a class="button button-primary" href="${data.file?.downloadUrl || resumeApi.downloadUrl()}" target="_blank" rel="noreferrer">Open resume</a>
+                        <a class="button button-ghost" href="${data.file?.downloadUrl || resumeApi.downloadUrl()}" download>Download</a>
+                        <button class="button button-ghost" id="copy-resume-link" type="button">Copy link</button>
+                    </div>
                 </div>
             ` : emptyMarkup("No resume uploaded.");
-        } catch {
-            document.getElementById("resume-metadata").innerHTML = emptyMarkup("No resume uploaded.");
+            document.getElementById("copy-resume-link")?.addEventListener("click", async () => {
+                const link = data?.file?.downloadUrl || resumeApi.downloadUrl();
+                try {
+                    await navigator.clipboard.writeText(`${window.location.origin}${link}`);
+                    setFormStatus(form, "Resume link copied to clipboard.", "success");
+                } catch {
+                    setFormStatus(form, "Could not copy the resume link.", "error");
+                }
+            });
+        } catch (error) {
+            const message = error?.status === 404
+                ? "No resume uploaded."
+                : (error?.message || "Unable to load resume metadata.");
+            document.getElementById("resume-metadata").innerHTML = `
+                <div class="empty-state" style="display:grid; gap:12px;">
+                    <strong>${message}</strong>
+                    <span class="section-copy">
+                        ${error?.status === 404
+                            ? "Upload a file above and it will appear here with open and download actions."
+                            : "Check the API response or refresh after confirming the backend is running."}
+                    </span>
+                </div>
+            `;
         }
     }
 
@@ -845,6 +1004,7 @@ async function bootstrap() {
     } catch (error) {
         document.querySelector(".admin-main")?.insertAdjacentHTML("beforeend", emptyMarkup(error.message));
     }
+
 }
 
 bootstrap();
