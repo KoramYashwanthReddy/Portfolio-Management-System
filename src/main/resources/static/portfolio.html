@@ -3,6 +3,14 @@
 
 <head>
     <meta charset="UTF-8">
+    <script>
+        // Apply theme immediately — before CSS loads — to prevent flash of wrong theme
+        (function() {
+            var t = localStorage.getItem("pms-theme") || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+            document.documentElement.dataset.theme = t;
+            document.documentElement.style.backgroundColor = t === "dark" ? "#000000" : "#fdfdfd";
+        })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Yashwanth | Portfolio</title>
     <meta name="description" content="Full portfolio experience for Yashwanth.">
@@ -23,26 +31,31 @@
 </head>
 
 <body data-page="portfolio">
-    <header class="site-header">
-        <a class="brand" href="/api/v1/index.html">
-            <span class="logo-circle">KY</span> Yashwanth<span class="highlight-blue">.</span>
+    <header class="site-header" role="banner">
+        <a class="brand" href="/api/v1/index.html" aria-label="Home">
+            <span class="logo-circle" aria-hidden="true">KY</span>
+            Yashwanth<span class="highlight-blue" aria-hidden="true">.</span>
         </a>
-        <nav class="site-nav">
-            <a href="#systems">Work</a>
-            <a href="#overview">About</a>
-            <a href="#ecosystem">Stack</a>
-            <a href="#knowledge">Resume</a>
-            <a href="#collaboration">Contact</a>
-            <a href="#" id="nav-feedback-link">Feedback</a>
-            <a href="/api/v1/admin/login.html">Admin</a>
+        <nav class="site-nav" id="site-nav" role="navigation" aria-label="Main navigation">
+            <a href="#command-center" data-nav="work">Work</a>
+            <a href="#overview" data-nav="about">About</a>
+            <a href="#ecosystem" data-nav="stack">Stack</a>
+            <a href="#knowledge" data-nav="resume">Resume</a>
+            <a href="#collaboration" data-nav="contact">Contact</a>
+            <a href="#" id="nav-feedback-link" data-nav="feedback">Feedback</a>
+            <a href="/api/v1/admin/login.html" class="nav-admin-link" aria-label="Admin login">
+                <i class="fa-solid fa-lock" aria-hidden="true"></i> Admin
+            </a>
         </nav>
         <div class="header-actions">
-            <a href="#" id="header-github" target="_blank" aria-label="GitHub"><i class="fa-brands fa-github"></i></a>
-            <a href="#" id="header-linkedin" target="_blank" aria-label="LinkedIn"><i class="fa-brands fa-linkedin-in"></i></a>
-            <button class="theme-toggle" aria-label="Toggle theme"><i class="fa-solid fa-moon"></i></button>
+            <a href="#" id="header-github" target="_blank" rel="noreferrer" aria-label="GitHub profile"><i class="fa-brands fa-github" aria-hidden="true"></i></a>
+            <a href="#" id="header-linkedin" target="_blank" rel="noreferrer" aria-label="LinkedIn profile"><i class="fa-brands fa-linkedin-in" aria-hidden="true"></i></a>
+            <button class="theme-toggle" aria-label="Toggle color theme"><i class="fa-solid fa-moon" aria-hidden="true"></i></button>
         </div>
-        <button class="nav-toggle" type="button" aria-label="Toggle navigation">
-            <span></span><span></span>
+        <button class="nav-toggle" id="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="site-nav">
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
         </button>
     </header>
 

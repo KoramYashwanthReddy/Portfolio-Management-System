@@ -6,6 +6,11 @@
         if (!localStorage.getItem("pms-auth") || !JSON.parse(localStorage.getItem("pms-auth")).accessToken) {
             window.location.replace("/api/v1/admin/login.html");
         }
+        (function() {
+            var t = localStorage.getItem("pms-theme") || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+            document.documentElement.dataset.theme = t;
+            document.documentElement.style.backgroundColor = t === "dark" ? "#000000" : "#fdfdfd";
+        })();
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Profile Management</title>
@@ -29,7 +34,6 @@
                     <p class="eyebrow">About + Auth APIs</p>
                     <h1>Profile control</h1>
                 </div>
-                <button class="button button-ghost" data-logout type="button">Logout</button>
             </section>
             <section id="profile-summary" class="panel"></section>
         </main>

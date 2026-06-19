@@ -3,12 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <script>
-        if (localStorage.getItem("pms-auth") && JSON.parse(localStorage.getItem("pms-auth")).accessToken) {
-            window.location.replace("/api/v1/admin/dashboard.html");
-        }
+        // Apply theme immediately to prevent flash
+        (function() {
+            const t = localStorage.getItem("pms-theme") || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+            document.documentElement.dataset.theme = t;
+        })();
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Login</title>
+    <title>Admin Login | Portfolio Control Plane</title>
+    <meta name="description" content="Secure admin authentication for the Portfolio Management System.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -17,27 +20,756 @@
     <link rel="stylesheet" href="/api/v1/assets/css/components.css">
     <link rel="stylesheet" href="/api/v1/assets/css/animations.css">
     <link rel="stylesheet" href="/api/v1/assets/css/responsive.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script type="module" src="/api/v1/assets/js/login.js"></script>
+    <style>
+        /* ── Login Page Exclusive Styles ── */
+        .login-page {
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            background: var(--bg);
+        }
+
+        /* ── LEFT HERO PANEL ── */
+        .login-hero {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 48px;
+            overflow: hidden;
+            background: linear-gradient(145deg, #0f0f1a 0%, #1a0a2e 40%, #0d1a3a 100%);
+        }
+
+        [data-theme="light"] .login-hero {
+            background: linear-gradient(145deg, #1e0550 0%, #311585 40%, #0d286f 100%);
+        }
+
+        .login-hero-glow {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            pointer-events: none;
+        }
+
+        .login-hero-glow-1 {
+            width: 380px;
+            height: 380px;
+            background: rgba(99, 102, 241, 0.35);
+            top: -80px;
+            right: -80px;
+            animation: glowPulse 6s ease-in-out infinite;
+        }
+
+        .login-hero-glow-2 {
+            width: 280px;
+            height: 280px;
+            background: rgba(139, 92, 246, 0.28);
+            bottom: 60px;
+            left: 40px;
+            animation: glowPulse 8s ease-in-out infinite 2s;
+        }
+
+        @keyframes glowPulse {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.08); }
+        }
+
+        .login-hero-top {
+            position: relative;
+            z-index: 2;
+        }
+
+        .login-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            margin-bottom: 64px;
+        }
+
+        .login-brand-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-family: "Space Grotesk", sans-serif;
+            font-weight: 700;
+            font-size: 1rem;
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+        }
+
+        .login-brand-name {
+            font-family: "Space Grotesk", sans-serif;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #ffffff;
+            letter-spacing: -0.02em;
+        }
+
+        .login-hero-headline {
+            font-family: "Space Grotesk", sans-serif;
+            font-size: clamp(2rem, 3.5vw, 2.8rem);
+            font-weight: 700;
+            color: #ffffff;
+            line-height: 1.15;
+            letter-spacing: -0.03em;
+            margin: 0 0 20px;
+        }
+
+        .login-hero-headline span {
+            background: linear-gradient(135deg, #818cf8, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .login-hero-sub {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.95rem;
+            line-height: 1.65;
+            max-width: 380px;
+            margin: 0;
+        }
+
+        .login-hero-features {
+            list-style: none;
+            padding: 0;
+            margin: 40px 0 0;
+            display: grid;
+            gap: 16px;
+        }
+
+        .login-hero-features li {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            color: rgba(255, 255, 255, 0.75);
+            font-size: 0.88rem;
+        }
+
+        .login-hero-feat-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            display: grid;
+            place-items: center;
+            color: #818cf8;
+            font-size: 0.9rem;
+            flex: 0 0 auto;
+        }
+
+        .login-hero-bottom {
+            position: relative;
+            z-index: 2;
+        }
+
+        .login-hero-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        .login-stat {
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+        }
+
+        .login-stat-value {
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #ffffff;
+            display: block;
+        }
+
+        .login-stat-label {
+            font-size: 0.72rem;
+            color: rgba(255, 255, 255, 0.5);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            margin-top: 2px;
+            display: block;
+        }
+
+        /* Floating dots decoration */
+        .login-hero-dots {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .login-dot {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.12);
+            animation: floatDot linear infinite;
+        }
+
+        @keyframes floatDot {
+            0% { transform: translateY(0) scale(1); opacity: 0.6; }
+            50% { transform: translateY(-20px) scale(1.1); opacity: 1; }
+            100% { transform: translateY(0) scale(1); opacity: 0.6; }
+        }
+
+        /* ── RIGHT FORM PANEL ── */
+        .login-form-panel {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 48px 56px;
+            background: var(--bg);
+        }
+
+        .login-form-container {
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .login-form-header {
+            margin-bottom: 40px;
+        }
+
+        .login-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.75rem;
+            font-family: "Space Grotesk", sans-serif;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--accent);
+            background: rgba(var(--accent-rgb), 0.1);
+            border: 1px solid rgba(var(--accent-rgb), 0.2);
+            border-radius: 99px;
+            padding: 5px 14px;
+            margin-bottom: 20px;
+        }
+
+        .login-eyebrow i {
+            font-size: 0.65rem;
+        }
+
+        .login-title {
+            font-family: "Space Grotesk", sans-serif;
+            font-size: clamp(1.8rem, 2.8vw, 2.4rem);
+            font-weight: 700;
+            color: var(--text);
+            letter-spacing: -0.03em;
+            margin: 0 0 10px;
+            line-height: 1.15;
+        }
+
+        .login-subtitle {
+            color: var(--muted);
+            font-size: 0.9rem;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .login-form {
+            display: grid;
+            gap: 20px;
+        }
+
+        .login-input-group {
+            display: grid;
+            gap: 8px;
+        }
+
+        .login-input-label {
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .login-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .login-input-icon {
+            position: absolute;
+            left: 16px;
+            color: var(--muted);
+            font-size: 0.9rem;
+            pointer-events: none;
+            z-index: 1;
+            transition: color 0.2s ease;
+        }
+
+        .login-input-wrapper:focus-within .login-input-icon {
+            color: var(--accent);
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 14px 18px 14px 44px;
+            color: var(--text);
+            background: var(--surface);
+            border: 1.5px solid var(--border);
+            border-radius: 14px;
+            outline: none;
+            font-family: "IBM Plex Sans", sans-serif;
+            font-size: 0.92rem;
+            transition: all 0.2s ease;
+        }
+
+        .login-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+        }
+
+        .login-input::placeholder {
+            color: var(--muted);
+            opacity: 0.6;
+        }
+
+        .login-password-toggle {
+            position: absolute;
+            right: 14px;
+            background: none;
+            border: none;
+            color: var(--muted);
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            font-size: 0.9rem;
+            transition: color 0.2s ease;
+        }
+
+        .login-password-toggle:hover {
+            color: var(--text);
+        }
+
+        .login-options {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .login-remember {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .login-remember input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--accent);
+            border-radius: 4px;
+        }
+
+        .login-remember span {
+            font-size: 0.82rem;
+            color: var(--muted);
+        }
+
+        .login-submit-btn {
+            width: 100%;
+            padding: 15px 24px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-alt));
+            border: none;
+            border-radius: 14px;
+            color: #ffffff;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.28);
+            letter-spacing: 0.01em;
+        }
+
+        .login-submit-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(99, 102, 241, 0.4);
+        }
+
+        .login-submit-btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .login-submit-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .login-submit-btn .btn-spinner {
+            display: none;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        .login-submit-btn.loading .btn-spinner {
+            display: inline-block;
+        }
+
+        .login-submit-btn.loading .btn-text {
+            display: none;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .login-status {
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            display: none;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .login-status.error {
+            display: flex;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .login-status.success {
+            display: flex;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+
+        .login-divider {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            color: var(--muted);
+            font-size: 0.8rem;
+        }
+
+        .login-divider::before,
+        .login-divider::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .login-back-link {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: var(--muted);
+            font-size: 0.85rem;
+            text-decoration: none;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            transition: all 0.2s ease;
+            font-family: "IBM Plex Sans", sans-serif;
+        }
+
+        .login-back-link:hover {
+            color: var(--text);
+            border-color: var(--accent);
+            background: rgba(var(--accent-rgb), 0.05);
+        }
+
+        .login-theme-toggle {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            z-index: 1000;
+        }
+
+        .login-theme-toggle:hover {
+            color: var(--text);
+            border-color: var(--accent);
+        }
+
+        /* Security badge */
+        .login-security-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 24px;
+            padding: 10px 14px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            font-size: 0.78rem;
+            color: var(--muted);
+        }
+
+        .login-security-badge i {
+            color: #10b981;
+            font-size: 0.9rem;
+        }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 820px) {
+            .login-page {
+                grid-template-columns: 1fr;
+            }
+
+            .login-hero {
+                display: none;
+            }
+
+            .login-form-panel {
+                padding: 40px 24px;
+                min-height: 100vh;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .login-form-panel {
+                padding: 32px 20px;
+            }
+        }
+    </style>
 </head>
-<body data-page="login" class="admin-login-body">
-    <main class="auth-layout">
-        <section class="panel auth-panel">
-            <p class="eyebrow">Admin Authentication</p>
-            <h1>Access the control plane.</h1>
-            <p class="section-copy">JWT login, refresh, validation, and logout all use the live auth endpoints.</p>
-            <form id="login-form" class="stack" novalidate>
-                <label>
-                    <span>Email or Mobile</span>
-                    <input class="input" type="text" name="identifier" required placeholder="admin@portfolio.local">
-                </label>
-                <label>
-                    <span>Password</span>
-                    <input class="input" type="password" name="password" required placeholder="Enter admin password">
-                </label>
-                <button id="login-submit" class="button button-primary" type="submit">Log In</button>
-                <p id="login-status" class="form-status" aria-live="polite"></p>
-            </form>
-        </section>
-    </main>
+<body data-page="login">
+
+    <!-- Theme Toggle -->
+    <button class="login-theme-toggle theme-toggle" aria-label="Toggle theme">
+        <i class="fa-solid fa-moon"></i>
+    </button>
+
+    <div class="login-page">
+
+        <!-- ── LEFT HERO PANEL ── -->
+        <div class="login-hero">
+            <!-- Ambient glows -->
+            <div class="login-hero-glow login-hero-glow-1"></div>
+            <div class="login-hero-glow login-hero-glow-2"></div>
+
+            <!-- Floating decorative dots -->
+            <div class="login-hero-dots" aria-hidden="true">
+                <div class="login-dot" style="width:6px;height:6px;top:20%;left:15%;animation-duration:5s;animation-delay:0s;"></div>
+                <div class="login-dot" style="width:4px;height:4px;top:40%;left:80%;animation-duration:7s;animation-delay:1s;"></div>
+                <div class="login-dot" style="width:8px;height:8px;top:65%;left:25%;animation-duration:6s;animation-delay:2s;"></div>
+                <div class="login-dot" style="width:5px;height:5px;top:80%;left:70%;animation-duration:9s;animation-delay:0.5s;"></div>
+                <div class="login-dot" style="width:3px;height:3px;top:30%;left:55%;animation-duration:8s;animation-delay:3s;"></div>
+            </div>
+
+            <div class="login-hero-top">
+                <!-- Brand -->
+                <a href="/api/v1/index.html" class="login-brand" aria-label="Back to portfolio">
+                    <div class="login-brand-icon">KY</div>
+                    <span class="login-brand-name">Yashwanth<span style="color: #818cf8;">.</span></span>
+                </a>
+
+                <!-- Headline -->
+                <h1 class="login-hero-headline">
+                    Control Plane<br>
+                    <span>Access Portal</span>
+                </h1>
+                <p class="login-hero-sub">
+                    Authenticate to access the portfolio management dashboard. All sessions are JWT-secured with refresh token rotation.
+                </p>
+
+                <!-- Features list -->
+                <ul class="login-hero-features">
+                    <li>
+                        <div class="login-hero-feat-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                        JWT-secured authentication with RBAC
+                    </li>
+                    <li>
+                        <div class="login-hero-feat-icon"><i class="fa-solid fa-rotate"></i></div>
+                        Automatic refresh token rotation
+                    </li>
+                    <li>
+                        <div class="login-hero-feat-icon"><i class="fa-solid fa-database"></i></div>
+                        Full CMS: projects, skills, resume & more
+                    </li>
+                    <li>
+                        <div class="login-hero-feat-icon"><i class="fa-solid fa-chart-line"></i></div>
+                        Real-time analytics & message inbox
+                    </li>
+                </ul>
+            </div>
+
+            <div class="login-hero-bottom">
+                <div class="login-hero-stats">
+                    <div class="login-stat">
+                        <span class="login-stat-value">JWT</span>
+                        <span class="login-stat-label">Auth Method</span>
+                    </div>
+                    <div class="login-stat">
+                        <span class="login-stat-value">256-bit</span>
+                        <span class="login-stat-label">Encryption</span>
+                    </div>
+                    <div class="login-stat">
+                        <span class="login-stat-value">Live</span>
+                        <span class="login-stat-label">API Status</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── RIGHT FORM PANEL ── -->
+        <div class="login-form-panel">
+            <div class="login-form-container">
+
+                <div class="login-form-header">
+                    <div class="login-eyebrow">
+                        <i class="fa-solid fa-lock"></i>
+                        Secure Access
+                    </div>
+                    <h2 class="login-title">Welcome back,<br>Admin.</h2>
+                    <p class="login-subtitle">Enter your credentials to access the control plane. Unauthorized access is monitored.</p>
+                </div>
+
+                <form id="login-form" class="login-form" novalidate>
+
+                    <div class="login-input-group">
+                        <label class="login-input-label" for="login-identifier">Email or Mobile</label>
+                        <div class="login-input-wrapper">
+                            <i class="fa-regular fa-envelope login-input-icon"></i>
+                            <input
+                                id="login-identifier"
+                                class="login-input"
+                                type="text"
+                                name="identifier"
+                                required
+                                autocomplete="username"
+                                placeholder="admin@portfolio.local"
+                            >
+                        </div>
+                    </div>
+
+                    <div class="login-input-group">
+                        <label class="login-input-label" for="login-password">Password</label>
+                        <div class="login-input-wrapper">
+                            <i class="fa-solid fa-lock login-input-icon"></i>
+                            <input
+                                id="login-password"
+                                class="login-input"
+                                type="password"
+                                name="password"
+                                required
+                                autocomplete="current-password"
+                                placeholder="Enter admin password"
+                            >
+                            <button type="button" class="login-password-toggle" id="password-toggle" aria-label="Toggle password visibility">
+                                <i class="fa-regular fa-eye" id="password-toggle-icon"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Status message -->
+                    <div id="login-status" class="login-status" role="alert" aria-live="polite"></div>
+
+                    <!-- Submit -->
+                    <button id="login-submit" class="login-submit-btn" type="submit">
+                        <div class="btn-spinner"></div>
+                        <span class="btn-text"><i class="fa-solid fa-arrow-right-to-bracket"></i> &nbsp; Sign In to Dashboard</span>
+                    </button>
+
+                    <div class="login-divider">or</div>
+
+                    <a href="/api/v1/index.html" class="login-back-link">
+                        <i class="fa-solid fa-arrow-left"></i>
+                        Back to Portfolio
+                    </a>
+
+                </form>
+
+                <div class="login-security-badge">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span>Secured with JWT · Session auto-expires · All actions are logged</span>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Password toggle
+        const toggle = document.getElementById('password-toggle');
+        const pwInput = document.getElementById('login-password');
+        const pwIcon = document.getElementById('password-toggle-icon');
+        if (toggle && pwInput && pwIcon) {
+            toggle.addEventListener('click', () => {
+                const isPass = pwInput.type === 'password';
+                pwInput.type = isPass ? 'text' : 'password';
+                pwIcon.className = isPass ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye';
+            });
+        }
+
+        // Override login.js status to use new styled status box
+        window.__loginStatusOverride = function(message, type) {
+            const statusEl = document.getElementById('login-status');
+            const submitBtn = document.getElementById('login-submit');
+            if (!statusEl) return;
+
+            statusEl.textContent = '';
+            statusEl.className = 'login-status';
+
+            if (message) {
+                const icon = document.createElement('i');
+                icon.className = type === 'error'
+                    ? 'fa-solid fa-circle-exclamation'
+                    : type === 'success'
+                        ? 'fa-solid fa-circle-check'
+                        : 'fa-solid fa-spinner fa-spin';
+                const text = document.createTextNode(message);
+                statusEl.appendChild(icon);
+                statusEl.appendChild(text);
+                if (type) statusEl.classList.add(type);
+            }
+
+            // Handle loading state
+            if (submitBtn) {
+                if (type === '' && message === 'Authenticating...') {
+                    submitBtn.classList.add('loading');
+                    submitBtn.disabled = true;
+                } else {
+                    submitBtn.classList.remove('loading');
+                }
+            }
+        };
+    </script>
 </body>
 </html>

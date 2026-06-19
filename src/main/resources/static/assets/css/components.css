@@ -94,6 +94,21 @@
     color: var(--accent-alt);
 }
 
+/* Outline button — transparent bg, accent border */
+.button-outline {
+    background: transparent;
+    border: 1.5px solid var(--border);
+    color: var(--text);
+}
+
+.button-outline:hover {
+    background: rgba(var(--accent-rgb), 0.06);
+    border-color: var(--accent);
+    color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(var(--accent-rgb), 0.12);
+}
+
 .input {
     width: 100%;
     padding: 14px 18px;
@@ -1148,8 +1163,10 @@ label span {
     z-index: 1000;
     display: flex;
     justify-content: center;
-    align-items: center;
-    padding: 20px;
+    align-items: flex-start;
+    padding: 40px 20px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     opacity: 1;
     visibility: visible;
     transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -1177,7 +1194,8 @@ label span {
 .modal-content {
     width: 100%;
     max-width: 850px;
-    margin: auto;
+    margin: 0 auto;
+    flex-shrink: 0;
 }
 
 .modal-header {

@@ -6,6 +6,12 @@
         if (!localStorage.getItem("pms-auth") || !JSON.parse(localStorage.getItem("pms-auth")).accessToken) {
             window.location.replace("/api/v1/admin/login.html");
         }
+        // Apply theme immediately to prevent flash
+        (function() {
+            var t = localStorage.getItem("pms-theme") || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+            document.documentElement.dataset.theme = t;
+            document.documentElement.style.backgroundColor = t === "dark" ? "#000000" : "#fdfdfd";
+        })();
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard</title>

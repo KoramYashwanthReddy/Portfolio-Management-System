@@ -53,11 +53,11 @@ function createSidebar() {
             <a class="admin-topbar-brand" href="/api/v1/admin/dashboard.html">
                 <span class="logo-circle">P</span>
                 <div class="admin-brand-copy">
-                    <p class="eyebrow">Admin Console</p>
-                    <h2>PMS/OS</h2>
+                    <p class="eyebrow">Control Plane</p>
+                    <h2>PMS Console</h2>
                 </div>
             </a>
-            <nav class="site-nav admin-topbar-links">
+            <nav class="admin-topbar-links">
                 ${links.map(([slug, label, icon]) => `
                     <a class="admin-nav-link ${slug === page ? "active" : ""}" href="/api/v1/admin/${slug}.html">
                         <span class="sidebar-link-icon"><i class="${icon}"></i></span>
@@ -65,12 +65,19 @@ function createSidebar() {
                     </a>
                 `).join("")}
             </nav>
-            <div class="sidebar-footer admin-topbar-actions" style="display: flex; align-items: center; gap: 12px;">
-                <button class="theme-toggle" aria-label="Toggle theme" style="border: none; background: transparent; cursor: pointer; color: var(--muted); padding: 8px; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s;"><i class="fa-solid fa-moon"></i></button>
-                <a class="admin-nav-link admin-nav-cta" href="/api/v1/portfolio.html">
-                    <span class="sidebar-link-icon"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>
-                    <span>View Public Site</span>
+            <div class="admin-topbar-actions">
+                <button class="theme-toggle" aria-label="Toggle theme">
+                    <i class="fa-solid fa-moon"></i>
+                    <span>Theme</span>
+                </button>
+                <a class="admin-nav-cta" href="/api/v1/portfolio.html">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                    <span>View Site</span>
                 </a>
+                <button class="admin-logout-btn" data-logout aria-label="Sign out">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Logout</span>
+                </button>
             </div>
         </div>
     `;
@@ -243,16 +250,15 @@ async function initDashboard() {
 
 function renderProjectForm() {
     const form = document.getElementById("project-form");
+    if (!form) return;
     form.innerHTML = `
-        <p class="eyebrow">Create or Update</p>
-        <h2>${state.editingProjectId ? "Edit project" : "New project"}</h2>
-        <label><span>Title</span><input class="input" name="title" required maxlength="150"></label>
-        <label><span>Short description</span><input class="input" name="shortDescription" required maxlength="250"></label>
-        <label><span>Detailed description</span><textarea class="input textarea" name="detailedDescription" required></textarea></label>
-        <label><span>Technologies</span><input class="input" name="technologies" required maxlength="500"></label>
-        <label><span>GitHub URL</span><input class="input" name="githubUrl"></label>
-        <label><span>Live URL</span><input class="input" name="liveUrl"></label>
-        <label><span>Image URL</span><input class="input" name="imageUrl"></label>
+        <label><span>Title</span><input class="input" name="title" required maxlength="150" placeholder="Enter project title"></label>
+        <label><span>Short description</span><input class="input" name="shortDescription" required maxlength="250" placeholder="Brief summary of the project"></label>
+        <label><span>Detailed description</span><textarea class="input textarea" name="detailedDescription" required placeholder="Detailed info about the project..."></textarea></label>
+        <label><span>Technologies</span><input class="input" name="technologies" required maxlength="500" placeholder="e.g. Java, Spring Boot, React (comma separated)"></label>
+        <label><span>GitHub URL</span><input class="input" name="githubUrl" placeholder="https://github.com/..."></label>
+        <label><span>Live URL</span><input class="input" name="liveUrl" placeholder="https://..."></label>
+        <label><span>Image URL</span><input class="input" name="imageUrl" placeholder="https://..."></label>
         <div class="field-grid">
             <label><span>Category</span><select class="input" name="category">${markupOptions(PROJECT_CATEGORIES)}</select></label>
             <label><span>Status</span><select class="input" name="status">${markupOptions(PROJECT_STATUSES)}</select></label>
@@ -263,10 +269,30 @@ function renderProjectForm() {
         </div>
         <label><span><input type="checkbox" name="featured"> Featured project</span></label>
         <div class="form-actions">
-            <button class="button button-primary" type="submit">${state.editingProjectId ? "Update" : "Create"}</button>
-            <button id="project-reset" class="button button-ghost" type="button">Reset</button>
+            <button class="button button-primary" type="submit"><i class="fa-solid fa-check" style="margin-right:6px;"></i>${state.editingProjectId ? "Update" : "Create"}</button>
+            <button id="project-reset" class="button button-ghost" type="button">Cancel</button>
         </div>
     `;
+}
+
+function openProjectEditor() {
+    renderProjectForm();
+    bindProjectForm();
+    const modal = document.getElementById("project-editor-modal");
+    document.getElementById("project-modal-title").textContent = state.editingProjectId ? "Edit project" : "New project";
+    modal.classList.remove("hidden");
+    modal.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+    modal.querySelector(".input")?.focus();
+}
+
+function closeProjectEditor() {
+    const modal = document.getElementById("project-editor-modal");
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+    state.editingProjectId = null;
+    state.currentProject = null;
 }
 
 async function loadProjectsAdmin() {
@@ -307,8 +333,7 @@ async function loadProjectsAdmin() {
         document.querySelector(`[data-project-edit="${project.id}"]`)?.addEventListener("click", () => {
             state.editingProjectId = project.id;
             state.currentProject = project;
-            renderProjectForm();
-            bindProjectForm();
+            openProjectEditor();
             fillForm(document.getElementById("project-form"), project);
         });
         document.querySelector(`[data-project-delete="${project.id}"]`)?.addEventListener("click", async () => {
@@ -359,27 +384,36 @@ function bindProjectForm() {
             } else {
                 await projectsApi.create(payload);
             }
-            state.editingProjectId = null;
-            state.currentProject = null;
-            renderProjectForm();
-            bindProjectForm();
-            setFormStatus(document.getElementById("project-form"), isEditing ? "Project updated successfully." : "Project created successfully.", "success");
+            closeProjectEditor();
             await loadProjectsAdmin();
         } catch (error) {
             setFormStatus(form, error.message, "error");
         }
     });
     document.getElementById("project-reset").addEventListener("click", () => {
-        state.editingProjectId = null;
-        state.currentProject = null;
-        renderProjectForm();
-        bindProjectForm();
+        closeProjectEditor();
     });
 }
 
 async function initProjects() {
-    renderProjectForm();
-    bindProjectForm();
+    document.getElementById("add-project-btn").addEventListener("click", () => {
+        state.editingProjectId = null;
+        state.currentProject = null;
+        openProjectEditor();
+    });
+    const modal = document.getElementById("project-editor-modal");
+    document.getElementById("project-modal-close").addEventListener("click", closeProjectEditor);
+    modal.addEventListener("click", (event) => {
+        if (event.target === modal) {
+            closeProjectEditor();
+        }
+    });
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !modal.classList.contains("hidden")) {
+            closeProjectEditor();
+        }
+    });
+
     document.getElementById("admin-project-category").innerHTML = markupOptions(PROJECT_CATEGORIES, true);
     document.getElementById("admin-project-status").innerHTML = markupOptions(PROJECT_STATUSES, true);
     ["admin-project-search", "admin-project-category", "admin-project-status"].forEach((id) => {
@@ -405,15 +439,8 @@ async function initProjects() {
 
 function renderSkillForm() {
     const form = document.getElementById("skill-form");
+    if (!form) return;
     form.innerHTML = `
-        <div class="form-hero">
-            <div>
-                <p class="eyebrow">Skill Record</p>
-                <h2>${state.editingSkillId ? "Edit skill" : "New skill"}</h2>
-                <p class="form-help">Create button adds a skill only after submit. Skill names are case-insensitive and must stay unique.</p>
-            </div>
-            <span class="chip">MNC-style skill matrix</span>
-        </div>
         <div class="field-grid">
             <label><span>Skill name</span><input class="input" name="skillName" required maxlength="100" placeholder="e.g. Java"></label>
             <label><span>Category</span><select class="input" name="category">${markupOptions(SKILL_CATEGORIES)}</select></label>
@@ -423,10 +450,29 @@ function renderSkillForm() {
             <label><span>Display order</span><input class="input" type="number" name="displayOrder" min="0" required></label>
         </div>
         <div class="form-actions">
-            <button class="button button-primary" type="submit">${state.editingSkillId ? "Update" : "Create"}</button>
-            <button id="skill-reset" class="button button-ghost" type="button">Reset</button>
+            <button class="button button-primary" type="submit"><i class="fa-solid fa-check" style="margin-right:6px;"></i>${state.editingSkillId ? "Update" : "Create"}</button>
+            <button id="skill-reset" class="button button-ghost" type="button">Cancel</button>
         </div>
     `;
+}
+
+function openSkillEditor() {
+    renderSkillForm();
+    bindSkillForm();
+    const modal = document.getElementById("skill-editor-modal");
+    document.getElementById("skill-modal-title").textContent = state.editingSkillId ? "Edit skill" : "New skill";
+    modal.classList.remove("hidden");
+    modal.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+    modal.querySelector(".input")?.focus();
+}
+
+function closeSkillEditor() {
+    const modal = document.getElementById("skill-editor-modal");
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+    state.editingSkillId = null;
 }
 
 function bindSkillForm() {
@@ -454,10 +500,7 @@ function bindSkillForm() {
             } else {
                 await skillsApi.create(payload);
             }
-            state.editingSkillId = null;
-            renderSkillForm();
-            bindSkillForm();
-            setFormStatus(document.getElementById("skill-form"), isEditing ? "Skill updated successfully." : "Skill created successfully.", "success");
+            closeSkillEditor();
             await refreshSkillsCache();
             await loadSkillsAdmin();
         } catch (error) {
@@ -465,9 +508,7 @@ function bindSkillForm() {
         }
     });
     document.getElementById("skill-reset").addEventListener("click", () => {
-        state.editingSkillId = null;
-        renderSkillForm();
-        bindSkillForm();
+        closeSkillEditor();
     });
 }
 
@@ -502,8 +543,7 @@ async function loadSkillsAdmin() {
     skills.forEach((skill) => {
         document.querySelector(`[data-skill-edit="${skill.id}"]`)?.addEventListener("click", () => {
             state.editingSkillId = skill.id;
-            renderSkillForm();
-            bindSkillForm();
+            openSkillEditor();
             fillForm(document.getElementById("skill-form"), skill);
         });
         document.querySelector(`[data-skill-delete="${skill.id}"]`)?.addEventListener("click", async () => {
@@ -518,8 +558,23 @@ async function loadSkillsAdmin() {
 }
 
 async function initSkills() {
-    renderSkillForm();
-    bindSkillForm();
+    document.getElementById("add-skill-btn").addEventListener("click", () => {
+        state.editingSkillId = null;
+        openSkillEditor();
+    });
+    const modal = document.getElementById("skill-editor-modal");
+    document.getElementById("skill-modal-close").addEventListener("click", closeSkillEditor);
+    modal.addEventListener("click", (event) => {
+        if (event.target === modal) {
+            closeSkillEditor();
+        }
+    });
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !modal.classList.contains("hidden")) {
+            closeSkillEditor();
+        }
+    });
+
     document.getElementById("admin-skill-category").innerHTML = markupOptions(SKILL_CATEGORIES, true);
     document.getElementById("admin-skill-category").addEventListener("change", loadSkillsAdmin);
     await refreshSkillsCache();
@@ -533,15 +588,8 @@ async function refreshSkillsCache() {
 
 function renderCertificationForm() {
     const form = document.getElementById("certification-form");
+    if (!form) return;
     form.innerHTML = `
-        <div class="form-hero">
-            <div>
-                <p class="eyebrow">Certification Record</p>
-                <h2>${state.editingCertificationId ? "Edit certification" : "New certification"}</h2>
-                <p class="form-help">Capture issuer, validity, and proof in one pass. Duplicate title and issuer pairs are blocked automatically.</p>
-            </div>
-            <span class="chip">Verified credentials</span>
-        </div>
         <div class="field-grid">
             <label><span>Title</span><input class="input" name="title" required maxlength="150" placeholder="e.g. AWS Certified Developer"></label>
             <label><span>Issuer</span><input class="input" name="issuer" required maxlength="150" placeholder="e.g. Amazon Web Services"></label>
@@ -557,10 +605,30 @@ function renderCertificationForm() {
         <label><span>Certificate file</span><input class="input" type="file" name="certificateFile" accept=".pdf,.doc,.docx,.txt,.rtf"></label>
         <p class="form-help">Accepted file types: PDF, DOC, DOCX, TXT, and RTF.</p>
         <div class="form-actions">
-            <button class="button button-primary" type="submit">${state.editingCertificationId ? "Update" : "Create"}</button>
-            <button id="certification-reset" class="button button-ghost" type="button">Reset</button>
+            <button class="button button-primary" type="submit"><i class="fa-solid fa-check" style="margin-right:6px;"></i>${state.editingCertificationId ? "Update" : "Create"}</button>
+            <button id="certification-reset" class="button button-ghost" type="button">Cancel</button>
         </div>
     `;
+}
+
+function openCertificationEditor() {
+    renderCertificationForm();
+    bindCertificationForm();
+    const modal = document.getElementById("certification-editor-modal");
+    document.getElementById("certification-modal-title").textContent = state.editingCertificationId ? "Edit certification" : "New certification";
+    modal.classList.remove("hidden");
+    modal.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+    modal.querySelector(".input")?.focus();
+}
+
+function closeCertificationEditor() {
+    const modal = document.getElementById("certification-editor-modal");
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+    state.editingCertificationId = null;
+    state.currentCertification = null;
 }
 
 function bindCertificationForm() {
@@ -606,21 +674,14 @@ function bindCertificationForm() {
             } else {
                 await certificationsApi.create(payload);
             }
-            state.editingCertificationId = null;
-            state.currentCertification = null;
-            renderCertificationForm();
-            bindCertificationForm();
-            setFormStatus(document.getElementById("certification-form"), isEditing ? "Certification updated successfully." : "Certification created successfully.", "success");
+            closeCertificationEditor();
             await loadCertificationsAdmin();
         } catch (error) {
             setFormStatus(form, error.message, "error");
         }
     });
     document.getElementById("certification-reset").addEventListener("click", () => {
-        state.editingCertificationId = null;
-        state.currentCertification = null;
-        renderCertificationForm();
-        bindCertificationForm();
+        closeCertificationEditor();
     });
 }
 
@@ -653,8 +714,7 @@ async function loadCertificationsAdmin() {
         document.querySelector(`[data-cert-edit="${certification.id}"]`)?.addEventListener("click", () => {
             state.editingCertificationId = certification.id;
             state.currentCertification = certification;
-            renderCertificationForm();
-            bindCertificationForm();
+            openCertificationEditor();
             fillForm(document.getElementById("certification-form"), certification);
         });
         document.querySelector(`[data-cert-delete="${certification.id}"]`)?.addEventListener("click", async () => {
@@ -668,8 +728,24 @@ async function loadCertificationsAdmin() {
 }
 
 async function initCertifications() {
-    renderCertificationForm();
-    bindCertificationForm();
+    document.getElementById("add-cert-btn").addEventListener("click", () => {
+        state.editingCertificationId = null;
+        state.currentCertification = null;
+        openCertificationEditor();
+    });
+    const modal = document.getElementById("certification-editor-modal");
+    document.getElementById("certification-modal-close").addEventListener("click", closeCertificationEditor);
+    modal.addEventListener("click", (event) => {
+        if (event.target === modal) {
+            closeCertificationEditor();
+        }
+    });
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !modal.classList.contains("hidden")) {
+            closeCertificationEditor();
+        }
+    });
+
     await loadCertificationsAdmin();
 }
 
@@ -702,6 +778,31 @@ async function initMessages() {
             await initMessages();
         });
     });
+}
+
+function renderProfileSummaryGrid(container, data) {
+    const grid = container.querySelector(".summary-grid");
+    if (!grid) return;
+    grid.innerHTML = `
+        <div class="summary-card summary-image-card">
+            <span class="muted-label"><i class="fa-solid fa-image" style="margin-right:6px;"></i>Profile Image</span>
+            <div class="summary-portrait">
+                <img src="${data.profileImageUrl || "/api/v1/assets/images/profile-placeholder.jpg"}" alt="Profile preview">
+            </div>
+        </div>
+        <div class="summary-card">
+            <span class="muted-label"><i class="fa-solid fa-id-badge" style="margin-right:6px;"></i>Current Profile</span>
+            <strong>${data.name || "Admin profile"}</strong>
+            <p class="section-copy">${data.designation || "No designation set"}</p>
+            <p class="section-copy" style="font-size:0.88rem;"><i class="fa-solid fa-location-dot" style="margin-right:6px; color:var(--accent);"></i>${data.currentLocation || "Location unavailable"}</p>
+        </div>
+        <div class="summary-card">
+            <span class="muted-label"><i class="fa-solid fa-link" style="margin-right:6px;"></i>Public Links</span>
+            <p class="section-copy" style="word-break:break-all;"><i class="fa-solid fa-envelope" style="margin-right:6px; color:var(--accent);"></i>${data.email || "Email not set"}</p>
+            <p class="section-copy" style="word-break:break-all;"><i class="fa-brands fa-github" style="margin-right:6px; color:var(--accent);"></i>${data.githubUrl || "GitHub not linked"}</p>
+            <p class="section-copy" style="word-break:break-all;"><i class="fa-brands fa-linkedin" style="margin-right:6px; color:var(--accent);"></i>${data.linkedinUrl || "LinkedIn not linked"}</p>
+        </div>
+    `;
 }
 
 async function initProfile() {
@@ -746,31 +847,33 @@ async function initProfile() {
             <div>
                 <p class="eyebrow">Profile Overview</p>
                 <h2>Managed identity</h2>
-                <p class="form-help">Keep the public profile and admin credentials behind explicit actions, just like a polished control plane.</p>
+                <p class="form-help">Your public-facing profile and admin credentials, managed from a single control plane.</p>
             </div>
             <span class="chip">Controlled access</span>
         </div>
         <div class="summary-grid">
             <div class="summary-card summary-image-card">
-                <span class="muted-label">Profile Image</span>
+                <span class="muted-label"><i class="fa-solid fa-image" style="margin-right:6px;"></i>Profile Image</span>
                 <div class="summary-portrait">
                     <img src="${state.aboutSnapshot?.profileImageUrl || "/api/v1/assets/images/profile-placeholder.jpg"}" alt="Profile preview">
                 </div>
             </div>
             <div class="summary-card">
-                <span class="muted-label">Current Profile</span>
+                <span class="muted-label"><i class="fa-solid fa-id-badge" style="margin-right:6px;"></i>Current Profile</span>
                 <strong>${state.aboutSnapshot?.name || "Loading..."}</strong>
                 <p class="section-copy">${state.aboutSnapshot?.designation || "Loading..."}</p>
+                <p class="section-copy" style="font-size:0.88rem;"><i class="fa-solid fa-location-dot" style="margin-right:6px; color:var(--accent);"></i>${state.aboutSnapshot?.currentLocation || "Location not set"}</p>
             </div>
             <div class="summary-card">
-                <span class="muted-label">Security</span>
-                <strong>${state.aboutSnapshot?.email || "Admin credential"}</strong>
-                <p class="section-copy">Password change is available only through the action button.</p>
+                <span class="muted-label"><i class="fa-solid fa-link" style="margin-right:6px;"></i>Public Links</span>
+                <p class="section-copy" style="word-break:break-all;"><i class="fa-solid fa-envelope" style="margin-right:6px; color:var(--accent);"></i>${state.aboutSnapshot?.email || "Email not set"}</p>
+                <p class="section-copy" style="word-break:break-all;"><i class="fa-brands fa-github" style="margin-right:6px; color:var(--accent);"></i>${state.aboutSnapshot?.githubUrl || "GitHub not linked"}</p>
+                <p class="section-copy" style="word-break:break-all;"><i class="fa-brands fa-linkedin" style="margin-right:6px; color:var(--accent);"></i>${state.aboutSnapshot?.linkedinUrl || "LinkedIn not linked"}</p>
             </div>
         </div>
         <div class="table-actions" style="margin-top: 18px;">
-            <button id="profile-edit-btn" class="button button-primary" type="button">Update profile</button>
-            <button id="password-edit-btn" class="button button-ghost" type="button">Change password</button>
+            <button id="profile-edit-btn" class="button button-primary" type="button"><i class="fa-solid fa-pen-to-square" style="margin-right:6px;"></i>Update profile</button>
+            <button id="password-edit-btn" class="button button-ghost" type="button"><i class="fa-solid fa-shield-halved" style="margin-right:6px;"></i>Change password</button>
         </div>
     `;
     aboutForm.innerHTML = `
@@ -803,7 +906,7 @@ async function initProfile() {
         <label><span>Profile Image URL</span><input class="input" name="profileImageUrl" placeholder="/api/v1/assets/images/profile-placeholder.jpg"></label>
         <label><span>Headline ticker items</span><textarea class="input textarea" name="headlineTicker" placeholder="System Architecture, Backend Engineering, REST APIs, JWT Security, Microservices"></textarea></label>
         <div class="form-actions">
-            <button class="button button-primary" type="submit">Save profile</button>
+            <button class="button button-primary" type="submit"><i class="fa-solid fa-check" style="margin-right:6px;"></i>Save profile</button>
         </div>
     `;
     passwordForm.innerHTML = `
@@ -818,7 +921,7 @@ async function initProfile() {
         <label><span>Current Password</span><input class="input" type="password" name="currentPassword" required></label>
         <label><span>New Password</span><input class="input" type="password" name="newPassword" required minlength="8"></label>
         <div class="form-actions">
-            <button class="button button-primary" type="submit">Update password</button>
+            <button class="button button-primary" type="submit"><i class="fa-solid fa-lock" style="margin-right:6px;"></i>Update password</button>
         </div>
     `;
 
@@ -826,25 +929,7 @@ async function initProfile() {
     if (aboutResponse.status === "fulfilled") {
         state.aboutSnapshot = aboutResponse.value.data || {};
         fillForm(aboutForm, state.aboutSnapshot);
-        profileSummary.querySelector(".summary-grid").innerHTML = `
-            <div class="summary-card summary-image-card">
-                <span class="muted-label">Profile Image</span>
-                <div class="summary-portrait">
-                    <img src="${state.aboutSnapshot.profileImageUrl || "/api/v1/assets/images/profile-placeholder.jpg"}" alt="Profile preview">
-                </div>
-            </div>
-            <div class="summary-card">
-                <span class="muted-label">Current Profile</span>
-                <strong>${state.aboutSnapshot.name || "Admin profile"}</strong>
-                <p class="section-copy">${state.aboutSnapshot.designation || "No designation set"}</p>
-                <p class="section-copy">${state.aboutSnapshot.currentLocation || "Location unavailable"}</p>
-            </div>
-            <div class="summary-card">
-                <span class="muted-label">Public Links</span>
-                <strong>${state.aboutSnapshot.email || "Email unavailable"}</strong>
-                <p class="section-copy">${state.aboutSnapshot.githubUrl || "GitHub not linked"}</p>
-            </div>
-        `;
+        renderProfileSummaryGrid(profileSummary, state.aboutSnapshot);
     }
     if (meResponse.status === "fulfilled") {
         setFormStatus(passwordForm, `Authenticated as ${(meResponse.value.data?.email || "admin")}.`);
@@ -875,31 +960,7 @@ async function initProfile() {
             setFormStatus(aboutForm, "Profile updated successfully.", "success");
             state.aboutSnapshot = { ...state.aboutSnapshot, ...payload };
             closeEditor();
-            profileSummary.querySelector(".summary-grid").innerHTML = `
-                <div class="summary-card summary-image-card">
-                    <span class="muted-label">Profile Image</span>
-                    <div class="summary-portrait">
-                        <img src="${payload.profileImageUrl || "/api/v1/assets/images/profile-placeholder.jpg"}" alt="Profile preview">
-                    </div>
-                </div>
-                <div class="summary-card">
-                    <span class="muted-label">Current Profile</span>
-                    <strong>${payload.name || "Admin profile"}</strong>
-                    <p class="section-copy">${payload.designation || "No designation set"}</p>
-                    <p class="section-copy">${payload.currentLocation || "Location unavailable"}</p>
-                </div>
-                <div class="summary-card">
-                    <span class="muted-label">Public Links</span>
-                    <strong>${payload.email || "Email unavailable"}</strong>
-                    <p class="section-copy">${payload.githubUrl || "GitHub not linked"}</p>
-                </div>
-                <div class="summary-card summary-image-card">
-                    <span class="muted-label">Profile Image</span>
-                    <div class="summary-portrait">
-                        <img src="${payload.profileImageUrl || "/api/v1/assets/images/profile-placeholder.jpg"}" alt="Profile preview">
-                    </div>
-                </div>
-            `;
+            renderProfileSummaryGrid(profileSummary, state.aboutSnapshot);
         } catch (error) {
             setFormStatus(aboutForm, error.message, "error");
         }

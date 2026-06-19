@@ -107,8 +107,16 @@ h1 span.text-gradient {
     color: transparent;
 }
 
-h1 span.highlight-violet {
+h1 span.highlight-violet,
+h2 span.highlight-violet,
+.highlight-violet {
     color: var(--accent-alt);
+}
+
+h1 span.highlight-blue,
+h2 span.highlight-blue,
+.highlight-blue {
+    color: var(--accent);
 }
 
 [data-theme="dark"] .text-gradient {
@@ -222,9 +230,12 @@ p {
     font-weight: 500;
     color: var(--muted);
     font-size: 0.78rem;
-    padding: 8px 10px;
+    padding: 8px 14px;
     border-radius: 999px;
     white-space: nowrap;
+    transition: all 0.2s ease;
+    letter-spacing: 0.01em;
+    position: relative;
 }
 
 .site-nav a:hover {
@@ -236,6 +247,30 @@ p {
     color: #ffffff;
     background: linear-gradient(135deg, var(--accent), var(--accent-alt));
     box-shadow: 0 10px 24px rgba(99, 102, 241, 0.18);
+}
+
+/* Admin link - special accent styling */
+.site-nav .nav-admin-link {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--accent);
+    border: 1px solid rgba(var(--accent-rgb), 0.25);
+    background: rgba(var(--accent-rgb), 0.07);
+    font-weight: 600;
+    padding: 7px 14px;
+}
+
+.site-nav .nav-admin-link:hover {
+    background: linear-gradient(135deg, var(--accent), var(--accent-alt));
+    color: #ffffff;
+    border-color: transparent;
+    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.22);
+    transform: translateY(-1px);
+}
+
+.site-nav .nav-admin-link i {
+    font-size: 0.7rem;
 }
 
 .header-actions {
@@ -715,6 +750,51 @@ body[data-theme="dark"] .welcome-mini-card {
 
 .nav-toggle {
     display: none;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    padding: 9px;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    width: 42px;
+    height: 42px;
+    transition: all 0.2s ease;
+    color: var(--muted);
+    position: relative;
+    overflow: hidden;
+}
+
+.nav-toggle:hover {
+    background: rgba(var(--accent-rgb), 0.08);
+    border-color: rgba(var(--accent-rgb), 0.2);
+    color: var(--text);
+}
+
+.nav-toggle span {
+    display: block;
+    width: 18px;
+    height: 2px;
+    background: currentColor;
+    border-radius: 2px;
+    transform-origin: center;
+    transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Hamburger → X animation */
+.nav-toggle[aria-expanded="true"] span:nth-child(1) {
+    transform: translateY(6px) rotate(45deg);
+}
+
+.nav-toggle[aria-expanded="true"] span:nth-child(2) {
+    opacity: 0;
+    transform: scaleX(0);
+}
+
+.nav-toggle[aria-expanded="true"] span:nth-child(3) {
+    transform: translateY(-6px) rotate(-45deg);
 }
 
 .admin-body,
@@ -734,7 +814,7 @@ body[data-theme="dark"] .welcome-mini-card {
     padding: 32px 0 40px;
     display: grid;
     gap: 32px;
-    background: #fafafc;
+    background: var(--bg);
 }
 
 .admin-grid {
@@ -767,7 +847,7 @@ body[data-theme="dark"] .welcome-mini-card {
     display: grid;
     place-items: center;
     padding: 24px;
-    background: #fafafc;
+    background: var(--bg);
 }
 
 @media (max-width: 1100px) {
