@@ -236,17 +236,49 @@ function renderAbout(about) {
     setText("feedback-email", about?.email || "Unavailable");
     setText("feedback-bio", about?.biography || "Production-grade Java + Spring Boot engineer.");
 
-    const tickerTrack = element("hero-ticker-track");
-    if (tickerTrack) {
-        const tickerItems = buildTickerItems(about?.headlineTicker);
-        tickerTrack.innerHTML = tickerItems.map((item) => `<span class="hero-ticker-item">${escapeHtml(item)}</span>`).join("");
-    }
+    const initTypewriter = (elId, rawTicker) => {
+        const typewriterTextEl = element(elId);
+        if (!typewriterTextEl) return;
+        
+        const items = String(rawTicker || "")
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean);
+        const words = items.length ? items : ["System Architecture", "Backend Design", "Spring Boot", "JWT Security", "Microservices"];
+        
+        let wordIndex = 0;
+        let charIndex = 0;
+        let isDeleting = false;
+        let delay = 100;
 
-    const feedbackTickerTrack = element("feedback-ticker-track");
-    if (feedbackTickerTrack) {
-        const tickerItems = buildTickerItems(about?.headlineTicker);
-        feedbackTickerTrack.innerHTML = tickerItems.map((item) => `<span class="hero-ticker-item">${escapeHtml(item)}</span>`).join("");
-    }
+        function type() {
+            const currentWord = words[wordIndex];
+            if (isDeleting) {
+                typewriterTextEl.textContent = currentWord.substring(0, charIndex - 1);
+                charIndex--;
+                delay = 40; // Deleting speed
+            } else {
+                typewriterTextEl.textContent = currentWord.substring(0, charIndex + 1);
+                charIndex++;
+                delay = 100; // Typing speed
+            }
+
+            if (!isDeleting && charIndex === currentWord.length) {
+                delay = 2000; // Pause at the end of the word
+                isDeleting = true;
+            } else if (isDeleting && charIndex === 0) {
+                isDeleting = false;
+                wordIndex = (wordIndex + 1) % words.length;
+                delay = 500; // Pause before typing next word
+            }
+
+            setTimeout(type, delay);
+        }
+        type();
+    };
+
+    initTypewriter("hero-typewriter-text", about?.headlineTicker);
+    initTypewriter("feedback-typewriter-text", about?.headlineTicker);
 
     const heroHeader = element("hero-name-header");
     if (heroHeader && !element("hero-full-name") && about?.name) {
@@ -341,7 +373,11 @@ function mncProjectCard(project, index = 0) {
             </div>
             <div class="mnc-card-body">
                 <h3 class="mnc-card-title">${project.title}</h3>
-                <p class="mnc-card-desc">${project.shortDescription || ''}</p>
+                <p class="mnc-card-desc">
+                    ${(project.shortDescription || '').length > 120 
+                        ? `${(project.shortDescription || '').substring(0, 110)}... <button class="show-more-inline-btn" data-project-detail="${project.id}" style="background:none; border:none; color:var(--accent); font-weight:600; cursor:pointer; padding:0; font-family:inherit; font-size:inherit; transition: color 0.2s ease;">Show More</button>` 
+                        : (project.shortDescription || '')}
+                </p>
             </div>
             <div class="mnc-card-tags">
                 ${technologies.map((tech) => `<span class="mnc-tech-tag">${tech}</span>`).join("")}
@@ -1002,12 +1038,46 @@ function bindSkillControls() {
     categorySelect.addEventListener("change", applyFilters);
 }
 
+function bindFeedbackModal() {
+    const feedbackLink = element("nav-feedback-link");
+    const modal = element("feedback-modal");
+    const closeBtn = element("feedback-modal-close");
+    
+    if (!feedbackLink || !modal || !closeBtn) return;
+    
+    feedbackLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        modal.classList.remove("hidden");
+        document.body.style.overflow = "hidden";
+        modal.querySelector("input")?.focus();
+    });
+    
+    const closeModal = () => {
+        modal.classList.add("hidden");
+        document.body.style.overflow = "";
+    };
+    
+    closeBtn.addEventListener("click", closeModal);
+    modal.addEventListener("click", (e) => {
+        if (e.target === modal) {
+            closeModal();
+        }
+    });
+    
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && !modal.classList.contains("hidden")) {
+            closeModal();
+        }
+    });
+}
+
 async function bootstrap() {
     initTheme();
     initNavigation();
     initAnimations();
 
     bindContactForms();
+    bindFeedbackModal();
     updateCompareBanner();
 
     if (document.body.dataset.page === "welcome") {

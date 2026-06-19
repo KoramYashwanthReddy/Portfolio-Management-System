@@ -65,7 +65,8 @@ function createSidebar() {
                     </a>
                 `).join("")}
             </nav>
-            <div class="sidebar-footer admin-topbar-actions">
+            <div class="sidebar-footer admin-topbar-actions" style="display: flex; align-items: center; gap: 12px;">
+                <button class="theme-toggle" aria-label="Toggle theme" style="border: none; background: transparent; cursor: pointer; color: var(--muted); padding: 8px; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s;"><i class="fa-solid fa-moon"></i></button>
                 <a class="admin-nav-link admin-nav-cta" href="/api/v1/portfolio.html">
                     <span class="sidebar-link-icon"><i class="fa-solid fa-arrow-up-right-from-square"></i></span>
                     <span>View Public Site</span>

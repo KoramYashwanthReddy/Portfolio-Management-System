@@ -33,7 +33,7 @@
             <a href="#ecosystem">Stack</a>
             <a href="#knowledge">Resume</a>
             <a href="#collaboration">Contact</a>
-            <a href="/api/v1/feedback.html">Feedback</a>
+            <a href="#" id="nav-feedback-link">Feedback</a>
             <a href="/api/v1/admin/login.html">Admin</a>
         </nav>
         <div class="header-actions">
@@ -63,7 +63,10 @@
 
                     <div class="hero-ticker">
                         <span class="hero-ticker-label">Systems stream</span>
-                        <div id="hero-ticker-track" class="hero-ticker-track" aria-label="Scrolling focus areas"></div>
+                        <div class="hero-typewriter-container">
+                            <span class="typewriter-prompt" style="color: var(--accent); margin-right: 8px; font-weight: bold;">&gt;</span>
+                            <span id="hero-typewriter-text" class="hero-typewriter-text"></span><span class="typewriter-cursor">|</span>
+                        </div>
                     </div>
 
                     <p id="hero-biography" class="hero-text" style="font-size: 1.05rem; line-height: 1.6; color: var(--muted); margin-bottom: 32px; max-width: 480px;">Loading about information from the backend...</p>
@@ -289,45 +292,45 @@
                     </div>
                 </div>
             </div>
-            <div class="section-shell" style="margin-top: 32px; display: flex; justify-content: center;">
-                <div class="panel feedback-panel" data-reveal style="width: min(100%, 980px);">
-                    <div class="form-hero" style="margin-bottom: 24px;">
-                        <div>
-                            <p class="eyebrow">FEEDBACK</p>
-                            <h2>Leave a message for the portfolio owner</h2>
-                            <p class="form-help">This uses the same backend message pipeline, so the admin inbox receives it instantly.</p>
-                        </div>
-                        <span class="chip">Delivered to admin</span>
-                    </div>
-                    <form id="feedback-form" class="welcome-contact-form" novalidate>
-                        <div class="field-grid">
-                            <label>
-                                <span>Your name</span>
-                                <input class="input" name="name" required placeholder="Your full name">
-                            </label>
-                            <label>
-                                <span>Your email</span>
-                                <input class="input" type="email" name="email" required placeholder="you@example.com">
-                            </label>
-                        </div>
-                        <label>
-                            <span>Subject</span>
-                            <input class="input" name="subject" required maxlength="150" placeholder="Feedback, referral, opportunity...">
-                        </label>
-                        <label>
-                            <span>Message</span>
-                            <textarea class="input textarea" name="message" required maxlength="5000" placeholder="Write your feedback, question, or proposal here."></textarea>
-                        </label>
-                        <div class="welcome-form-actions">
-                            <button id="feedback-submit" class="button button-primary" type="submit">Send feedback</button>
-                            <a class="button button-secondary" href="/api/v1/index.html">Back to welcome</a>
-                        </div>
-                        <p id="feedback-status" class="form-status" aria-live="polite"></p>
-                    </form>
-                </div>
-            </div>
         </section>
     </main>
+
+    <div id="feedback-modal" class="modal-overlay hidden" style="align-items: center; justify-content: center; z-index: 9999;">
+        <div class="panel feedback-modal-content" style="max-width: min(720px, 94vw); width: 720px; border-radius: 24px; padding: 28px; position: relative;">
+            <button id="feedback-modal-close" class="modal-close" style="position: absolute; top: 20px; right: 20px;"><i class="fa-solid fa-xmark"></i></button>
+            <div class="form-hero" style="margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
+                <div>
+                    <p class="eyebrow" style="color: var(--accent-alt);">FEEDBACK</p>
+                    <h2 style="font-size: 1.8rem; margin: 4px 0 0;">Leave a message for the portfolio owner</h2>
+                    <p class="form-help" style="margin-top: 4px;">This uses the same backend message pipeline, so the admin inbox receives it instantly.</p>
+                </div>
+            </div>
+            <form id="feedback-form" class="welcome-contact-form" novalidate>
+                <div class="field-grid">
+                    <label>
+                        <span>Your name</span>
+                        <input class="input" name="name" required placeholder="Your full name">
+                    </label>
+                    <label>
+                        <span>Your email</span>
+                        <input class="input" type="email" name="email" required placeholder="you@example.com">
+                    </label>
+                </div>
+                <label>
+                    <span>Subject</span>
+                    <input class="input" name="subject" required maxlength="150" placeholder="Feedback, referral, opportunity...">
+                </label>
+                <label>
+                    <span>Message</span>
+                    <textarea class="input textarea" name="message" required maxlength="5000" placeholder="Write your feedback, question, or proposal here." style="min-height: 140px;"></textarea>
+                </label>
+                <div class="welcome-form-actions" style="margin-top: 10px;">
+                    <button id="feedback-submit" class="button button-primary" type="submit" style="border-radius: 99px; padding: 10px 24px;">Send feedback</button>
+                </div>
+                <p id="feedback-status" class="form-status" aria-live="polite" style="margin-top: 8px;"></p>
+            </form>
+        </div>
+    </div>
 
     <div id="resume-modal" class="modal-overlay hidden">
         <div class="modal-content">

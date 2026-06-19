@@ -11,18 +11,21 @@ export function initTheme() {
     const initialTheme = savedTheme || (prefersDark ? "dark" : "light");
     
     document.documentElement.dataset.theme = initialTheme;
+    document.body.dataset.theme = initialTheme;
     updateThemeIcon(initialTheme);
 
-    // Bind to theme-toggle buttons
-    document.querySelectorAll(".theme-toggle").forEach(button => {
-        button.addEventListener("click", () => {
+    // Bind to theme-toggle buttons using event delegation
+    document.addEventListener("click", (e) => {
+        const button = e.target.closest(".theme-toggle");
+        if (button) {
             const currentTheme = document.documentElement.dataset.theme;
             const newTheme = currentTheme === "dark" ? "light" : "dark";
             
             document.documentElement.dataset.theme = newTheme;
+            document.body.dataset.theme = newTheme;
             localStorage.setItem("pms-theme", newTheme);
             updateThemeIcon(newTheme);
-        });
+        }
     });
 }
 

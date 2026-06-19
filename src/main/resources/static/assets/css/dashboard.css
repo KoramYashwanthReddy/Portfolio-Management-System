@@ -568,3 +568,86 @@
         font-size: 0.78rem;
     }
 }
+
+/* Admin Dark Mode Overrides */
+body[data-theme="dark"].admin-body {
+    background: #000000;
+    color: #fafafa;
+}
+
+body[data-theme="dark"] .admin-main {
+    background: #000000 !important;
+}
+
+body[data-theme="dark"] .admin-sidebar {
+    background: rgba(18, 18, 20, 0.85);
+    border-color: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.4);
+}
+
+body[data-theme="dark"] .admin-sidebar .theme-toggle {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+body[data-theme="dark"] .admin-sidebar .theme-toggle:hover {
+    color: #ffffff !important;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+body[data-theme="dark"] .admin-nav-link {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+body[data-theme="dark"] .admin-nav-link:hover,
+body[data-theme="dark"] .admin-nav-link.active {
+    background: rgba(129, 140, 248, 0.1);
+    border-color: rgba(129, 140, 248, 0.2);
+    color: var(--accent);
+}
+
+body[data-theme="dark"] .admin-nav-link .sidebar-link-icon {
+    background: rgba(255, 255, 255, 0.03);
+    color: inherit;
+}
+
+body[data-theme="dark"] .admin-nav-link.active .sidebar-link-icon,
+body[data-theme="dark"] .admin-nav-link:hover .sidebar-link-icon {
+    background: rgba(129, 140, 248, 0.15);
+    color: var(--accent);
+}
+
+body[data-theme="dark"] .panel,
+body[data-theme="dark"] .table-card,
+body[data-theme="dark"] .message-card {
+    background: #0a0a0a;
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+}
+
+body[data-theme="dark"] .panel-header {
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+    color: #fafafa;
+}
+
+body[data-theme="dark"] .summary-card {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.01), rgba(255, 255, 255, 0.03));
+    border-color: rgba(255, 255, 255, 0.08);
+    color: #fafafa;
+}
+
+body[data-theme="dark"] .summary-card strong {
+    color: #ffffff;
+}
+
+body[data-theme="dark"] .admin-header h1 {
+    color: #ffffff;
+}
+
+body[data-theme="dark"] .auth-layout {
+    background: #000000;
+}
+
+body[data-theme="dark"] .auth-panel {
+    background: #0a0a0a;
+    border-color: rgba(255, 255, 255, 0.08);
+}
