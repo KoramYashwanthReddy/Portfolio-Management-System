@@ -49,9 +49,10 @@ public class CertificationServiceImpl implements CertificationService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<CertificationResponse> getAll() {
+    public List<CertificationResponse> getAll(Boolean displayed) {
         return certificationRepository.findByDeletedFalseOrderByIssueDateDesc()
                 .stream()
+                .filter(certification -> displayed == null || Boolean.TRUE.equals(certification.getDisplayed()) == displayed)
                 .map(PortfolioMapper::toCertification)
                 .toList();
     }
@@ -70,6 +71,7 @@ public class CertificationServiceImpl implements CertificationService {
         certification.setCredentialId(request.credentialId());
         certification.setCredentialUrl(request.credentialUrl());
         certification.setCertificateFile(request.certificateFileId() != null ? fileStorageService.getById(request.certificateFileId()) : null);
+        certification.setDisplayed(request.displayed() == null ? Boolean.TRUE : request.displayed());
     }
 
     private void validateUnique(String title, String issuer, Long id) {

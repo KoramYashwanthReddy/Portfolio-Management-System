@@ -27,4 +27,6 @@ public class Skill extends AuditableEntity {
 
     @Column(nullable = false)
     private Integer displayOrder;
+
+    private Boolean displayed = Boolean.TRUE;
 }

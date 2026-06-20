@@ -48,6 +48,8 @@ public class Project extends AuditableEntity {
     @Column(nullable = false)
     private boolean featured;
 
+    private Boolean displayed = Boolean.TRUE;
+
     private LocalDate completionDate;
 
     @ManyToOne(fetch = FetchType.LAZY)

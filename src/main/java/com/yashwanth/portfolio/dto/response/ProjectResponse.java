@@ -17,6 +17,7 @@ public record ProjectResponse(
         ProjectCategory category,
         ProjectStatus status,
         boolean featured,
+        Boolean displayed,
         LocalDate completionDate,
         Instant createdAt,
         Instant updatedAt,

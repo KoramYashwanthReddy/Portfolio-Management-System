@@ -62,7 +62,7 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<ProjectResponse> getAll(int page, int size, String sortBy, String sortDirection, String search,
-                                                ProjectCategory category, ProjectStatus status, Boolean featured) {
+                                                ProjectCategory category, ProjectStatus status, Boolean featured, Boolean displayed) {
         Sort sort = Sort.by(Sort.Direction.fromString(sortDirection), sortBy);
         PageRequest pageRequest = PageRequest.of(page, size, sort);
         var result = projectRepository.findAll((root, query, builder) -> {
@@ -85,6 +85,9 @@ public class ProjectServiceImpl implements ProjectService {
             if (featured != null) {
                 predicates.add(builder.equal(root.get("featured"), featured));
             }
+            if (displayed != null) {
+                predicates.add(builder.equal(root.get("displayed"), displayed));
+            }
             return builder.and(predicates.toArray(Predicate[]::new));
         }, pageRequest);
         return PageMapper.map(result, PortfolioMapper::toProject);
@@ -95,7 +98,11 @@ public class ProjectServiceImpl implements ProjectService {
     public List<ProjectResponse> featuredProjects() {
         return projectRepository.findAll((root, query, builder) -> builder.and(
                 builder.isFalse(root.get("deleted")),
-                builder.isTrue(root.get("featured"))
+                builder.isTrue(root.get("featured")),
+                builder.or(
+                        builder.isNull(root.get("displayed")),
+                        builder.isTrue(root.get("displayed"))
+                )
         )).stream().map(PortfolioMapper::toProject).toList();
     }
 
@@ -115,6 +122,7 @@ public class ProjectServiceImpl implements ProjectService {
         project.setCategory(request.category());
         project.setStatus(request.status());
         project.setFeatured(request.featured());
+        project.setDisplayed(request.displayed() == null ? Boolean.TRUE : request.displayed());
         project.setCompletionDate(request.completionDate());
         StoredFile imageFile = request.imageFileId() != null ? fileStorageService.getById(request.imageFileId()) : null;
         project.setImageFile(imageFile);

@@ -59,10 +59,11 @@ public class AdminProjectController {
             @RequestParam(required = false) String search,
             @RequestParam(required = false) ProjectCategory category,
             @RequestParam(required = false) ProjectStatus status,
-            @RequestParam(required = false) Boolean featured) {
+            @RequestParam(required = false) Boolean featured,
+            @RequestParam(required = false) Boolean displayed) {
         return ResponseEntity.ok(ApiResponse.success(
                 "Projects fetched successfully",
-                projectService.getAll(page, size, sortBy, sortDirection, search, category, status, featured)
+                projectService.getAll(page, size, sortBy, sortDirection, search, category, status, featured, displayed)
         ));
     }
 }

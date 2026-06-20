@@ -10,6 +10,7 @@ public record CertificationResponse(
         LocalDate expiryDate,
         String credentialId,
         String credentialUrl,
+        Boolean displayed,
         StoredFileResponse certificateFile
 ) {
 }

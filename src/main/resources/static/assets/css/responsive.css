@@ -11,9 +11,11 @@
     }
 
     .admin-sidebar {
-        width: calc(100vw - 28px);
-        margin-top: 12px;
+        width: calc(100vw - 24px);
+        margin: 14px auto 0;
         top: 12px;
+        padding: 16px 16px 18px;
+        border-radius: 24px;
     }
 }
 

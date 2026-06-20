@@ -11,5 +11,5 @@ public interface CertificationService {
 
     void delete(Long id);
 
-    List<CertificationResponse> getAll();
+    List<CertificationResponse> getAll(Boolean displayed);
 }

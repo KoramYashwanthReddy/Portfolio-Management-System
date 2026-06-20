@@ -10,6 +10,7 @@ public record SkillRequest(
         @NotBlank String skillName,
         @NotNull SkillCategory category,
         @NotNull @Min(0) @Max(100) Integer proficiencyPercentage,
-        @NotNull @Min(0) Integer displayOrder
+        @NotNull @Min(0) Integer displayOrder,
+        Boolean displayed
 ) {
 }

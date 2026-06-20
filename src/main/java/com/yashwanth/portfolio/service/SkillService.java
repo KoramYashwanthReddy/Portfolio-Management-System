@@ -12,5 +12,5 @@ public interface SkillService {
 
     void delete(Long id);
 
-    List<SkillResponse> getAll(SkillCategory category);
+    List<SkillResponse> getAll(SkillCategory category, Boolean displayed);
 }

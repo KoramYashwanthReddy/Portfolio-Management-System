@@ -19,6 +19,6 @@ public class PublicSkillController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<?>> getAll(@RequestParam(required = false) SkillCategory category) {
-        return ResponseEntity.ok(ApiResponse.success("Skills fetched successfully", skillService.getAll(category)));
+        return ResponseEntity.ok(ApiResponse.success("Skills fetched successfully", skillService.getAll(category, true)));
     }
 }

@@ -43,6 +43,6 @@ public class AdminCertificationController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<?>> getAll() {
-        return ResponseEntity.ok(ApiResponse.success("Certifications fetched successfully", certificationService.getAll()));
+        return ResponseEntity.ok(ApiResponse.success("Certifications fetched successfully", certificationService.getAll(null)));
     }
 }

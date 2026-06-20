@@ -7,6 +7,7 @@ public record SkillResponse(
         String skillName,
         SkillCategory category,
         Integer proficiencyPercentage,
-        Integer displayOrder
+        Integer displayOrder,
+        Boolean displayed
 ) {
 }

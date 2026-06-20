@@ -35,4 +35,6 @@ public class Certification extends AuditableEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "certificate_file_id")
     private StoredFile certificateFile;
+
+    private Boolean displayed = Boolean.TRUE;
 }

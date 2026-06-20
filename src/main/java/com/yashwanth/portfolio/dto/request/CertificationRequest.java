@@ -11,6 +11,7 @@ public record CertificationRequest(
         LocalDate expiryDate,
         String credentialId,
         String credentialUrl,
-        Long certificateFileId
+        Long certificateFileId,
+        Boolean displayed
 ) {
 }

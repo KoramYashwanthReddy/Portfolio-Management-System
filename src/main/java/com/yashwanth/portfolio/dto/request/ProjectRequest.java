@@ -18,6 +18,7 @@ public record ProjectRequest(
         @NotNull ProjectCategory category,
         @NotNull ProjectStatus status,
         boolean featured,
+        Boolean displayed,
         LocalDate completionDate,
         Long imageFileId
 ) {

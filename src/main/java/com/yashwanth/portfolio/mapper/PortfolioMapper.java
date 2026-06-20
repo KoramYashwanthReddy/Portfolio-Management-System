@@ -53,6 +53,7 @@ public final class PortfolioMapper {
                 project.getCategory(),
                 project.getStatus(),
                 project.isFeatured(),
+                project.getDisplayed(),
                 project.getCompletionDate(),
                 project.getCreatedAt(),
                 project.getUpdatedAt(),
@@ -61,7 +62,7 @@ public final class PortfolioMapper {
     }
 
     public static SkillResponse toSkill(Skill skill) {
-        return new SkillResponse(skill.getId(), skill.getSkillName(), skill.getCategory(), skill.getProficiencyPercentage(), skill.getDisplayOrder());
+        return new SkillResponse(skill.getId(), skill.getSkillName(), skill.getCategory(), skill.getProficiencyPercentage(), skill.getDisplayOrder(), skill.getDisplayed());
     }
 
     public static CertificationResponse toCertification(Certification certification) {
@@ -73,6 +74,7 @@ public final class PortfolioMapper {
                 certification.getExpiryDate(),
                 certification.getCredentialId(),
                 certification.getCredentialUrl(),
+                certification.getDisplayed(),
                 toStoredFile(certification.getCertificateFile())
         );
     }

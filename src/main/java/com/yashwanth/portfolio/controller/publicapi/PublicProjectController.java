@@ -33,7 +33,7 @@ public class PublicProjectController {
             @RequestParam(required = false) Boolean featured) {
         return ResponseEntity.ok(ApiResponse.success(
                 "Projects fetched successfully",
-                projectService.getAll(page, size, sortBy, sortDirection, search, category, status, featured)
+                projectService.getAll(page, size, sortBy, sortDirection, search, category, status, featured, true)
         ));
     }
 

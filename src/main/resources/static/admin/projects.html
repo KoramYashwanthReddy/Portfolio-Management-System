@@ -45,6 +45,11 @@
                         <input id="admin-project-search" class="input" type="search" placeholder="Search projects">
                         <select id="admin-project-category" class="input"></select>
                         <select id="admin-project-status" class="input"></select>
+                        <select id="admin-project-visibility" class="input">
+                            <option value="">All visibility</option>
+                            <option value="displayed">Displayed</option>
+                            <option value="hidden">Hidden</option>
+                        </select>
                     </div>
                     <div id="admin-project-list" class="table-list"></div>
                     <div class="pagination-bar">
@@ -73,6 +78,23 @@
                 <div class="profile-modal-body">
                     <form id="project-form" class="panel form-panel profile-editor-panel" novalidate></form>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="project-detail-modal" class="modal-overlay hidden" aria-hidden="true">
+        <div class="modal-content project-detail-modal">
+            <div class="project-detail-content">
+                <div class="modal-header" style="margin-bottom: 20px;">
+                    <div>
+                        <p class="eyebrow">Project overview</p>
+                        <h2 id="project-detail-title" style="margin: 0;">Project details</h2>
+                    </div>
+                    <button id="project-detail-close" class="modal-close" type="button" aria-label="Close project details">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div id="project-detail-content"></div>
             </div>
         </div>
     </div>

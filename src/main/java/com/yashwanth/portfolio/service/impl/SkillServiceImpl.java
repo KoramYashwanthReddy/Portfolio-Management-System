@@ -48,11 +48,14 @@ public class SkillServiceImpl implements SkillService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<SkillResponse> getAll(SkillCategory category) {
+    public List<SkillResponse> getAll(SkillCategory category, Boolean displayed) {
         List<Skill> skills = category == null
                 ? skillRepository.findByDeletedFalseOrderByDisplayOrderAscSkillNameAsc()
                 : skillRepository.findByCategoryAndDeletedFalseOrderByDisplayOrderAscSkillNameAsc(category);
-        return skills.stream().map(PortfolioMapper::toSkill).toList();
+        return skills.stream()
+                .filter(skill -> displayed == null || Boolean.TRUE.equals(skill.getDisplayed()) == displayed)
+                .map(PortfolioMapper::toSkill)
+                .toList();
     }
 
     private Skill getEntity(Long id) {
@@ -66,6 +69,7 @@ public class SkillServiceImpl implements SkillService {
         skill.setCategory(request.category());
         skill.setProficiencyPercentage(request.proficiencyPercentage());
         skill.setDisplayOrder(request.displayOrder());
+        skill.setDisplayed(request.displayed() == null ? Boolean.TRUE : request.displayed());
     }
 
     private void validateUnique(String skillName, Long id) {

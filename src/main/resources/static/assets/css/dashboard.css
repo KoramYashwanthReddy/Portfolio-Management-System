@@ -55,7 +55,8 @@ body[data-theme="dark"] .admin-sidebar {
 }
 
 .admin-sidebar-shell {
-    display: grid;
+    display: flex;
+    flex-direction: column;
     gap: 16px;
     width: 100%;
     min-height: 100%;
@@ -65,7 +66,7 @@ body[data-theme="dark"] .admin-sidebar {
 
 .admin-sidebar-brand-row {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 14px;
 }
@@ -223,7 +224,8 @@ body[data-theme="dark"] .admin-sidebar {
 }
 
 .admin-sidebar-actions {
-    display: grid;
+    display: flex;
+    flex-direction: column;
     gap: 10px;
 }
 

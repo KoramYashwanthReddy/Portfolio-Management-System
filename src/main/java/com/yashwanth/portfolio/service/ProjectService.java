@@ -17,7 +17,7 @@ public interface ProjectService {
     ProjectResponse getById(Long id);
 
     PageResponse<ProjectResponse> getAll(int page, int size, String sortBy, String sortDirection,
-                                         String search, ProjectCategory category, ProjectStatus status, Boolean featured);
+                                         String search, ProjectCategory category, ProjectStatus status, Boolean featured, Boolean displayed);
 
     List<ProjectResponse> featuredProjects();
 }

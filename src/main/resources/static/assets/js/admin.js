@@ -135,6 +135,10 @@ function normalizeKey(value) {
     return normalizeValue(value).toLowerCase();
 }
 
+function isDisplayedValue(value) {
+    return value !== false && value !== "false" && value !== 0 && value !== "0";
+}
+
 function confirmDanger(message) {
     return window.confirm(message);
 }
@@ -213,7 +217,7 @@ function fillForm(form, values) {
             return;
         }
         if (field.type === "checkbox") {
-            field.checked = Boolean(value);
+            field.checked = isDisplayedValue(value);
         } else {
             field.value = value ?? "";
         }
@@ -392,6 +396,7 @@ function renderProjectForm() {
             <label><span>Completion Date</span><input class="input" type="date" name="completionDate"></label>
             <label><span>Project Image Upload</span><input class="input" type="file" name="projectImage" accept=".png,.jpg,.jpeg,.webp"></label>
         </div>
+        <label><span><input type="checkbox" name="displayed" checked> Display in portfolio</span></label>
         <label><span><input type="checkbox" name="featured"> Featured project</span></label>
         <div class="form-actions">
             <button class="button button-primary" type="submit"><i class="fa-solid fa-check" style="margin-right:6px;"></i>${state.editingProjectId ? "Update" : "Create"}</button>
@@ -420,13 +425,84 @@ function closeProjectEditor() {
     state.currentProject = null;
 }
 
+function buildProjectDetailMarkup(project) {
+    const technologies = (project.technologies || "")
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+    const rows = [
+        { label: "Category", value: project.category || "Project" },
+        { label: "Status", value: project.status || "Unknown" },
+        { label: "Featured", value: project.featured ? "Yes" : "No" },
+        { label: "Displayed", value: isDisplayedValue(project.displayed) ? "Yes" : "No" },
+        { label: "Completed", value: project.completionDate || "In progress" },
+        { label: "Stack", value: `${technologies.length} tech${technologies.length === 1 ? "" : "s"}` }
+    ];
+    return `
+        <div class="project-detail-shell">
+            <div class="project-detail-header">
+                <div>
+                    <p class="eyebrow" style="color: var(--accent-alt); margin-bottom: 8px;">PROJECT DETAILS</p>
+                    <h2 style="margin: 0;">${project.title}</h2>
+                </div>
+                <span class="chip">${project.displayed === false ? "Hidden" : "Displayed"}</span>
+            </div>
+            <div class="project-detail-grid">
+                ${rows.map((row) => `
+                    <article class="project-detail-card">
+                        <span>${row.label}</span>
+                        <strong>${row.value}</strong>
+                    </article>
+                `).join("")}
+            </div>
+            <div class="project-detail-body">
+                <p>${project.shortDescription || ""}</p>
+                <p>${project.detailedDescription || ""}</p>
+                <div class="chip-row" style="margin-top: 4px;">
+                    ${technologies.map((tech) => `<span class="chip">${tech}</span>`).join("")}
+                </div>
+            </div>
+            <div class="project-detail-actions">
+                ${project.githubUrl ? `<a class="button button-outline" href="${project.githubUrl}" target="_blank" rel="noreferrer">GitHub</a>` : ""}
+                ${project.liveUrl ? `<a class="button button-outline" href="${project.liveUrl}" target="_blank" rel="noreferrer">Live</a>` : ""}
+            </div>
+        </div>
+    `;
+}
+
+function openProjectDetail(project) {
+    const modal = document.getElementById("project-detail-modal");
+    const content = document.getElementById("project-detail-content");
+    const title = document.getElementById("project-detail-title");
+    if (!modal || !content || !title) {
+        return;
+    }
+    title.textContent = project.title || "Project details";
+    content.innerHTML = buildProjectDetailMarkup(project);
+    modal.classList.remove("hidden");
+    modal.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+}
+
+function closeProjectDetail() {
+    const modal = document.getElementById("project-detail-modal");
+    if (!modal) {
+        return;
+    }
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+}
+
 async function loadProjectsAdmin() {
+    const visibility = document.getElementById("admin-project-visibility")?.value || "";
     const response = await projectsApi.getAdmin({
         page: state.projectPage,
         size: state.projectSize,
         search: document.getElementById("admin-project-search").value.trim(),
         category: document.getElementById("admin-project-category").value,
-        status: document.getElementById("admin-project-status").value
+        status: document.getElementById("admin-project-status").value,
+        displayed: visibility === "displayed" ? true : visibility === "hidden" ? false : ""
     });
     const data = response.data;
     document.getElementById("admin-project-list").innerHTML = (data.content || []).map((project, index) => `
@@ -437,7 +513,7 @@ async function loadProjectsAdmin() {
                     <strong>${project.title}</strong>
                     <p class="section-copy">${project.shortDescription}</p>
                 </div>
-                <span class="chip">${project.status}</span>
+                <span class="chip">${project.displayed === false ? "Hidden" : "Displayed"}</span>
             </header>
             <div class="chip-row">
                 <span class="chip">${project.category}</span>
@@ -445,6 +521,7 @@ async function loadProjectsAdmin() {
                 ${project.completionDate ? `<span class="chip">${project.completionDate}</span>` : ""}
             </div>
             <div class="table-actions">
+                <button class="button button-ghost" data-project-view="${project.id}" type="button">View project</button>
                 <button class="button button-ghost" data-project-edit="${project.id}" type="button">Edit</button>
                 <button class="button button-ghost" data-project-delete="${project.id}" type="button">Delete</button>
             </div>
@@ -460,6 +537,9 @@ async function loadProjectsAdmin() {
             state.currentProject = project;
             openProjectEditor();
             fillForm(document.getElementById("project-form"), project);
+        });
+        document.querySelector(`[data-project-view="${project.id}"]`)?.addEventListener("click", () => {
+            openProjectDetail(project);
         });
         document.querySelector(`[data-project-delete="${project.id}"]`)?.addEventListener("click", async () => {
             if (!confirmDanger(`Delete "${project.title}"? This cannot be undone.`)) {
@@ -501,6 +581,7 @@ function bindProjectForm() {
                 category: fd.get("category"),
                 status: fd.get("status"),
                 featured: fd.get("featured") === "on",
+                displayed: fd.get("displayed") === "on",
                 completionDate: fd.get("completionDate") || null,
                 imageFileId
             };
@@ -541,7 +622,7 @@ async function initProjects() {
 
     document.getElementById("admin-project-category").innerHTML = markupOptions(PROJECT_CATEGORIES, true);
     document.getElementById("admin-project-status").innerHTML = markupOptions(PROJECT_STATUSES, true);
-    ["admin-project-search", "admin-project-category", "admin-project-status"].forEach((id) => {
+    ["admin-project-search", "admin-project-category", "admin-project-status", "admin-project-visibility"].forEach((id) => {
         document.getElementById(id).addEventListener("input", async () => {
             state.projectPage = 0;
             await loadProjectsAdmin();
@@ -558,6 +639,18 @@ async function initProjects() {
     document.getElementById("admin-project-next").addEventListener("click", async () => {
         state.projectPage += 1;
         await loadProjectsAdmin();
+    });
+    document.getElementById("project-detail-close").addEventListener("click", closeProjectDetail);
+    document.getElementById("project-detail-modal").addEventListener("click", (event) => {
+        if (event.target.id === "project-detail-modal") {
+            closeProjectDetail();
+        }
+    });
+    document.addEventListener("keydown", (event) => {
+        const detailModal = document.getElementById("project-detail-modal");
+        if (event.key === "Escape" && detailModal && !detailModal.classList.contains("hidden")) {
+            closeProjectDetail();
+        }
     });
     await loadProjectsAdmin();
 }
