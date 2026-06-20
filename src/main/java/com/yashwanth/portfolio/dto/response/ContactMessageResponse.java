@@ -9,6 +9,9 @@ public record ContactMessageResponse(
         String subject,
         String message,
         boolean readStatus,
+        boolean starred,
+        boolean archived,
+        boolean deleted,
         Instant createdAt
 ) {
 }

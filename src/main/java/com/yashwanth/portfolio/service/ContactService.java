@@ -9,7 +9,25 @@ public interface ContactService {
 
     List<ContactMessageResponse> getAll();
 
+    List<ContactMessageResponse> getArchived();
+
+    List<ContactMessageResponse> getDeleted();
+
     ContactMessageResponse markAsRead(Long id);
 
+    ContactMessageResponse markAsUnread(Long id);
+
+    ContactMessageResponse star(Long id);
+
+    ContactMessageResponse unstar(Long id);
+
+    ContactMessageResponse archive(Long id);
+
+    ContactMessageResponse unarchive(Long id);
+
+    ContactMessageResponse restore(Long id);
+
     void delete(Long id);
+
+    void purge(Long id);
 }

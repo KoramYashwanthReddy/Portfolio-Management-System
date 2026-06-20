@@ -18,7 +18,7 @@
         })();
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skill Management</title>
+    <title>Project Notes | Portfolio Management</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -30,54 +30,49 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script type="module" src="/api/v1/assets/js/admin.js"></script>
 </head>
-<body data-page="skills" class="admin-body">
+<body data-page="project-notes" class="admin-body">
     <div class="admin-shell">
         <aside class="admin-sidebar"></aside>
         <main class="admin-main">
             <section class="admin-header">
                 <div>
-                    <p class="eyebrow">Skills API</p>
-                    <h1>Skill management</h1>
+                    <p class="eyebrow">Project Notes API</p>
+                    <h1>Notes archive</h1>
                 </div>
                 <div class="admin-header-actions" style="display: flex; gap: 12px; align-items: center;">
-                    <button id="add-skill-btn" class="button button-primary" type="button"><i class="fa-solid fa-plus" style="margin-right:6px;"></i>Add skill</button>
+                    <a id="project-notes-back" class="button button-ghost" href="/api/v1/admin/projects.html"><i class="fa-solid fa-arrow-left" style="margin-right:6px;"></i>Back to projects</a>
                     <button class="button button-ghost" data-logout type="button">Logout</button>
                 </div>
             </section>
             <section class="admin-grid form-layout admin-stack-layout" style="grid-template-columns: 1fr;">
                 <div class="panel">
-                    <div class="explorer-controls">
-                        <select id="admin-skill-category" class="input"></select>
-                        <select id="admin-skill-visibility" class="input">
-                            <option value="">All visibility</option>
-                            <option value="displayed">Displayed</option>
-                            <option value="hidden">Hidden</option>
-                        </select>
+                    <div id="project-notes-page-hero"></div>
+                    <div class="project-notes-page-grid">
+                        <div class="panel notes-composer-panel">
+                            <form id="project-notes-page-form" class="notes-form" novalidate></form>
+                        </div>
+                        <div class="panel notes-list-panel">
+                            <div class="notes-toolbar">
+                                <input id="project-notes-page-search" class="input" type="search" placeholder="Search the archive">
+                                <select id="project-notes-page-type" class="input"></select>
+                                <select id="project-notes-page-sort" class="input">
+                                    <option value="createdAt_DESC">Newest first</option>
+                                    <option value="createdAt_ASC">Oldest first</option>
+                                    <option value="updatedAt_DESC">Recently edited</option>
+                                    <option value="title_ASC">Title A-Z</option>
+                                </select>
+                                <label class="notes-toggle">
+                                    <input id="project-notes-page-pinned" type="checkbox">
+                                    <span>Pinned only</span>
+                                </label>
+                            </div>
+                            <div id="project-notes-page-summary"></div>
+                            <div id="project-notes-page-list" class="notes-timeline"></div>
+                        </div>
                     </div>
-                    <div id="admin-skill-list" class="table-list admin-card-grid admin-skill-grid"></div>
                 </div>
             </section>
         </main>
-    </div>
-
-    <div id="skill-editor-modal" class="modal-overlay hidden" aria-hidden="true">
-        <div class="modal-content profile-modal">
-            <div class="profile-modal-shell panel">
-                <div class="profile-modal-header">
-                    <div>
-                        <p class="eyebrow" id="skill-modal-kicker">Skill Record</p>
-                        <h2 id="skill-modal-title">New skill</h2>
-                        <p class="form-help" id="skill-modal-copy">Configure name, category, proficiency and order in the skill matrix.</p>
-                    </div>
-                    <button id="skill-modal-close" class="modal-close" type="button" aria-label="Close skill editor">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
-                </div>
-                <div class="profile-modal-body">
-                    <form id="skill-form" class="panel form-panel profile-editor-panel" novalidate></form>
-                </div>
-            </div>
-        </div>
     </div>
 </body>
 </html>

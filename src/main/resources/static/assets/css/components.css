@@ -1338,6 +1338,205 @@ label span {
     border-top: 1px solid var(--border);
 }
 
+.button-notes {
+    background: linear-gradient(135deg, var(--accent), var(--accent-alt));
+    border-color: transparent;
+    color: #ffffff;
+    box-shadow: 0 14px 28px rgba(var(--accent-rgb), 0.18);
+}
+
+.button-notes:hover {
+    background: linear-gradient(135deg, var(--accent-alt), var(--accent));
+    border-color: transparent;
+    color: #ffffff;
+    box-shadow: 0 18px 34px rgba(var(--accent-rgb), 0.24);
+}
+
+.project-notes-modal {
+    width: min(1180px, calc(100vw - 32px));
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: 0 28px 84px rgba(15, 23, 42, 0.18);
+}
+
+.project-notes-content {
+    padding: 28px;
+    max-height: 92vh;
+    overflow-y: auto;
+}
+
+.project-notes-layout {
+    display: grid;
+    grid-template-columns: minmax(320px, 0.92fr) minmax(0, 1.08fr);
+    gap: 18px;
+    margin-top: 20px;
+}
+
+.project-notes-page-grid {
+    display: grid;
+    grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.1fr);
+    gap: 18px;
+    margin-top: 20px;
+}
+
+.notes-composer-panel,
+.notes-list-panel {
+    padding: 22px;
+    border-radius: 22px;
+    background: linear-gradient(180deg, rgba(var(--surface-rgb), 0.96), rgba(var(--surface-rgb), 0.9));
+}
+
+.notes-form {
+    display: grid;
+    gap: 16px;
+}
+
+.notes-pin-toggle {
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: rgba(var(--accent-rgb), 0.05);
+    border: 1px solid rgba(var(--accent-rgb), 0.12);
+}
+
+.notes-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.notes-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 8px;
+    color: var(--muted);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.notes-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.notes-summary-card {
+    padding: 18px;
+    border-radius: 18px;
+    border: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(var(--surface-rgb), 0.96), rgba(var(--surface-rgb), 0.9));
+}
+
+.notes-summary-card strong {
+    display: block;
+    margin: 6px 0 8px;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 1.15rem;
+    color: var(--text);
+}
+
+.notes-inline-preview {
+    display: grid;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.notes-inline-preview-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: rgba(var(--accent-rgb), 0.04);
+    border: 1px solid rgba(var(--accent-rgb), 0.08);
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+
+.notes-inline-preview-item span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.notes-inline-preview-item strong {
+    margin: 0;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    color: var(--accent);
+}
+
+.notes-timeline {
+    display: grid;
+    gap: 14px;
+}
+
+.notes-loading {
+    padding: 24px;
+    text-align: center;
+    color: var(--muted);
+    border: 1px dashed var(--border);
+    border-radius: 18px;
+}
+
+.note-card {
+    display: grid;
+    gap: 14px;
+    padding: 20px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background:
+        radial-gradient(circle at top right, rgba(var(--accent-rgb), 0.06), transparent 36%),
+        var(--surface);
+}
+
+.note-card.is-pinned {
+    border-color: rgba(var(--accent-rgb), 0.2);
+    box-shadow: 0 18px 40px rgba(var(--accent-rgb), 0.08);
+}
+
+.note-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.note-card-header h3 {
+    margin: 4px 0 0;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 1.1rem;
+    color: var(--text);
+}
+
+.note-type-label {
+    margin: 0;
+    color: var(--accent);
+    letter-spacing: 0.12em;
+}
+
+.note-card-meta {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.note-card-content {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.7;
+    white-space: pre-wrap;
+}
+
+.note-tag-row {
+    margin-top: -2px;
+}
+
 body[data-theme="dark"] .project-detail-modal {
     background: var(--surface);
     border-color: var(--border);
@@ -1345,6 +1544,15 @@ body[data-theme="dark"] .project-detail-modal {
 
 body[data-theme="dark"] .project-detail-card {
     background: rgba(255, 255, 255, 0.03);
+}
+
+body[data-theme="dark"] .project-notes-modal,
+body[data-theme="dark"] .notes-composer-panel,
+body[data-theme="dark"] .notes-list-panel,
+body[data-theme="dark"] .notes-summary-card,
+body[data-theme="dark"] .note-card {
+    background: var(--surface);
+    border-color: var(--border);
 }
 
 /* HTML Resume Document Styles */
@@ -2462,5 +2670,15 @@ body[data-page="feedback"] .welcome-preview-card {
 
     .projects-filter-pills {
         justify-content: flex-start;
+    }
+
+    .project-notes-layout,
+    .project-notes-page-grid,
+    .notes-summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .notes-toolbar {
+        grid-template-columns: 1fr;
     }
 }

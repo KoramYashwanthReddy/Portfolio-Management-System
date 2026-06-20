@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <script>
-        if (!localStorage.getItem("pms-auth") || !JSON.parse(localStorage.getItem("pms-auth")).accessToken) {
+        try {
+            const auth = JSON.parse(localStorage.getItem("pms-auth") || "{}");
+            if (!auth.accessToken) {
+                window.location.replace("/api/v1/admin/login.html");
+            }
+        } catch {
             window.location.replace("/api/v1/admin/login.html");
         }
         (function() {

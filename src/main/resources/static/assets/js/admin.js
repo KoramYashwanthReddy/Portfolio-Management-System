@@ -19,20 +19,47 @@ const state = {
     projectPage: 0,
     projectSize: 8,
     editingProjectId: null,
+    editingProjectNoteId: null,
     editingSkillId: null,
     editingCertificationId: null,
     currentProject: null,
+    currentProjectNotes: [],
     currentCertification: null,
     skillsCache: [],
     certificationsCache: [],
     aboutSnapshot: null,
     resumeSnapshot: null,
-    messagesCache: []
+    messagesCache: [],
+    archivedMessagesCache: [],
+    deletedMessagesCache: [],
+    messageQueue: "inbox",
+    messageSearch: "",
+    messageStatus: "",
+    notesSearch: "",
+    notesPinnedOnly: false
 };
+
+const PROJECT_NOTE_TYPES = ["FEATURE_USED", "TECHNOLOGY_USED", "IMPLEMENTATION_DECISION", "MILESTONE", "REMINDER", "REFERENCE"];
 
 function markupOptions(values, includeAll = false) {
     const source = includeAll ? ["", ...values] : values;
     return source.map((value) => `<option value="${value}">${value ? value.replaceAll("_", " ") : "All"}</option>`).join("");
+}
+
+function safeStorageGet(key) {
+    try {
+        return localStorage.getItem(key);
+    } catch {
+        return null;
+    }
+}
+
+function safeStorageSet(key, value) {
+    try {
+        localStorage.setItem(key, value);
+    } catch {
+        // Ignore storage failures so the admin shell still renders.
+    }
 }
 
 function createSidebar() {
@@ -43,13 +70,14 @@ function createSidebar() {
     const links = [
         ["dashboard", "Dashboard", "fa-solid fa-chart-pie"],
         ["projects", "Projects", "fa-solid fa-briefcase"],
+        ["project-notes", "Project Notes", "fa-solid fa-book-bookmark"],
         ["skills", "Skills", "fa-solid fa-bolt"],
         ["certifications", "Certifications", "fa-solid fa-certificate"],
         ["messages", "Messages", "fa-solid fa-envelope"],
         ["profile", "Profile", "fa-solid fa-user"],
         ["resume", "Resume", "fa-solid fa-file-pdf"]
     ];
-    const collapsed = localStorage.getItem("pms-admin-sidebar") === "collapsed";
+    const collapsed = safeStorageGet("pms-admin-sidebar") === "collapsed";
     sidebar.classList.toggle("is-collapsed", collapsed);
     document.body.dataset.adminSidebar = collapsed ? "collapsed" : "expanded";
     sidebar.innerHTML = `
@@ -97,7 +125,7 @@ function createSidebar() {
     const syncSidebarState = () => {
         const isCollapsed = sidebar.classList.contains("is-collapsed");
         document.body.dataset.adminSidebar = isCollapsed ? "collapsed" : "expanded";
-        localStorage.setItem("pms-admin-sidebar", isCollapsed ? "collapsed" : "expanded");
+        safeStorageSet("pms-admin-sidebar", isCollapsed ? "collapsed" : "expanded");
         if (toggle) {
             toggle.setAttribute("aria-label", isCollapsed ? "Expand sidebar" : "Collapse sidebar");
             toggle.title = isCollapsed ? "Expand sidebar" : "Collapse sidebar";
@@ -133,6 +161,45 @@ function normalizeValue(value) {
 
 function normalizeKey(value) {
     return normalizeValue(value).toLowerCase();
+}
+
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+}
+
+function formatEnumLabel(value) {
+    return String(value ?? "")
+        .replaceAll("_", " ")
+        .toLowerCase()
+        .replace(/\b\w/g, (match) => match.toUpperCase());
+}
+
+function formatTimestamp(value, includeDate = true) {
+    if (!value) {
+        return "";
+    }
+    const date = new Date(value);
+    return includeDate
+        ? date.toLocaleString([], { year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+        : date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+function parseTags(tags) {
+    if (!tags) {
+        return [];
+    }
+    if (Array.isArray(tags)) {
+        return tags;
+    }
+    return String(tags)
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean);
 }
 
 function isDisplayedValue(value) {
@@ -475,6 +542,7 @@ function buildProjectDetailMarkup(project) {
                 </div>
             </div>
             <div class="project-detail-actions">
+                <button class="button button-primary" type="button" data-project-notes-open="true">Notes</button>
                 ${project.githubUrl ? `<a class="button button-outline" href="${project.githubUrl}" target="_blank" rel="noreferrer">GitHub</a>` : ""}
                 ${project.liveUrl ? `<a class="button button-outline" href="${project.liveUrl}" target="_blank" rel="noreferrer">Live</a>` : ""}
             </div>
@@ -491,6 +559,10 @@ function openProjectDetail(project) {
     }
     title.textContent = project.title || "Project details";
     content.innerHTML = buildProjectDetailMarkup(project);
+    content.querySelector("[data-project-notes-open]")?.addEventListener("click", async () => {
+        closeProjectDetail();
+        await openProjectNotes(project);
+    });
     modal.classList.remove("hidden");
     modal.setAttribute("aria-hidden", "false");
     document.body.style.overflow = "hidden";
@@ -504,6 +576,449 @@ function closeProjectDetail() {
     modal.classList.add("hidden");
     modal.setAttribute("aria-hidden", "true");
     document.body.style.overflow = "";
+}
+
+function sortProjectNotes(notes, sortValue = "createdAt_DESC") {
+    const [field, direction] = String(sortValue || "createdAt_DESC").split("_");
+    const sorted = [...notes].sort((left, right) => {
+        if (left.pinned !== right.pinned) {
+            return left.pinned ? -1 : 1;
+        }
+        if (field === "title") {
+            return direction === "ASC"
+                ? normalizeValue(left.title).localeCompare(normalizeValue(right.title))
+                : normalizeValue(right.title).localeCompare(normalizeValue(left.title));
+        }
+        const leftValue = new Date(left[field] || left.createdAt || 0).getTime();
+        const rightValue = new Date(right[field] || right.createdAt || 0).getTime();
+        return direction === "ASC" ? leftValue - rightValue : rightValue - leftValue;
+    });
+    return sorted;
+}
+
+function filterProjectNotes(notes, options = {}) {
+    const search = normalizeValue(options.search ?? "").toLowerCase();
+    const pinnedOnly = Boolean(options.pinnedOnly);
+    const noteType = options.type || "";
+    return notes.filter((note) => {
+        const haystack = [
+            note.title,
+            note.content,
+            note.type,
+            parseTags(note.tags).join(" ")
+        ].join(" ").toLowerCase();
+        const matchesSearch = !search || haystack.includes(search);
+        const matchesPinned = !pinnedOnly || note.pinned;
+        const matchesType = !noteType || note.type === noteType;
+        return matchesSearch && matchesPinned && matchesType;
+    });
+}
+
+function renderProjectNotesSummary(project, notes) {
+    const noteCount = notes.length;
+    const pinnedCount = notes.filter((note) => note.pinned).length;
+    const latestNote = notes[0];
+    const techCount = parseTags(project.technologies).length;
+    const recentNotes = notes.slice(0, 3);
+    return `
+        <div class="notes-summary-grid">
+            <article class="notes-summary-card">
+                <span class="muted-label">Project</span>
+                <strong>${escapeHtml(project.title || "Project")}</strong>
+                <p class="section-copy">${escapeHtml(project.shortDescription || "Track implementation notes, features, and decisions.")}</p>
+            </article>
+            <article class="notes-summary-card">
+                <span class="muted-label">Notes</span>
+                <strong>${noteCount}</strong>
+                <p class="section-copy">${pinnedCount} pinned, ${noteCount - pinnedCount} regular</p>
+            </article>
+            <article class="notes-summary-card">
+                <span class="muted-label">Stack</span>
+                <strong>${techCount}</strong>
+                <p class="section-copy">${techCount ? parseTags(project.technologies).slice(0, 4).join(", ") : "No technologies listed"}</p>
+            </article>
+            <article class="notes-summary-card">
+                <span class="muted-label">Latest update</span>
+                <strong>${latestNote ? formatTimestamp(latestNote.updatedAt || latestNote.createdAt) : "None yet"}</strong>
+                <p class="section-copy">${latestNote ? escapeHtml(latestNote.title) : "Create your first note to start tracking work."}</p>
+                <div class="notes-inline-preview">
+                    ${recentNotes.map((note) => `
+                        <div class="notes-inline-preview-item">
+                            <span>${escapeHtml(note.title)}</span>
+                            <strong>${formatTimestamp(note.updatedAt || note.createdAt, false)}</strong>
+                        </div>
+                    `).join("")}
+                </div>
+            </article>
+        </div>
+    `;
+}
+
+function renderProjectNoteForm(note = null, formId = "project-note-form") {
+    const form = document.getElementById(formId);
+    if (!form) {
+        return;
+    }
+    const isEditing = Boolean(note);
+    form.innerHTML = `
+        <div class="form-hero" style="padding-top: 0;">
+            <div>
+                <p class="eyebrow">Track work</p>
+                <h2>${isEditing ? "Edit note" : "Add note"}</h2>
+                <p class="form-help">Capture which feature or technology you used, why it mattered, and what should happen next.</p>
+            </div>
+            <span class="chip">${isEditing ? "Updating" : "Journal entry"}</span>
+        </div>
+        <label><span>Note title</span><input class="input" name="title" required maxlength="120" placeholder="e.g. Added JWT refresh flow"></label>
+        <div class="field-grid">
+            <label><span>Type</span>
+                <select class="input" name="type">
+                    ${PROJECT_NOTE_TYPES.map((type) => `<option value="${type}">${formatEnumLabel(type)}</option>`).join("")}
+                </select>
+            </label>
+            <label><span>Tags</span><input class="input" name="tags" maxlength="500" placeholder="Spring Boot, JWT, Swagger"></label>
+        </div>
+        <label><span>Note content</span><textarea class="input textarea" name="content" required placeholder="Explain the feature, technology, decision, or milestone you want to remember."></textarea></label>
+        <label class="notes-pin-toggle"><span><input type="checkbox" name="pinned"> Pin this note</span></label>
+        <div class="form-actions">
+            <button class="button button-primary" type="submit"><i class="fa-solid fa-note-sticky" style="margin-right:6px;"></i>${isEditing ? "Update note" : "Save note"}</button>
+            <button class="button button-ghost" type="button" data-note-reset>Clear</button>
+        </div>
+    `;
+    if (note) {
+        fillForm(form, note);
+        form.elements.tags.value = parseTags(note.tags).join(", ");
+        form.elements.pinned.checked = Boolean(note.pinned);
+        form.elements.type.value = note.type || PROJECT_NOTE_TYPES[0];
+    } else {
+        form.reset();
+        form.elements.type.value = PROJECT_NOTE_TYPES[0];
+        form.elements.pinned.checked = false;
+    }
+}
+
+function renderProjectNotesList(notes, options = {}) {
+    const container = document.getElementById(options.containerId || "project-notes-list");
+    if (!container) {
+        return;
+    }
+    const filtered = filterProjectNotes(notes, {
+        search: options.search ?? document.getElementById(options.searchId || "project-notes-search")?.value,
+        pinnedOnly: options.pinnedOnly ?? document.getElementById(options.pinnedOnlyId || "project-notes-pinned-only")?.checked,
+        type: options.type ?? (document.getElementById(options.typeId || "")?.value || "")
+    });
+    const sorted = sortProjectNotes(filtered, options.sort ?? (document.getElementById(options.sortId || "")?.value || "createdAt_DESC"));
+    const limited = typeof options.limit === "number" ? sorted.slice(0, options.limit) : sorted;
+    const showActions = options.showActions !== false;
+    container.innerHTML = limited.length ? limited.map((note) => `
+        <article class="note-card ${note.pinned ? "is-pinned" : ""}">
+            <header class="note-card-header">
+                <div>
+                    <p class="eyebrow note-type-label">${formatEnumLabel(note.type)}</p>
+                    <h3>${escapeHtml(note.title)}</h3>
+                </div>
+                <div class="note-card-meta">
+                    ${note.pinned ? '<span class="chip">Pinned</span>' : ""}
+                    <span class="chip">${formatTimestamp(note.createdAt)}</span>
+                    ${(note.updatedAt && note.updatedAt !== note.createdAt) ? `<span class="chip">Edited ${formatTimestamp(note.updatedAt)}</span>` : ""}
+                </div>
+            </header>
+            <p class="note-card-content">${escapeHtml(note.content)}</p>
+            <div class="chip-row note-tag-row">
+                ${parseTags(note.tags).map((tag) => `<span class="chip">${escapeHtml(tag)}</span>`).join("")}
+            </div>
+            ${showActions ? `
+                <div class="table-actions">
+                    <button class="button button-ghost" data-note-edit="${note.id}" type="button">Edit</button>
+                    <button class="button button-ghost" data-note-delete="${note.id}" type="button">Delete</button>
+                </div>
+            ` : ""}
+        </article>
+    `).join("") : emptyMarkup(options.emptyMessage || "No notes recorded yet. Add the first one to begin your project log.");
+
+    if (!showActions) {
+        return;
+    }
+    limited.forEach((note) => {
+        document.querySelector(`[data-note-edit="${note.id}"]`)?.addEventListener("click", () => {
+            state.editingProjectNoteId = note.id;
+            renderProjectNoteForm(note, options.formId || "project-note-form");
+            document.getElementById(options.formId || "project-note-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+        document.querySelector(`[data-note-delete="${note.id}"]`)?.addEventListener("click", async () => {
+            if (!confirmDanger(`Delete note "${note.title}"? This cannot be undone.`)) {
+                return;
+            }
+            await projectsApi.removeNote(state.currentProject.id, note.id);
+            await refreshProjectNotesSurface(options);
+        });
+    });
+}
+
+async function refreshProjectNotesSurface(options = {}) {
+    if (!state.currentProject) {
+        return;
+    }
+    const notes = await fetchProjectNotes(state.currentProject.id, options.query || {});
+    state.currentProjectNotes = notes;
+    if (options.summaryId) {
+        document.getElementById(options.summaryId).innerHTML = renderProjectNotesSummary(state.currentProject, notes);
+    }
+    renderProjectNotesList(notes, options);
+}
+
+async function fetchProjectNotes(projectId, params = {}) {
+    const response = await projectsApi.notes(projectId, params);
+    return response.data || [];
+}
+
+function bindProjectNoteComposer(formId, onSaved) {
+    const form = document.getElementById(formId);
+    if (!form) {
+        return;
+    }
+    form.onsubmit = async (event) => {
+        event.preventDefault();
+        try {
+            const fd = new FormData(form);
+            const payload = {
+                title: normalizeValue(fd.get("title")),
+                type: fd.get("type"),
+                content: normalizeValue(fd.get("content")),
+                tags: normalizeValue(fd.get("tags")),
+                pinned: fd.get("pinned") === "on"
+            };
+            if (!payload.title) {
+                throw new Error("Note title is required.");
+            }
+            if (!payload.content) {
+                throw new Error("Note content is required.");
+            }
+            if (state.editingProjectNoteId) {
+                await projectsApi.updateNote(state.currentProject.id, state.editingProjectNoteId, payload);
+            } else {
+                await projectsApi.createNote(state.currentProject.id, payload);
+            }
+            state.editingProjectNoteId = null;
+            renderProjectNoteForm(null, formId);
+            await onSaved?.();
+        } catch (error) {
+            setFormStatus(form, error.message, "error");
+        }
+    };
+    form.querySelector("[data-note-reset]")?.addEventListener("click", () => {
+        state.editingProjectNoteId = null;
+        renderProjectNoteForm(null, formId);
+    });
+}
+
+async function openProjectNotes(project) {
+    const modal = document.getElementById("project-notes-modal");
+    const title = document.getElementById("project-notes-title");
+    const copy = document.getElementById("project-notes-copy");
+    const archiveLink = document.getElementById("project-notes-view-archive");
+    if (!modal || !title || !copy) {
+        return;
+    }
+    state.currentProject = project;
+    state.editingProjectNoteId = null;
+    title.textContent = `${project.title || "Project"} notes`;
+    copy.textContent = "Quick-add a note here, then use the archive to inspect the full history with filters and sorting.";
+    if (archiveLink) {
+        archiveLink.href = `/api/v1/admin/project-notes.html?projectId=${project.id}`;
+    }
+    modal.classList.remove("hidden");
+    modal.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+    renderProjectNoteForm(null, "project-note-form");
+    const summary = document.getElementById("project-notes-summary");
+    const list = document.getElementById("project-notes-list");
+    if (summary) {
+        summary.innerHTML = `<div class="notes-loading">Loading notes...</div>`;
+    }
+    if (list) {
+        list.innerHTML = `<div class="notes-loading">Loading recent notes...</div>`;
+    }
+    try {
+        const notes = await fetchProjectNotes(project.id);
+        if (!state.currentProject || state.currentProject.id !== project.id) {
+            return;
+        }
+        state.currentProjectNotes = notes;
+        if (summary) {
+            summary.innerHTML = renderProjectNotesSummary(project, notes);
+        }
+        renderProjectNotesList(notes, {
+            summaryId: "project-notes-summary",
+            containerId: "project-notes-list",
+            limit: 5,
+            emptyMessage: "No recent notes yet. Add the first one to begin your project log."
+        });
+    } catch (error) {
+        if (summary) {
+            summary.innerHTML = emptyMarkup(error.message || "Unable to load notes.");
+        }
+        if (list) {
+            list.innerHTML = emptyMarkup("Unable to load notes.");
+        }
+    }
+    bindProjectNoteComposer("project-note-form", async () => {
+        const notes = await fetchProjectNotes(project.id);
+        if (!state.currentProject || state.currentProject.id !== project.id) {
+            return;
+        }
+        state.currentProjectNotes = notes;
+        if (summary) {
+            summary.innerHTML = renderProjectNotesSummary(project, notes);
+        }
+        renderProjectNotesList(notes, {
+            summaryId: "project-notes-summary",
+            containerId: "project-notes-list",
+            limit: 5,
+            emptyMessage: "No recent notes yet. Add the first one to begin your project log."
+        });
+    });
+}
+
+function closeProjectNotes() {
+    const modal = document.getElementById("project-notes-modal");
+    if (!modal) {
+        return;
+    }
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+    state.currentProject = null;
+    state.currentProjectNotes = [];
+    state.editingProjectNoteId = null;
+}
+
+async function initProjectNotesPage() {
+    const projectId = new URLSearchParams(window.location.search).get("projectId");
+    const hero = document.getElementById("project-notes-page-hero");
+    const summary = document.getElementById("project-notes-page-summary");
+    const list = document.getElementById("project-notes-page-list");
+    const typeSelect = document.getElementById("project-notes-page-type");
+    const form = document.getElementById("project-notes-page-form");
+    if (!projectId) {
+        document.querySelector(".project-notes-page-grid")?.classList.add("is-hidden");
+        const projectsResponse = await projectsApi.getAdmin({ page: 0, size: 50, sortBy: "createdAt", sortDirection: "DESC" });
+        const projects = projectsResponse.data?.content || [];
+        hero.innerHTML = `
+            <div class="form-hero" style="padding-top: 0;">
+                <div>
+                    <p class="eyebrow">Project Notes Archive</p>
+                    <h2>Select a project</h2>
+                    <p class="form-help">Choose a project to inspect, filter, and edit the full note history.</p>
+                </div>
+                <span class="chip">${projects.length} loaded</span>
+            </div>
+            <div class="field-grid">
+                <label>
+                    <span>Project</span>
+                    <select id="project-notes-project-picker" class="input">
+                        ${projects.map((project) => `<option value="${project.id}">${escapeHtml(project.title || `Project ${project.id}`)}</option>`).join("")}
+                    </select>
+                </label>
+            </div>
+            <div class="table-actions">
+                <button id="project-notes-project-open" class="button button-primary" type="button">Open notes</button>
+            </div>
+        `;
+        summary.innerHTML = emptyMarkup("No project selected.");
+        list.innerHTML = emptyMarkup("No notes to show.");
+        document.getElementById("project-notes-project-open")?.addEventListener("click", () => {
+            const selectedId = document.getElementById("project-notes-project-picker")?.value;
+            if (selectedId) {
+                window.location.href = `/api/v1/admin/project-notes.html?projectId=${selectedId}`;
+            }
+        });
+        return;
+    }
+
+    document.querySelector(".project-notes-page-grid")?.classList.remove("is-hidden");
+    typeSelect.innerHTML = markupOptions(PROJECT_NOTE_TYPES, true);
+    const projectResponse = await projectsApi.getAdminById(projectId);
+    state.currentProject = projectResponse.data;
+    const backLink = document.getElementById("project-notes-back");
+    if (backLink) {
+        backLink.href = "/api/v1/admin/projects.html";
+        backLink.addEventListener("click", (event) => {
+            event.preventDefault();
+            window.location.href = "/api/v1/admin/projects.html";
+        });
+    }
+
+    hero.innerHTML = `
+        <div class="form-hero" style="padding-top: 0;">
+            <div>
+                <p class="eyebrow">Project Notes Archive</p>
+                <h2>${escapeHtml(state.currentProject.title || "Project")}</h2>
+                <p class="form-help">${escapeHtml(state.currentProject.shortDescription || "Browse every note, filter the history, and study how the project evolved.")}</p>
+            </div>
+            <span class="chip">${formatEnumLabel(state.currentProject.status || "UNKNOWN")}</span>
+        </div>
+        <div class="notes-summary-grid">
+            <article class="notes-summary-card">
+                <span class="muted-label">Technologies</span>
+                <strong>${parseTags(state.currentProject.technologies).length}</strong>
+                <p class="section-copy">${parseTags(state.currentProject.technologies).slice(0, 6).join(", ") || "No technologies listed"}</p>
+            </article>
+            <article class="notes-summary-card">
+                <span class="muted-label">Quick Add</span>
+                <strong>Live</strong>
+                <p class="section-copy">Use the composer to log new features and decisions without leaving the archive.</p>
+            </article>
+        </div>
+    `;
+
+    renderProjectNoteForm(null, "project-notes-page-form");
+    bindProjectNoteComposer("project-notes-page-form", async () => {
+        await loadProjectNotesArchive();
+    });
+
+    const filters = ["project-notes-page-search", "project-notes-page-type", "project-notes-page-sort", "project-notes-page-pinned"];
+    filters.forEach((id) => {
+        document.getElementById(id).addEventListener("input", async () => {
+            await loadProjectNotesArchive();
+        });
+        document.getElementById(id).addEventListener("change", async () => {
+            await loadProjectNotesArchive();
+        });
+    });
+
+    async function loadProjectNotesArchive() {
+        summary.innerHTML = `<div class="notes-loading">Loading archive...</div>`;
+        list.innerHTML = `<div class="notes-loading">Loading notes...</div>`;
+        try {
+            const notes = await fetchProjectNotes(projectId);
+            state.currentProjectNotes = notes;
+            const filtered = filterProjectNotes(notes, {
+                search: document.getElementById("project-notes-page-search").value,
+                type: document.getElementById("project-notes-page-type").value,
+                pinnedOnly: document.getElementById("project-notes-page-pinned").checked
+            });
+            const sortValue = document.getElementById("project-notes-page-sort").value;
+            const sorted = sortProjectNotes(filtered, sortValue);
+            summary.innerHTML = renderProjectNotesSummary(state.currentProject, sorted);
+            renderProjectNotesList(sorted, {
+                summaryId: "project-notes-page-summary",
+                containerId: "project-notes-page-list",
+                searchId: "project-notes-page-search",
+                typeId: "project-notes-page-type",
+                pinnedOnlyId: "project-notes-page-pinned",
+                sortId: "project-notes-page-sort",
+                formId: "project-notes-page-form",
+                showActions: true,
+                emptyMessage: notes.length ? "No notes match the selected filters." : "No notes recorded yet. Add the first one to begin your archive."
+            });
+        } catch (error) {
+            summary.innerHTML = emptyMarkup(error.message || "Unable to load notes archive.");
+            list.innerHTML = emptyMarkup("Unable to load notes archive.");
+        }
+    }
+
+    await loadProjectNotesArchive();
 }
 
 async function loadProjectsAdmin() {
@@ -539,6 +1054,8 @@ async function loadProjectsAdmin() {
             </div>
             <div class="table-actions">
                 <button class="button button-ghost" data-project-view="${project.id}" type="button">View project</button>
+                <button class="button button-primary button-notes" data-project-notes="${project.id}" type="button">Notes</button>
+                <a class="button button-ghost" href="/api/v1/admin/project-notes.html?projectId=${project.id}" data-project-notes-view="${project.id}">View notes</a>
                 <button class="button button-ghost" data-project-edit="${project.id}" type="button">Edit</button>
                 <button class="button button-ghost" data-project-delete="${project.id}" type="button">Delete</button>
             </div>
@@ -557,6 +1074,13 @@ async function loadProjectsAdmin() {
         });
         document.querySelector(`[data-project-view="${project.id}"]`)?.addEventListener("click", () => {
             openProjectDetail(project);
+        });
+        document.querySelector(`[data-project-notes="${project.id}"]`)?.addEventListener("click", () => {
+            openProjectNotes(project);
+        });
+        document.querySelector(`[data-project-notes-view="${project.id}"]`)?.addEventListener("click", (event) => {
+            event.preventDefault();
+            window.location.href = `/api/v1/admin/project-notes.html?projectId=${project.id}`;
         });
         document.querySelector(`[data-project-delete="${project.id}"]`)?.addEventListener("click", async () => {
             if (!confirmDanger(`Delete "${project.title}"? This cannot be undone.`)) {
@@ -635,6 +1159,32 @@ async function initProjects() {
         if (event.key === "Escape" && !modal.classList.contains("hidden")) {
             closeProjectEditor();
         }
+    });
+
+    const notesModal = document.getElementById("project-notes-modal");
+    document.getElementById("project-notes-close").addEventListener("click", closeProjectNotes);
+    notesModal.addEventListener("click", (event) => {
+        if (event.target === notesModal) {
+            closeProjectNotes();
+        }
+    });
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && notesModal && !notesModal.classList.contains("hidden")) {
+            closeProjectNotes();
+        }
+    });
+    ["project-notes-search", "project-notes-pinned-only"].forEach((id) => {
+        const field = document.getElementById(id);
+        field.addEventListener("input", () => {
+            state.notesSearch = document.getElementById("project-notes-search").value;
+            state.notesPinnedOnly = document.getElementById("project-notes-pinned-only").checked;
+            renderProjectNotesList(state.currentProjectNotes);
+        });
+        field.addEventListener("change", () => {
+            state.notesSearch = document.getElementById("project-notes-search").value;
+            state.notesPinnedOnly = document.getElementById("project-notes-pinned-only").checked;
+            renderProjectNotesList(state.currentProjectNotes);
+        });
     });
 
     document.getElementById("admin-project-category").innerHTML = markupOptions(PROJECT_CATEGORIES, true);
@@ -972,24 +1522,191 @@ async function initCertifications() {
     await loadCertificationsAdmin();
 }
 
-function renderMessageControls(messages = []) {
+function renderMessageControls() {
     const container = document.getElementById("message-controls");
     if (!container) {
         return;
     }
+    const inboxCount = state.messagesCache.length;
+    const starredCount = state.messagesCache.filter((message) => message.starred).length;
+    const archivedCount = state.archivedMessagesCache.length;
+    const deletedCount = state.deletedMessagesCache.length;
     container.innerHTML = `
-        <input id="admin-message-search" class="input" type="search" placeholder="Search sender, subject, or body">
-        <select id="admin-message-status" class="input">
-            <option value="">All messages</option>
-            <option value="unread">Unread</option>
-            <option value="read">Read</option>
-        </select>
+        <div class="admin-message-toolbar">
+            <div class="admin-message-queues" role="tablist" aria-label="Message queues">
+                <button class="message-queue-btn ${state.messageQueue === "inbox" ? "active" : ""}" type="button" data-message-queue="inbox">
+                    Inbox <span>${inboxCount}</span>
+                </button>
+                <button class="message-queue-btn ${state.messageQueue === "starred" ? "active" : ""}" type="button" data-message-queue="starred">
+                    Starred <span>${starredCount}</span>
+                </button>
+                <button class="message-queue-btn ${state.messageQueue === "archived" ? "active" : ""}" type="button" data-message-queue="archived">
+                    Archived <span>${archivedCount}</span>
+                </button>
+                <button class="message-queue-btn ${state.messageQueue === "deleted" ? "active" : ""}" type="button" data-message-queue="deleted">
+                    Deleted <span>${deletedCount}</span>
+                </button>
+            </div>
+            <div class="admin-message-filters">
+                <input id="admin-message-search" class="input" type="search" placeholder="Search sender, subject, or body" value="${escapeHtml(state.messageSearch)}">
+                <select id="admin-message-status" class="input">
+                    <option value="">All messages</option>
+                    <option value="unread" ${state.messageStatus === "unread" ? "selected" : ""}>Unread</option>
+                    <option value="read" ${state.messageStatus === "read" ? "selected" : ""}>Read</option>
+                </select>
+            </div>
+        </div>
     `;
 }
 
+function formatMessageDate(value) {
+    if (!value) {
+        return "Unknown date";
+    }
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? "Unknown date" : date.toLocaleString();
+}
+
+function getMessageSource(queue = state.messageQueue) {
+    if (queue === "deleted") {
+        return state.deletedMessagesCache;
+    }
+    if (queue === "archived") {
+        return state.archivedMessagesCache;
+    }
+    if (queue === "starred") {
+        return state.messagesCache.filter((message) => message.starred);
+    }
+    return state.messagesCache;
+}
+
+function renderMessageActionMarkup(message, queue = state.messageQueue, context = "card") {
+    const isDeletedQueue = queue === "deleted";
+    const isArchivedQueue = queue === "archived";
+    const readLabel = message.readStatus ? "Mark unread" : "Mark read";
+    const readAction = message.readStatus ? "unread" : "read";
+    const starLabel = message.starred ? "Unstar" : "Star";
+    const starAction = message.starred ? "unstar" : "star";
+    const archiveLabel = message.archived ? "Unarchive" : "Archive";
+    const archiveAction = message.archived ? "unarchive" : "archive";
+    const restoreButton = `<button class="button button-primary" data-message-restore="${message.id}" type="button">Restore</button>`;
+    const purgeButton = `<button class="button button-ghost" data-message-purge="${message.id}" type="button">Delete forever</button>`;
+    return isDeletedQueue
+        ? `${restoreButton}${purgeButton}`
+        : `
+            <button class="button ${context === "detail" ? "button-primary" : "button-ghost"}" data-message-toggle-read="${message.id}" data-action="${readAction}" type="button">${readLabel}</button>
+            <button class="button button-ghost" data-message-toggle-star="${message.id}" data-action="${starAction}" type="button">${starLabel}</button>
+            <button class="button button-ghost" data-message-toggle-archive="${message.id}" data-action="${archiveAction}" type="button">${archiveLabel}</button>
+            <button class="button button-ghost" data-message-delete="${message.id}" type="button">Delete</button>
+        `;
+}
+
+function buildMessageDetailMarkup(message) {
+    const body = normalizeValue(message.message);
+    return `
+        <div class="message-detail-shell">
+            <div class="message-detail-grid">
+                <div class="project-detail-card">
+                    <span>Sender</span>
+                    <strong>${escapeHtml(message.name || "Anonymous")}</strong>
+                    <p class="section-copy">${escapeHtml(message.email || "Email not provided")}</p>
+                </div>
+                <div class="project-detail-card">
+                    <span>Status</span>
+                    <strong>${message.deleted ? "Deleted" : (message.archived ? "Archived" : (message.readStatus ? "Read" : "Unread"))}</strong>
+                    <p class="section-copy">${formatMessageDate(message.createdAt)}</p>
+                </div>
+                <div class="project-detail-card">
+                    <span>Flags</span>
+                    <strong>${message.starred ? "Starred" : (message.archived ? "Archived" : "Normal")}</strong>
+                    <p class="section-copy">Message ID ${escapeHtml(message.id ?? "N/A")}</p>
+                </div>
+            </div>
+            <div class="message-detail-body">
+                <span class="muted-label">Full message</span>
+                <p>${escapeHtml(body).replaceAll("\r\n", "<br>").replaceAll("\n", "<br>")}</p>
+            </div>
+            <div class="project-detail-actions">
+                ${renderMessageActionMarkup(message, state.messageQueue, "detail")}
+            </div>
+        </div>
+    `;
+}
+
+function openMessageDetail(message) {
+    const modal = document.getElementById("message-detail-modal");
+    const title = document.getElementById("message-detail-title");
+    const content = document.getElementById("message-detail-content");
+    if (!modal || !title || !content) {
+        return;
+    }
+    title.textContent = message.subject || "Message details";
+    content.innerHTML = buildMessageDetailMarkup(message);
+    modal.classList.remove("hidden");
+    modal.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+    content.querySelector(".button")?.focus();
+
+    content.querySelector(`[data-message-toggle-read="${message.id}"]`)?.addEventListener("click", async (event) => {
+        const action = event.currentTarget.dataset.action;
+        if (action === "read") {
+            await contactApi.markRead(message.id);
+        } else {
+            await contactApi.markUnread(message.id);
+        }
+        await refreshMessagesData();
+        closeMessageDetail();
+    });
+    content.querySelector(`[data-message-toggle-star="${message.id}"]`)?.addEventListener("click", async (event) => {
+        const action = event.currentTarget.dataset.action;
+        if (action === "star") {
+            await contactApi.star(message.id);
+        } else {
+            await contactApi.unstar(message.id);
+        }
+        await refreshMessagesData();
+        closeMessageDetail();
+    });
+    content.querySelector(`[data-message-toggle-archive="${message.id}"]`)?.addEventListener("click", async (event) => {
+        const action = event.currentTarget.dataset.action;
+        if (action === "archive") {
+            await contactApi.archive(message.id);
+        } else {
+            await contactApi.unarchive(message.id);
+        }
+        await refreshMessagesData();
+        closeMessageDetail();
+    });
+    content.querySelector(`[data-message-delete="${message.id}"]`)?.addEventListener("click", async () => {
+        await contactApi.remove(message.id);
+        await refreshMessagesData();
+        closeMessageDetail();
+    });
+    content.querySelector(`[data-message-restore="${message.id}"]`)?.addEventListener("click", async () => {
+        await contactApi.restore(message.id);
+        await refreshMessagesData();
+        closeMessageDetail();
+    });
+    content.querySelector(`[data-message-purge="${message.id}"]`)?.addEventListener("click", async () => {
+        await contactApi.purge(message.id);
+        await refreshMessagesData();
+        closeMessageDetail();
+    });
+}
+
+function closeMessageDetail() {
+    const modal = document.getElementById("message-detail-modal");
+    if (!modal) {
+        return;
+    }
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+}
+
 function filterMessages(messages) {
-    const search = normalizeValue(document.getElementById("admin-message-search")?.value).toLowerCase();
-    const status = document.getElementById("admin-message-status")?.value || "";
+    const search = normalizeValue(state.messageSearch || document.getElementById("admin-message-search")?.value).toLowerCase();
+    const status = state.messageStatus || document.getElementById("admin-message-status")?.value || "";
 
     return messages.filter((message) => {
         const text = [
@@ -1007,55 +1724,137 @@ function filterMessages(messages) {
 }
 
 function renderMessagesAdmin(messages) {
-    const filtered = filterMessages(messages);
-    document.getElementById("message-list").innerHTML = filtered.map((message) => `
-        <article class="message-card">
-            <header>
-                <div>
-                    <strong>${message.subject}</strong>
-                    <p class="section-copy">${message.name} | ${message.email}</p>
+    const filtered = filterMessages(getMessageSource());
+    document.getElementById("message-list").innerHTML = filtered.map((message, index) => `
+        <article class="admin-message-thread ${message.readStatus ? "" : "is-unread"} ${message.starred ? "is-starred" : ""} ${message.archived ? "is-archived" : ""}">
+            <div class="admin-message-avatar">${escapeHtml((message.name || "A").trim().charAt(0).toUpperCase())}</div>
+            <div class="admin-message-content">
+                <header class="admin-message-header">
+                    <div class="admin-message-title-block">
+                        <span class="card-number">No ${String(index + 1).padStart(2, "0")}</span>
+                        <strong>${escapeHtml(message.subject || "No subject")}</strong>
+                        <p class="section-copy admin-message-meta">${escapeHtml(message.name || "Anonymous")} | ${escapeHtml(message.email || "Email not provided")}</p>
+                    </div>
+                    <div class="admin-message-flags">
+                        ${message.starred ? '<span class="chip chip-starred"><i class="fa-solid fa-star"></i> Starred</span>' : ""}
+                        ${message.archived ? '<span class="chip chip-archive"><i class="fa-solid fa-box-archive"></i> Archived</span>' : ""}
+                        <span class="chip">${message.deleted ? "Deleted" : (message.readStatus ? "Read" : "Unread")}</span>
+                    </div>
+                </header>
+                <div class="admin-message-summary">
+                    <p class="section-copy admin-message-preview">${escapeHtml(message.message || "No message content provided.")}</p>
+                    <div class="chip-row admin-message-chip-row">
+                        <span class="chip">${formatMessageDate(message.createdAt)}</span>
+                        <span class="chip">${escapeHtml(message.email || "No email")}</span>
+                    </div>
                 </div>
-                <span class="chip">${message.readStatus ? "Read" : "Unread"}</span>
-            </header>
-            <p>${message.message}</p>
-            <div class="message-actions">
-                ${message.readStatus ? "" : `<button class="button button-ghost" data-message-read="${message.id}" type="button">Mark as read</button>`}
-                <button class="button button-ghost" data-message-delete="${message.id}" type="button">Delete</button>
+                <div class="table-actions admin-message-actions">
+                    <button class="button button-primary" data-message-view="${message.id}" type="button">View</button>
+                    ${renderMessageActionMarkup(message, state.messageQueue, "card")}
+                </div>
+            </div>
+            <div class="admin-message-aside">
+                <span class="muted-label">Message state</span>
+                <strong>${message.deleted ? "Deleted" : (message.archived ? "Archived" : (message.readStatus ? "Read" : "Unread"))}</strong>
+                <p class="section-copy">${formatMessageDate(message.createdAt)}</p>
             </div>
         </article>
-    `).join("") || emptyMarkup(messages.length ? "No messages match the selected filters." : "No messages found.");
+    `).join("") || emptyMarkup(getMessageSource().length ? "No messages match the selected filters." : "No messages found.");
     filtered.forEach((message) => {
-        document.querySelector(`[data-message-read="${message.id}"]`)?.addEventListener("click", async () => {
-            await contactApi.markRead(message.id);
+        document.querySelector(`[data-message-view="${message.id}"]`)?.addEventListener("click", () => {
+            openMessageDetail(message);
+        });
+        document.querySelector(`[data-message-toggle-read="${message.id}"]`)?.addEventListener("click", async (event) => {
+            const action = event.currentTarget.dataset.action;
+            if (action === "read") {
+                await contactApi.markRead(message.id);
+            } else {
+                await contactApi.markUnread(message.id);
+            }
+            await refreshMessagesData();
+        });
+        document.querySelector(`[data-message-toggle-star="${message.id}"]`)?.addEventListener("click", async (event) => {
+            const action = event.currentTarget.dataset.action;
+            if (action === "star") {
+                await contactApi.star(message.id);
+            } else {
+                await contactApi.unstar(message.id);
+            }
+            await refreshMessagesData();
+        });
+        document.querySelector(`[data-message-toggle-archive="${message.id}"]`)?.addEventListener("click", async (event) => {
+            const action = event.currentTarget.dataset.action;
+            if (action === "archive") {
+                await contactApi.archive(message.id);
+            } else {
+                await contactApi.unarchive(message.id);
+            }
             await refreshMessagesData();
         });
         document.querySelector(`[data-message-delete="${message.id}"]`)?.addEventListener("click", async () => {
             await contactApi.remove(message.id);
             await refreshMessagesData();
         });
+        document.querySelector(`[data-message-restore="${message.id}"]`)?.addEventListener("click", async () => {
+            await contactApi.restore(message.id);
+            await refreshMessagesData();
+        });
+        document.querySelector(`[data-message-purge="${message.id}"]`)?.addEventListener("click", async () => {
+            await contactApi.purge(message.id);
+            await refreshMessagesData();
+        });
     });
 }
 
 async function refreshMessagesData() {
-    const response = await contactApi.list();
-    state.messagesCache = response.data || [];
-    renderMessagesAdmin(state.messagesCache);
+    const [inboxResponse, archivedResponse, deletedResponse] = await Promise.all([
+        contactApi.list(),
+        contactApi.listArchived(),
+        contactApi.listDeleted()
+    ]);
+    state.messagesCache = inboxResponse.data || [];
+    state.archivedMessagesCache = archivedResponse.data || [];
+    state.deletedMessagesCache = deletedResponse.data || [];
+    renderMessageControls();
+    renderMessagesAdmin();
 }
 
 async function initMessages() {
-    const response = await contactApi.list();
-    state.messagesCache = response.data || [];
-    renderMessageControls(state.messagesCache);
-    renderMessagesAdmin(state.messagesCache);
+    await refreshMessagesData();
+
+    const modal = document.getElementById("message-detail-modal");
+    const closeButton = document.getElementById("message-detail-close");
+    closeButton?.addEventListener("click", closeMessageDetail);
+    modal?.addEventListener("click", (event) => {
+        if (event.target === modal) {
+            closeMessageDetail();
+        }
+    });
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && modal && !modal.classList.contains("hidden")) {
+            closeMessageDetail();
+        }
+    });
 
     const controls = document.getElementById("message-controls");
     if (controls && !controls.dataset.bound) {
         controls.dataset.bound = "true";
+        controls.addEventListener("click", (event) => {
+            const button = event.target.closest("[data-message-queue]");
+            if (!button) {
+                return;
+            }
+            state.messageQueue = button.dataset.messageQueue || "inbox";
+            renderMessageControls();
+            renderMessagesAdmin();
+        });
         controls.addEventListener("input", () => {
-            renderMessagesAdmin(state.messagesCache);
+            state.messageSearch = document.getElementById("admin-message-search")?.value || "";
+            renderMessagesAdmin();
         });
         controls.addEventListener("change", () => {
-            renderMessagesAdmin(state.messagesCache);
+            state.messageStatus = document.getElementById("admin-message-status")?.value || "";
+            renderMessagesAdmin();
         });
     }
 }
@@ -1420,6 +2219,7 @@ async function bootstrap() {
     const handlers = {
         dashboard: initDashboard,
         projects: initProjects,
+        "project-notes": initProjectNotesPage,
         skills: initSkills,
         certifications: initCertifications,
         messages: initMessages,

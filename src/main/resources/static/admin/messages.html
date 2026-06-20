@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <script>
-        if (!localStorage.getItem("pms-auth") || !JSON.parse(localStorage.getItem("pms-auth")).accessToken) {
+        try {
+            const auth = JSON.parse(localStorage.getItem("pms-auth") || "{}");
+            if (!auth.accessToken) {
+                window.location.replace("/api/v1/admin/login.html");
+            }
+        } catch {
             window.location.replace("/api/v1/admin/login.html");
         }
         (function() {
@@ -37,10 +42,27 @@
                 <button class="button button-ghost" data-logout type="button">Logout</button>
             </section>
             <section class="panel">
-                <div class="explorer-controls admin-filter-bar" id="message-controls"></div>
-                <div id="message-list" class="message-list"></div>
+                <div class="explorer-controls admin-message-controls" id="message-controls"></div>
+                <div id="message-list" class="admin-message-thread-list"></div>
             </section>
         </main>
+    </div>
+
+    <div id="message-detail-modal" class="modal-overlay hidden" aria-hidden="true">
+        <div class="modal-content message-detail-modal">
+            <div class="message-detail-content">
+                <div class="modal-header" style="margin-bottom: 20px;">
+                    <div>
+                        <p class="eyebrow">Message overview</p>
+                        <h2 id="message-detail-title" style="margin: 0;">Message details</h2>
+                    </div>
+                    <button id="message-detail-close" class="modal-close" type="button" aria-label="Close message details">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div id="message-detail-content"></div>
+            </div>
+        </div>
     </div>
 </body>
 </html>

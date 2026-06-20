@@ -12,6 +12,27 @@ import { initAnimations } from "./animations.js";
 const PROJECT_CATEGORIES = ["", "WEB", "MOBILE", "BACKEND", "FULL_STACK", "DEVOPS", "DATA", "OTHER"];
 const PROJECT_STATUSES = ["", "PLANNED", "IN_PROGRESS", "COMPLETED", "ARCHIVED"];
 
+function readStoredArray(key) {
+    try {
+        const value = localStorage.getItem(key);
+        if (!value) {
+            return [];
+        }
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch {
+        return [];
+    }
+}
+
+function writeStoredArray(key, value) {
+    try {
+        localStorage.setItem(key, JSON.stringify(value));
+    } catch {
+        // Ignore storage failures so the public site still boots.
+    }
+}
+
 const state = {
     page: 0,
     size: 6,
@@ -24,8 +45,8 @@ const state = {
     projectFeaturedFilter: "",
     projectEscapeBound: false,
     projectDetail: null,
-    starredProjects: JSON.parse(localStorage.getItem("starred_projects") || "[]"),
-    comparedProjects: JSON.parse(localStorage.getItem("compared_projects") || "[]")
+    starredProjects: readStoredArray("starred_projects"),
+    comparedProjects: readStoredArray("compared_projects")
         .filter(Boolean)
         .map((id) => String(id))
         .slice(0, 3)
@@ -819,7 +840,7 @@ function bindCardFeatureEvents() {
         btn.addEventListener("click", (e) => {
             e.stopPropagation();
             const projectId = String(e.currentTarget.dataset.id);
-            let starred = JSON.parse(localStorage.getItem("starred_projects") || "[]");
+            let starred = readStoredArray("starred_projects");
             if (starred.includes(projectId)) {
                 starred = starred.filter(id => id !== projectId);
                 e.currentTarget.classList.remove("starred");
@@ -837,7 +858,7 @@ function bindCardFeatureEvents() {
                 e.currentTarget.setAttribute("aria-label", "Unstar project");
                 e.currentTarget.setAttribute("aria-pressed", "true");
             }
-            localStorage.setItem("starred_projects", JSON.stringify(starred));
+            writeStoredArray("starred_projects", starred);
             state.starredProjects = starred;
         });
     });
@@ -864,7 +885,7 @@ function bindCardFeatureEvents() {
                 e.currentTarget.querySelector("i")?.classList.add("fa-solid");
                 e.currentTarget.setAttribute("aria-pressed", "true");
             }
-            localStorage.setItem("compared_projects", JSON.stringify(state.comparedProjects));
+            writeStoredArray("compared_projects", state.comparedProjects);
             updateCompareBanner();
         });
     });
@@ -948,7 +969,7 @@ function bindCompareControls() {
     if (bannerClear) {
         bannerClear.addEventListener("click", () => {
             state.comparedProjects = [];
-            localStorage.setItem("compared_projects", JSON.stringify(state.comparedProjects));
+            writeStoredArray("compared_projects", state.comparedProjects);
             updateCompareBanner();
             document.querySelectorAll(".mnc-compare-btn").forEach(btn => {
                 btn.classList.remove("selected");

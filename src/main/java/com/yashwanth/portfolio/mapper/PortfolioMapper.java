@@ -4,6 +4,7 @@ import com.yashwanth.portfolio.dto.response.AboutResponse;
 import com.yashwanth.portfolio.dto.response.AdminProfileResponse;
 import com.yashwanth.portfolio.dto.response.CertificationResponse;
 import com.yashwanth.portfolio.dto.response.ContactMessageResponse;
+import com.yashwanth.portfolio.dto.response.ProjectNoteResponse;
 import com.yashwanth.portfolio.dto.response.ProjectResponse;
 import com.yashwanth.portfolio.dto.response.ResumeResponse;
 import com.yashwanth.portfolio.dto.response.SkillResponse;
@@ -13,9 +14,12 @@ import com.yashwanth.portfolio.entity.AdminUser;
 import com.yashwanth.portfolio.entity.Certification;
 import com.yashwanth.portfolio.entity.ContactMessage;
 import com.yashwanth.portfolio.entity.Project;
+import com.yashwanth.portfolio.entity.ProjectNote;
 import com.yashwanth.portfolio.entity.Resume;
 import com.yashwanth.portfolio.entity.Skill;
 import com.yashwanth.portfolio.entity.StoredFile;
+import java.util.Arrays;
+import java.util.List;
 
 public final class PortfolioMapper {
 
@@ -61,6 +65,19 @@ public final class PortfolioMapper {
         );
     }
 
+    public static ProjectNoteResponse toProjectNote(ProjectNote note) {
+        return new ProjectNoteResponse(
+                note.getId(),
+                note.getTitle(),
+                note.getType(),
+                note.getContent(),
+                splitTags(note.getTags()),
+                note.isPinned(),
+                note.getCreatedAt(),
+                note.getUpdatedAt()
+        );
+    }
+
     public static SkillResponse toSkill(Skill skill) {
         return new SkillResponse(skill.getId(), skill.getSkillName(), skill.getCategory(), skill.getProficiencyPercentage(), skill.getDisplayOrder(), skill.getDisplayed());
     }
@@ -91,6 +108,9 @@ public final class PortfolioMapper {
                 message.getSubject(),
                 message.getMessage(),
                 message.isReadStatus(),
+                message.isStarred(),
+                message.isArchived(),
+                message.isDeleted(),
                 message.getCreatedAt()
         );
     }
@@ -111,5 +131,15 @@ public final class PortfolioMapper {
                 about.getProfileImageUrl(),
                 about.getHeadlineTicker()
         );
+    }
+
+    private static List<String> splitTags(String tags) {
+        if (tags == null || tags.isBlank()) {
+            return List.of();
+        }
+        return Arrays.stream(tags.split(","))
+                .map(String::trim)
+                .filter(tag -> !tag.isBlank())
+                .toList();
     }
 }

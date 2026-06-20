@@ -27,4 +27,10 @@ public class ContactMessage extends AuditableEntity {
 
     @Column(nullable = false)
     private boolean readStatus;
+
+    @Column(nullable = false)
+    private boolean starred = false;
+
+    @Column(nullable = false)
+    private boolean archived = false;
 }

@@ -9,5 +9,9 @@ public interface ContactMessageRepository extends JpaRepository<ContactMessage, 
 
     List<ContactMessage> findByDeletedFalseOrderByCreatedAtDesc();
 
+    List<ContactMessage> findByDeletedTrueOrderByCreatedAtDesc();
+
+    List<ContactMessage> findByArchivedTrueAndDeletedFalseOrderByCreatedAtDesc();
+
     long countByDeletedFalse();
 }

@@ -1,12 +1,28 @@
 const ACCENTS = ["blue", "violet"];
 
+function safeStorageGet(key) {
+    try {
+        return localStorage.getItem(key);
+    } catch {
+        return null;
+    }
+}
+
+function safeStorageSet(key, value) {
+    try {
+        localStorage.setItem(key, value);
+    } catch {
+        // Ignore storage failures so theme bootstrap never blocks the page.
+    }
+}
+
 export function initTheme() {
     // Keep legacy accent support if needed
-    const savedAccent = localStorage.getItem("pms-accent") || ACCENTS[0];
+    const savedAccent = safeStorageGet("pms-accent") || ACCENTS[0];
     document.body.dataset.accent = savedAccent;
 
     // Dark/Light Theme setup
-    const savedTheme = localStorage.getItem("pms-theme");
+    const savedTheme = safeStorageGet("pms-theme");
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     const initialTheme = savedTheme || (prefersDark ? "dark" : "light");
     
@@ -23,7 +39,7 @@ export function initTheme() {
             
             document.documentElement.dataset.theme = newTheme;
             document.body.dataset.theme = newTheme;
-            localStorage.setItem("pms-theme", newTheme);
+            safeStorageSet("pms-theme", newTheme);
             updateThemeIcon(newTheme);
         }
     });

@@ -46,6 +46,23 @@ public class ContactServiceImpl implements ContactService {
     public List<ContactMessageResponse> getAll() {
         return contactMessageRepository.findByDeletedFalseOrderByCreatedAtDesc()
                 .stream()
+                .filter(message -> !message.isArchived())
+                .map(PortfolioMapper::toContactMessage)
+                .toList();
+    }
+
+    @Override
+    public List<ContactMessageResponse> getArchived() {
+        return contactMessageRepository.findByArchivedTrueAndDeletedFalseOrderByCreatedAtDesc()
+                .stream()
+                .map(PortfolioMapper::toContactMessage)
+                .toList();
+    }
+
+    @Override
+    public List<ContactMessageResponse> getDeleted() {
+        return contactMessageRepository.findByDeletedTrueOrderByCreatedAtDesc()
+                .stream()
                 .map(PortfolioMapper::toContactMessage)
                 .toList();
     }
@@ -53,22 +70,90 @@ public class ContactServiceImpl implements ContactService {
     @Override
     @Transactional
     public ContactMessageResponse markAsRead(Long id) {
-        ContactMessage message = getEntity(id);
+        ContactMessage message = getActiveEntity(id);
         message.setReadStatus(true);
         return PortfolioMapper.toContactMessage(contactMessageRepository.save(message));
     }
 
     @Override
     @Transactional
+    public ContactMessageResponse markAsUnread(Long id) {
+        ContactMessage message = getActiveEntity(id);
+        message.setReadStatus(false);
+        return PortfolioMapper.toContactMessage(contactMessageRepository.save(message));
+    }
+
+    @Override
+    @Transactional
+    public ContactMessageResponse star(Long id) {
+        ContactMessage message = getActiveEntity(id);
+        message.setStarred(true);
+        return PortfolioMapper.toContactMessage(contactMessageRepository.save(message));
+    }
+
+    @Override
+    @Transactional
+    public ContactMessageResponse unstar(Long id) {
+        ContactMessage message = getActiveEntity(id);
+        message.setStarred(false);
+        return PortfolioMapper.toContactMessage(contactMessageRepository.save(message));
+    }
+
+    @Override
+    @Transactional
+    public ContactMessageResponse archive(Long id) {
+        ContactMessage message = getActiveEntity(id);
+        message.setArchived(true);
+        return PortfolioMapper.toContactMessage(contactMessageRepository.save(message));
+    }
+
+    @Override
+    @Transactional
+    public ContactMessageResponse unarchive(Long id) {
+        ContactMessage message = getArchivedEntity(id);
+        message.setArchived(false);
+        return PortfolioMapper.toContactMessage(contactMessageRepository.save(message));
+    }
+
+    @Override
+    @Transactional
+    public ContactMessageResponse restore(Long id) {
+        ContactMessage message = getDeletedEntity(id);
+        message.setDeleted(false);
+        return PortfolioMapper.toContactMessage(contactMessageRepository.save(message));
+    }
+
+    @Override
+    @Transactional
     public void delete(Long id) {
-        ContactMessage message = getEntity(id);
+        ContactMessage message = getActiveEntity(id);
         message.setDeleted(true);
+        message.setArchived(false);
         contactMessageRepository.save(message);
     }
 
-    private ContactMessage getEntity(Long id) {
+    @Override
+    @Transactional
+    public void purge(Long id) {
+        ContactMessage message = getDeletedEntity(id);
+        contactMessageRepository.delete(message);
+    }
+
+    private ContactMessage getActiveEntity(Long id) {
         return contactMessageRepository.findById(id)
                 .filter(message -> !message.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Message not found"));
+    }
+
+    private ContactMessage getDeletedEntity(Long id) {
+        return contactMessageRepository.findById(id)
+                .filter(ContactMessage::isDeleted)
+                .orElseThrow(() -> new ResourceNotFoundException("Deleted message not found"));
+    }
+
+    private ContactMessage getArchivedEntity(Long id) {
+        return contactMessageRepository.findById(id)
+                .filter(message -> message.isArchived() && !message.isDeleted())
+                .orElseThrow(() -> new ResourceNotFoundException("Archived message not found"));
     }
 }
