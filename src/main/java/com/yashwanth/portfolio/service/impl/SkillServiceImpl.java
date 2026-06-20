@@ -47,6 +47,7 @@ public class SkillServiceImpl implements SkillService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<SkillResponse> getAll(SkillCategory category) {
         List<Skill> skills = category == null
                 ? skillRepository.findByDeletedFalseOrderByDisplayOrderAscSkillNameAsc()

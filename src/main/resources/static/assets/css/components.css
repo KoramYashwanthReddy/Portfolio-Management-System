@@ -2310,3 +2310,157 @@ body[data-page="feedback"] .welcome-preview-card {
         padding: 12px;
     }
 }
+
+/* Portfolio refinements */
+.projects-section-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    align-items: end;
+    margin-bottom: 24px;
+}
+
+.projects-header-actions {
+    display: grid;
+    gap: 14px;
+    justify-items: end;
+}
+
+.projects-search-wrapper input {
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.04);
+}
+
+.projects-filter-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.filter-pill {
+    appearance: none;
+    border: 1px solid rgba(var(--accent-rgb), 0.12);
+    background: rgba(var(--accent-rgb), 0.04);
+    color: var(--muted);
+    padding: 9px 16px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.filter-pill:hover {
+    color: var(--text);
+    border-color: rgba(var(--accent-rgb), 0.22);
+    background: rgba(var(--accent-rgb), 0.08);
+}
+
+.filter-pill.active {
+    color: #ffffff;
+    background: linear-gradient(135deg, var(--accent), var(--accent-alt));
+    border-color: transparent;
+    box-shadow: 0 10px 22px rgba(var(--accent-rgb), 0.2);
+}
+
+.resume-info {
+    display: grid;
+    gap: 18px;
+    align-content: start;
+}
+
+.resume-preview-card {
+    cursor: pointer;
+    border-radius: 30px;
+    padding: 30px;
+    background:
+        radial-gradient(circle at top right, rgba(var(--accent-rgb), 0.12), transparent 38%),
+        linear-gradient(180deg, rgba(var(--surface-rgb), 0.96), rgba(var(--surface-rgb), 0.88));
+    border: 1px solid rgba(var(--accent-rgb), 0.12);
+    box-shadow: 0 28px 64px rgba(15, 23, 42, 0.08);
+    display: grid;
+    gap: 16px;
+}
+
+.resume-preview-meta {
+    display: inline-flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    color: var(--accent);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.resume-preview-lines {
+    display: grid;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.resume-preview-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.resume-preview-summary .chip {
+    font-size: 0.72rem;
+}
+
+.certification-card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 100%;
+}
+
+.certification-card .chip-row {
+    margin-top: 0;
+}
+
+.certification-card .button {
+    width: fit-content;
+}
+
+.knowledge-toolbar {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+}
+
+.knowledge-toolbar .section-copy {
+    max-width: 64ch;
+}
+
+[data-theme="dark"] .resume-preview-card {
+    background:
+        radial-gradient(circle at top right, rgba(129, 140, 248, 0.16), transparent 38%),
+        linear-gradient(180deg, rgba(10, 10, 12, 0.96), rgba(15, 15, 18, 0.9));
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .filter-pill {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+@media (max-width: 900px) {
+    .projects-section-header,
+    .knowledge-toolbar {
+        align-items: start;
+        flex-direction: column;
+    }
+
+    .projects-header-actions {
+        width: 100%;
+        justify-items: stretch;
+    }
+
+    .projects-filter-pills {
+        justify-content: flex-start;
+    }
+}

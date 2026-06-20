@@ -617,11 +617,15 @@ function renderKnowledge(resume, certifications, resumeError = "") {
         `;
 
         previewWrapper.innerHTML = `
-            <div class="resume-preview-card open-resume-modal" style="cursor: pointer;">
+            <div class="resume-preview-card open-resume-modal">
                 <div class="preview-eyebrow">Resume uploaded</div>
                 <div class="preview-name">${state.about?.name || "Koram Yashwanth Reddy"}</div>
                 <div class="preview-title">${state.about?.designation || "Entry-Level Software Developer"}</div>
-                <div class="resume-preview-meta">${resume.versionLabel || "Latest"} | Uploaded ${formatDate(resume.uploadedAt)}</div>
+                <div class="resume-preview-meta">
+                    <span class="chip">${resume.versionLabel || "Latest"}</span>
+                    <span class="chip">Uploaded ${formatDate(resume.uploadedAt)}</span>
+                    <span class="chip">${resume.file?.contentType || "Document"}</span>
+                </div>
                 <div class="resume-preview-lines">
                     <div class="skeleton-line" style="width: 100%;"></div>
                     <div class="skeleton-line" style="width: 95%;"></div>
@@ -654,11 +658,12 @@ function renderKnowledge(resume, certifications, resumeError = "") {
     setHref("resume-download-link-hero", resumeUrl);
 
     setHtml("certification-grid", certifications.map((certification) => `
-        <article class="project-card">
+        <article class="project-card certification-card">
             <p class="eyebrow">${certification.issuer}</p>
             <h3>${certification.title}</h3>
             <p class="section-copy">Issued ${certification.issueDate || "n/a"}${certification.expiryDate ? ` | Expires ${certification.expiryDate}` : ""}</p>
             <div class="chip-row">
+                ${certification.credentialUrl ? `<a class="chip" href="${certification.credentialUrl}" target="_blank" rel="noreferrer">Verify credential</a>` : ""}
                 ${certification.credentialId ? `<span class="chip">${certification.credentialId}</span>` : ""}
                 ${certification.certificateFile?.downloadUrl ? `<a class="button button-ghost" href="${certification.certificateFile.downloadUrl}" target="_blank" rel="noreferrer">Open PDF</a>` : ""}
             </div>

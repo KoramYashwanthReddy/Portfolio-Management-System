@@ -48,6 +48,7 @@ public class CertificationServiceImpl implements CertificationService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<CertificationResponse> getAll() {
         return certificationRepository.findByDeletedFalseOrderByIssueDateDesc()
                 .stream()

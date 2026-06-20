@@ -26,7 +26,8 @@ const state = {
     skillsCache: [],
     certificationsCache: [],
     aboutSnapshot: null,
-    resumeSnapshot: null
+    resumeSnapshot: null,
+    messagesCache: []
 };
 
 function markupOptions(values, includeAll = false) {
@@ -173,6 +174,10 @@ function renderMetricCards(metrics) {
     `).join("");
 }
 
+function renderFilteredCardList(items, emptyMessage, renderer) {
+    return (items || []).map(renderer).join("") || emptyMarkup(emptyMessage);
+}
+
 function fillForm(form, values) {
     Object.entries(values).forEach(([key, value]) => {
         const field = form.elements.namedItem(key);
@@ -203,11 +208,21 @@ async function initDashboard() {
             <p>${message.name} | ${message.email}</p>
         </article>
     `).join("") || emptyMarkup("No recent messages.");
-    document.getElementById("dashboard-projects").innerHTML = (data.recentProjects || []).map((project) => `
-        <article class="project-card">
-            <p class="eyebrow">${project.category}</p>
-            <h3>${project.title}</h3>
-            <p class="section-copy">${project.shortDescription}</p>
+    document.getElementById("dashboard-projects").innerHTML = (data.recentProjects || []).map((project, index) => `
+        <article class="table-card dashboard-project-card">
+            <header>
+                <div>
+                    <span class="card-number">No ${String(index + 1).padStart(2, "0")}</span>
+                    <strong>${project.title}</strong>
+                    <p class="section-copy">${project.shortDescription}</p>
+                </div>
+                <span class="chip">${project.status || "Updated"}</span>
+            </header>
+            <div class="chip-row">
+                <span class="chip">${project.category || "OTHER"}</span>
+                ${project.featured ? '<span class="chip">Featured</span>' : ""}
+                ${project.completionDate ? `<span class="chip">${project.completionDate}</span>` : ""}
+            </div>
         </article>
     `).join("") || emptyMarkup("No recent projects.");
 
@@ -246,6 +261,88 @@ async function initDashboard() {
             }
         });
     }
+}
+
+function renderCertificationControls(certifications = []) {
+    const container = document.getElementById("certification-controls");
+    if (!container) {
+        return;
+    }
+    const issuerOptions = [...new Set(certifications.map((certification) => certification.issuer).filter(Boolean))];
+    container.innerHTML = `
+        <input id="admin-cert-search" class="input" type="search" placeholder="Search title, issuer, or ID">
+        <select id="admin-cert-issuer" class="input">
+            <option value="">All issuers</option>
+            ${issuerOptions.map((issuer) => `<option value="${issuer}">${issuer}</option>`).join("")}
+        </select>
+        <select id="admin-cert-file" class="input">
+            <option value="">Any file state</option>
+            <option value="with-file">With file</option>
+            <option value="without-file">Without file</option>
+        </select>
+    `;
+}
+
+function filterCertifications(certifications) {
+    const search = normalizeValue(document.getElementById("admin-cert-search")?.value).toLowerCase();
+    const issuer = document.getElementById("admin-cert-issuer")?.value || "";
+    const fileState = document.getElementById("admin-cert-file")?.value || "";
+
+    return certifications.filter((certification) => {
+        const text = [
+            certification.title,
+            certification.issuer,
+            certification.credentialId,
+            certification.credentialUrl
+        ].join(" ").toLowerCase();
+        const hasFile = Boolean(certification.certificateFile?.downloadUrl);
+        const matchesSearch = !search || text.includes(search);
+        const matchesIssuer = !issuer || certification.issuer === issuer;
+        const matchesFile = !fileState
+            || (fileState === "with-file" && hasFile)
+            || (fileState === "without-file" && !hasFile);
+        return matchesSearch && matchesIssuer && matchesFile;
+    });
+}
+
+function renderCertificationsAdmin(certifications) {
+    const filtered = filterCertifications(certifications);
+    document.getElementById("admin-certification-list").innerHTML = filtered.map((certification) => `
+        <article class="table-card">
+            <header>
+                <div>
+                    <strong>${certification.title}</strong>
+                    <p class="section-copy">${certification.issuer}</p>
+                </div>
+                <span class="chip">${certification.expiryDate ? "Active" : "Open"}</span>
+            </header>
+            <div class="chip-row">
+                <span class="chip">Issued ${certification.issueDate}</span>
+                ${certification.expiryDate ? `<span class="chip">Expires ${certification.expiryDate}</span>` : ""}
+                ${certification.credentialId ? `<span class="chip">ID ${certification.credentialId}</span>` : ""}
+            </div>
+            <div class="table-actions">
+                <button class="button button-ghost" data-cert-edit="${certification.id}" type="button">Edit</button>
+                <button class="button button-ghost" data-cert-delete="${certification.id}" type="button">Delete</button>
+                ${certification.certificateFile?.downloadUrl ? `<a class="button button-ghost" href="${certification.certificateFile.downloadUrl}" target="_blank" rel="noreferrer">Open file</a>` : ""}
+            </div>
+        </article>
+    `).join("") || emptyMarkup(certifications.length ? "No certifications match the selected filters." : "No certifications found.");
+    filtered.forEach((certification) => {
+        document.querySelector(`[data-cert-edit="${certification.id}"]`)?.addEventListener("click", () => {
+            state.editingCertificationId = certification.id;
+            state.currentCertification = certification;
+            openCertificationEditor();
+            fillForm(document.getElementById("certification-form"), certification);
+        });
+        document.querySelector(`[data-cert-delete="${certification.id}"]`)?.addEventListener("click", async () => {
+            if (!confirmDanger(`Delete certification "${certification.title}"? This cannot be undone.`)) {
+                return;
+            }
+            await certificationsApi.remove(certification.id);
+            await loadCertificationsAdmin();
+        });
+    });
 }
 
 function renderProjectForm() {
@@ -689,42 +786,8 @@ async function loadCertificationsAdmin() {
     const response = await certificationsApi.listAdmin();
     const certifications = response.data || [];
     state.certificationsCache = certifications;
-    document.getElementById("admin-certification-list").innerHTML = certifications.map((certification) => `
-        <article class="table-card">
-            <header>
-                <div>
-                    <strong>${certification.title}</strong>
-                    <p class="section-copy">${certification.issuer}</p>
-                </div>
-                <span class="chip">${certification.expiryDate ? "Active" : "Open"}</span>
-            </header>
-            <div class="chip-row">
-                <span class="chip">Issued ${certification.issueDate}</span>
-                ${certification.expiryDate ? `<span class="chip">Expires ${certification.expiryDate}</span>` : ""}
-                ${certification.credentialId ? `<span class="chip">ID ${certification.credentialId}</span>` : ""}
-            </div>
-            <div class="table-actions">
-                <button class="button button-ghost" data-cert-edit="${certification.id}" type="button">Edit</button>
-                <button class="button button-ghost" data-cert-delete="${certification.id}" type="button">Delete</button>
-                ${certification.certificateFile?.downloadUrl ? `<a class="button button-ghost" href="${certification.certificateFile.downloadUrl}" target="_blank" rel="noreferrer">Open file</a>` : ""}
-            </div>
-        </article>
-    `).join("") || emptyMarkup("No certifications found.");
-    certifications.forEach((certification) => {
-        document.querySelector(`[data-cert-edit="${certification.id}"]`)?.addEventListener("click", () => {
-            state.editingCertificationId = certification.id;
-            state.currentCertification = certification;
-            openCertificationEditor();
-            fillForm(document.getElementById("certification-form"), certification);
-        });
-        document.querySelector(`[data-cert-delete="${certification.id}"]`)?.addEventListener("click", async () => {
-            if (!confirmDanger(`Delete certification "${certification.title}"? This cannot be undone.`)) {
-                return;
-            }
-            await certificationsApi.remove(certification.id);
-            await loadCertificationsAdmin();
-        });
-    });
+    renderCertificationControls(certifications);
+    renderCertificationsAdmin(certifications);
 }
 
 async function initCertifications() {
@@ -746,13 +809,53 @@ async function initCertifications() {
         }
     });
 
+    document.getElementById("certification-controls").addEventListener("input", () => {
+        renderCertificationsAdmin(state.certificationsCache);
+    });
+    document.getElementById("certification-controls").addEventListener("change", () => {
+        renderCertificationsAdmin(state.certificationsCache);
+    });
+
     await loadCertificationsAdmin();
 }
 
-async function initMessages() {
-    const response = await contactApi.list();
-    const messages = response.data || [];
-    document.getElementById("message-list").innerHTML = messages.map((message) => `
+function renderMessageControls(messages = []) {
+    const container = document.getElementById("message-controls");
+    if (!container) {
+        return;
+    }
+    container.innerHTML = `
+        <input id="admin-message-search" class="input" type="search" placeholder="Search sender, subject, or body">
+        <select id="admin-message-status" class="input">
+            <option value="">All messages</option>
+            <option value="unread">Unread</option>
+            <option value="read">Read</option>
+        </select>
+    `;
+}
+
+function filterMessages(messages) {
+    const search = normalizeValue(document.getElementById("admin-message-search")?.value).toLowerCase();
+    const status = document.getElementById("admin-message-status")?.value || "";
+
+    return messages.filter((message) => {
+        const text = [
+            message.subject,
+            message.name,
+            message.email,
+            message.message
+        ].join(" ").toLowerCase();
+        const matchesSearch = !search || text.includes(search);
+        const matchesStatus = !status
+            || (status === "read" && message.readStatus)
+            || (status === "unread" && !message.readStatus);
+        return matchesSearch && matchesStatus;
+    });
+}
+
+function renderMessagesAdmin(messages) {
+    const filtered = filterMessages(messages);
+    document.getElementById("message-list").innerHTML = filtered.map((message) => `
         <article class="message-card">
             <header>
                 <div>
@@ -767,17 +870,41 @@ async function initMessages() {
                 <button class="button button-ghost" data-message-delete="${message.id}" type="button">Delete</button>
             </div>
         </article>
-    `).join("") || emptyMarkup("No messages found.");
-    messages.forEach((message) => {
+    `).join("") || emptyMarkup(messages.length ? "No messages match the selected filters." : "No messages found.");
+    filtered.forEach((message) => {
         document.querySelector(`[data-message-read="${message.id}"]`)?.addEventListener("click", async () => {
             await contactApi.markRead(message.id);
-            await initMessages();
+            await refreshMessagesData();
         });
         document.querySelector(`[data-message-delete="${message.id}"]`)?.addEventListener("click", async () => {
             await contactApi.remove(message.id);
-            await initMessages();
+            await refreshMessagesData();
         });
     });
+}
+
+async function refreshMessagesData() {
+    const response = await contactApi.list();
+    state.messagesCache = response.data || [];
+    renderMessagesAdmin(state.messagesCache);
+}
+
+async function initMessages() {
+    const response = await contactApi.list();
+    state.messagesCache = response.data || [];
+    renderMessageControls(state.messagesCache);
+    renderMessagesAdmin(state.messagesCache);
+
+    const controls = document.getElementById("message-controls");
+    if (controls && !controls.dataset.bound) {
+        controls.dataset.bound = "true";
+        controls.addEventListener("input", () => {
+            renderMessagesAdmin(state.messagesCache);
+        });
+        controls.addEventListener("change", () => {
+            renderMessagesAdmin(state.messagesCache);
+        });
+    }
 }
 
 function renderProfileSummaryGrid(container, data) {

@@ -37,6 +37,7 @@ public class AboutServiceImpl implements AboutService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public AboutResponse get() {
         return PortfolioMapper.toAbout(aboutRepository.findTopByDeletedFalseOrderByUpdatedAtDesc()
                 .orElseThrow(() -> new ResourceNotFoundException("About information not found")));

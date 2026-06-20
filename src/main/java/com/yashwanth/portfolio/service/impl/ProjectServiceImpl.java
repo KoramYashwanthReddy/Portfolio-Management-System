@@ -54,11 +54,13 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ProjectResponse getById(Long id) {
         return PortfolioMapper.toProject(getEntity(id));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PageResponse<ProjectResponse> getAll(int page, int size, String sortBy, String sortDirection, String search,
                                                 ProjectCategory category, ProjectStatus status, Boolean featured) {
         Sort sort = Sort.by(Sort.Direction.fromString(sortDirection), sortBy);
@@ -89,6 +91,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ProjectResponse> featuredProjects() {
         return projectRepository.findAll((root, query, builder) -> builder.and(
                 builder.isFalse(root.get("deleted")),
