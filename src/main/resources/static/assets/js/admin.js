@@ -49,24 +49,34 @@ function createSidebar() {
         ["profile", "Profile", "fa-solid fa-user"],
         ["resume", "Resume", "fa-solid fa-file-pdf"]
     ];
+    const collapsed = localStorage.getItem("pms-admin-sidebar") === "collapsed";
+    sidebar.classList.toggle("is-collapsed", collapsed);
+    document.body.dataset.adminSidebar = collapsed ? "collapsed" : "expanded";
     sidebar.innerHTML = `
-        <div class="admin-topbar-shell">
-            <a class="admin-topbar-brand" href="/api/v1/admin/dashboard.html">
-                <span class="logo-circle">P</span>
-                <div class="admin-brand-copy">
-                    <p class="eyebrow">Control Plane</p>
-                    <h2>PMS Console</h2>
-                </div>
-            </a>
-            <nav class="admin-topbar-links">
+        <div class="admin-sidebar-shell">
+            <div class="admin-sidebar-brand-row">
+                <a class="admin-sidebar-brand" href="/api/v1/admin/dashboard.html">
+                    <span class="logo-circle">P</span>
+                    <div class="admin-brand-copy">
+                        <p class="eyebrow">Control Plane</p>
+                        <h2>PMS Console</h2>
+                    </div>
+                </a>
+                <button class="admin-sidebar-toggle" data-sidebar-toggle type="button" aria-label="Collapse sidebar" title="Collapse sidebar">
+                    <i class="fa-solid fa-angles-left"></i>
+                </button>
+            </div>
+            <div class="admin-sidebar-section-label">Navigation</div>
+            <nav class="admin-sidebar-nav" aria-label="Admin navigation">
                 ${links.map(([slug, label, icon]) => `
                     <a class="admin-nav-link ${slug === page ? "active" : ""}" href="/api/v1/admin/${slug}.html">
                         <span class="sidebar-link-icon"><i class="${icon}"></i></span>
-                        <span>${label}</span>
+                        <span class="admin-nav-label">${label}</span>
                     </a>
                 `).join("")}
             </nav>
-            <div class="admin-topbar-actions">
+            <div class="admin-sidebar-section-label">Workspace</div>
+            <div class="admin-sidebar-actions">
                 <button class="theme-toggle" aria-label="Toggle theme">
                     <i class="fa-solid fa-moon"></i>
                     <span>Theme</span>
@@ -82,6 +92,24 @@ function createSidebar() {
             </div>
         </div>
     `;
+
+    const toggle = sidebar.querySelector("[data-sidebar-toggle]");
+    const syncSidebarState = () => {
+        const isCollapsed = sidebar.classList.contains("is-collapsed");
+        document.body.dataset.adminSidebar = isCollapsed ? "collapsed" : "expanded";
+        localStorage.setItem("pms-admin-sidebar", isCollapsed ? "collapsed" : "expanded");
+        if (toggle) {
+            toggle.setAttribute("aria-label", isCollapsed ? "Expand sidebar" : "Collapse sidebar");
+            toggle.title = isCollapsed ? "Expand sidebar" : "Collapse sidebar";
+            toggle.innerHTML = `<i class="fa-solid fa-angles-${isCollapsed ? "right" : "left"}"></i>`;
+        }
+    };
+
+    syncSidebarState();
+    toggle?.addEventListener("click", () => {
+        sidebar.classList.toggle("is-collapsed");
+        syncSidebarState();
+    });
 }
 
 function setFormStatus(form, message, type = "") {
