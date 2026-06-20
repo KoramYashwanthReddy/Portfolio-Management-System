@@ -52,7 +52,9 @@ public class CertificationServiceImpl implements CertificationService {
     public List<CertificationResponse> getAll(Boolean displayed) {
         return certificationRepository.findByDeletedFalseOrderByIssueDateDesc()
                 .stream()
-                .filter(certification -> displayed == null || Boolean.TRUE.equals(certification.getDisplayed()) == displayed)
+                .filter(certification -> displayed == null || (displayed
+                        ? certification.getDisplayed() == null || Boolean.TRUE.equals(certification.getDisplayed())
+                        : Boolean.FALSE.equals(certification.getDisplayed())))
                 .map(PortfolioMapper::toCertification)
                 .toList();
     }

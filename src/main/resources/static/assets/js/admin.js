@@ -312,6 +312,11 @@ function renderCertificationControls(certifications = []) {
             <option value="with-file">With file</option>
             <option value="without-file">Without file</option>
         </select>
+        <select id="admin-cert-visibility" class="input">
+            <option value="">All visibility</option>
+            <option value="displayed">Displayed</option>
+            <option value="hidden">Hidden</option>
+        </select>
     `;
 }
 
@@ -319,6 +324,7 @@ function filterCertifications(certifications) {
     const search = normalizeValue(document.getElementById("admin-cert-search")?.value).toLowerCase();
     const issuer = document.getElementById("admin-cert-issuer")?.value || "";
     const fileState = document.getElementById("admin-cert-file")?.value || "";
+    const visibility = document.getElementById("admin-cert-visibility")?.value || "";
 
     return certifications.filter((certification) => {
         const text = [
@@ -333,22 +339,28 @@ function filterCertifications(certifications) {
         const matchesFile = !fileState
             || (fileState === "with-file" && hasFile)
             || (fileState === "without-file" && !hasFile);
-        return matchesSearch && matchesIssuer && matchesFile;
+        const isVisible = certification.displayed !== false;
+        const matchesVisibility = !visibility
+            || (visibility === "displayed" && isVisible)
+            || (visibility === "hidden" && !isVisible);
+        return matchesSearch && matchesIssuer && matchesFile && matchesVisibility;
     });
 }
 
 function renderCertificationsAdmin(certifications) {
     const filtered = filterCertifications(certifications);
     document.getElementById("admin-certification-list").innerHTML = filtered.map((certification) => `
-        <article class="table-card">
+        <article class="table-card admin-cert-card">
             <header>
                 <div>
+                    <span class="card-number">Cert</span>
                     <strong>${certification.title}</strong>
                     <p class="section-copy">${certification.issuer}</p>
                 </div>
-                <span class="chip">${certification.expiryDate ? "Active" : "Open"}</span>
+                <span class="chip">${certification.displayed === false ? "Hidden" : "Displayed"}</span>
             </header>
             <div class="chip-row">
+                <span class="chip">${certification.expiryDate ? "Active" : "Open"}</span>
                 <span class="chip">Issued ${certification.issueDate}</span>
                 ${certification.expiryDate ? `<span class="chip">Expires ${certification.expiryDate}</span>` : ""}
                 ${certification.credentialId ? `<span class="chip">ID ${certification.credentialId}</span>` : ""}
@@ -506,7 +518,7 @@ async function loadProjectsAdmin() {
     });
     const data = response.data;
     document.getElementById("admin-project-list").innerHTML = (data.content || []).map((project, index) => `
-        <article class="table-card">
+        <article class="table-card admin-project-card">
             <header>
                 <div>
                     <span class="card-number">No ${String(index + 1).padStart(2, "0")}</span>
@@ -515,6 +527,11 @@ async function loadProjectsAdmin() {
                 </div>
                 <span class="chip">${project.displayed === false ? "Hidden" : "Displayed"}</span>
             </header>
+            <div class="admin-project-body">
+                <div class="admin-project-summary">
+                    <p class="section-copy">${project.detailedDescription || project.shortDescription}</p>
+                </div>
+            </div>
             <div class="chip-row">
                 <span class="chip">${project.category}</span>
                 ${project.featured ? '<span class="chip">Featured</span>' : ""}
@@ -667,6 +684,7 @@ function renderSkillForm() {
             <label><span>Proficiency percentage</span><input class="input" type="number" name="proficiencyPercentage" min="0" max="100" required></label>
             <label><span>Display order</span><input class="input" type="number" name="displayOrder" min="0" required></label>
         </div>
+        <label><span><input type="checkbox" name="displayed" checked> Display in portfolio</span></label>
         <div class="form-actions">
             <button class="button button-primary" type="submit"><i class="fa-solid fa-check" style="margin-right:6px;"></i>${state.editingSkillId ? "Update" : "Create"}</button>
             <button id="skill-reset" class="button button-ghost" type="button">Cancel</button>
@@ -713,6 +731,7 @@ function bindSkillForm() {
             }
             payload.proficiencyPercentage = Number(payload.proficiencyPercentage);
             payload.displayOrder = Number(payload.displayOrder);
+            payload.displayed = payload.displayed === "on";
             if (isEditing) {
                 await skillsApi.update(state.editingSkillId, payload);
             } else {
@@ -733,21 +752,31 @@ function bindSkillForm() {
 async function loadSkillsAdmin() {
     const response = await skillsApi.listAdmin(document.getElementById("admin-skill-category").value);
     const skills = response.data || [];
-    document.getElementById("admin-skill-list").innerHTML = skills.map((skill, index) => `
-        <article class="table-card">
+    const visibility = document.getElementById("admin-skill-visibility")?.value || "";
+    const filtered = skills.filter((skill) => {
+        const isVisible = skill.displayed !== false;
+        return !visibility
+            || (visibility === "displayed" && isVisible)
+            || (visibility === "hidden" && !isVisible);
+    });
+    document.getElementById("admin-skill-list").innerHTML = filtered.map((skill, index) => `
+        <article class="table-card admin-skill-card">
             <header>
                 <div>
                     <span class="card-number">No ${String(index + 1).padStart(2, "0")}</span>
                     <strong>${skill.skillName}</strong>
                     <p class="section-copy">Order ${skill.displayOrder}</p>
                 </div>
-                <span class="chip">${skill.category}</span>
+                <span class="chip">${skill.displayed === false ? "Hidden" : "Displayed"}</span>
             </header>
+            <div class="chip-row">
+                <span class="chip">${skill.category}</span>
+            </div>
+            <div class="admin-skill-metric">
+                <span>Proficiency</span>
+                <strong>${skill.proficiencyPercentage}%</strong>
+            </div>
             <div class="skill-bar-container">
-                <div class="skill-header">
-                    <span>Proficiency</span>
-                    <span>${skill.proficiencyPercentage}%</span>
-                </div>
                 <div class="skill-progress-bg">
                     <div class="skill-progress-fill" style="width: ${skill.proficiencyPercentage}%;"></div>
                 </div>
@@ -795,6 +824,7 @@ async function initSkills() {
 
     document.getElementById("admin-skill-category").innerHTML = markupOptions(SKILL_CATEGORIES, true);
     document.getElementById("admin-skill-category").addEventListener("change", loadSkillsAdmin);
+    document.getElementById("admin-skill-visibility")?.addEventListener("change", loadSkillsAdmin);
     await refreshSkillsCache();
     await loadSkillsAdmin();
 }
@@ -822,6 +852,7 @@ function renderCertificationForm() {
         </div>
         <label><span>Certificate file</span><input class="input" type="file" name="certificateFile" accept=".pdf,.doc,.docx,.txt,.rtf"></label>
         <p class="form-help">Accepted file types: PDF, DOC, DOCX, TXT, and RTF.</p>
+        <label><span><input type="checkbox" name="displayed" checked> Display in portfolio</span></label>
         <div class="form-actions">
             <button class="button button-primary" type="submit"><i class="fa-solid fa-check" style="margin-right:6px;"></i>${state.editingCertificationId ? "Update" : "Create"}</button>
             <button id="certification-reset" class="button button-ghost" type="button">Cancel</button>
@@ -885,7 +916,8 @@ function bindCertificationForm() {
                 expiryDate: fd.get("expiryDate") || null,
                 credentialId: fd.get("credentialId"),
                 credentialUrl: fd.get("credentialUrl"),
-                certificateFileId
+                certificateFileId,
+                displayed: fd.get("displayed") === "on"
             };
             if (isEditing) {
                 await certificationsApi.update(state.editingCertificationId, payload);

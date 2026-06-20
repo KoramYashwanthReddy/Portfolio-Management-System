@@ -53,7 +53,9 @@ public class SkillServiceImpl implements SkillService {
                 ? skillRepository.findByDeletedFalseOrderByDisplayOrderAscSkillNameAsc()
                 : skillRepository.findByCategoryAndDeletedFalseOrderByDisplayOrderAscSkillNameAsc(category);
         return skills.stream()
-                .filter(skill -> displayed == null || Boolean.TRUE.equals(skill.getDisplayed()) == displayed)
+                .filter(skill -> displayed == null || (displayed
+                        ? skill.getDisplayed() == null || Boolean.TRUE.equals(skill.getDisplayed())
+                        : Boolean.FALSE.equals(skill.getDisplayed())))
                 .map(PortfolioMapper::toSkill)
                 .toList();
     }

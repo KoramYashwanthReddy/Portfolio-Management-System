@@ -122,6 +122,10 @@ function enumLabel(value, fallback = "Unknown") {
     return value ? value.replaceAll("_", " ") : fallback;
 }
 
+function isDisplayedRecord(record) {
+    return record?.displayed !== false;
+}
+
 function projectGrade(project) {
     const technologies = splitTechnologies(project).length;
     const completed = project.status === "COMPLETED";
@@ -302,7 +306,8 @@ function renderAboutMetrics(dashboard) {
 }
 
 function renderSkills(skills) {
-    const byCategory = skills.reduce((accumulator, skill) => {
+    const visibleSkills = (skills || []).filter(isDisplayedRecord);
+    const byCategory = visibleSkills.reduce((accumulator, skill) => {
         const key = skill.category || "OTHER";
         accumulator[key] = accumulator[key] || [];
         accumulator[key].push(skill);
@@ -427,7 +432,7 @@ function buildProjectDetailMarkup(project) {
 
 
 function renderFeaturedProjects(projects) {
-    const uniqueProjects = uniqueById(projects);
+    const uniqueProjects = uniqueById((projects || []).filter(isDisplayedRecord));
     state.featuredProjects = uniqueProjects;
 }
 
@@ -460,14 +465,17 @@ function renderTimeline(projects) {
 }
 
 function renderProjectCatalog(pageData) {
-    const uniqueProjects = uniqueById(pageData.content || []);
+    const uniqueProjects = uniqueById((pageData.content || []).filter(isDisplayedRecord));
     state.projects = uniqueProjects;
     renderAllProjectsMnc();
 }
 
 function buildHtmlResume(certifications, resume) {
     const about = state.about || {};
-    const featuredProjects = uniqueById([...state.featuredProjects, ...state.projects.filter((project) => project.featured)]).slice(0, 3);
+    const featuredProjects = uniqueById([
+        ...state.featuredProjects.filter(isDisplayedRecord),
+        ...state.projects.filter((project) => project.featured && isDisplayedRecord(project))
+    ]).slice(0, 3);
 
     const skillsByCategory = state.skills.reduce((acc, skill) => {
         const category = skill.category || "OTHER";
@@ -483,7 +491,7 @@ function buildHtmlResume(certifications, resume) {
         </div>
     `).join("");
 
-    const certList = certifications.map((certification) => `
+    const certList = (certifications || []).filter(isDisplayedRecord).map((certification) => `
         <li class="resume-list-item">
             <div class="resume-list-title">${certification.title}</div>
             <div class="resume-list-meta">${certification.issuer} - ${certification.issueDate ? certification.issueDate.substring(0, 4) : "Present"}</div>
@@ -685,7 +693,7 @@ function updateMncProjectsDisplay(showShimmer = true) {
     const activePill = document.querySelector(".filter-pill.active");
     const filter = activePill ? activePill.dataset.filter : "all";
 
-    const allProjects = uniqueById([...(state.featuredProjects || []), ...(state.projects || [])]);
+    const allProjects = uniqueById([...(state.featuredProjects || []), ...(state.projects || [])].filter(isDisplayedRecord));
 
     const filtered = allProjects.filter((project) => {
         const status = project.status || "";
@@ -1130,7 +1138,7 @@ async function bootstrap() {
     }
 
     if (skills.status === "fulfilled") {
-        state.skills = skills.value.data || [];
+        state.skills = (skills.value.data || []).filter(isDisplayedRecord);
         renderSkills(state.skills);
     } else {
         state.skills = [];
@@ -1143,7 +1151,7 @@ async function bootstrap() {
 
     renderKnowledge(
         resume.status === "fulfilled" ? resume.value.data : null,
-        certifications.status === "fulfilled" ? (certifications.value.data || []) : [],
+        certifications.status === "fulfilled" ? (certifications.value.data || []).filter(isDisplayedRecord) : [],
         resumeError
     );
 

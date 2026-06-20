@@ -86,7 +86,14 @@ public class ProjectServiceImpl implements ProjectService {
                 predicates.add(builder.equal(root.get("featured"), featured));
             }
             if (displayed != null) {
-                predicates.add(builder.equal(root.get("displayed"), displayed));
+                if (displayed) {
+                    predicates.add(builder.or(
+                            builder.isNull(root.get("displayed")),
+                            builder.isTrue(root.get("displayed"))
+                    ));
+                } else {
+                    predicates.add(builder.isFalse(root.get("displayed")));
+                }
             }
             return builder.and(predicates.toArray(Predicate[]::new));
         }, pageRequest);

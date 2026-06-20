@@ -43,8 +43,13 @@
                 <div class="panel">
                     <div class="explorer-controls">
                         <select id="admin-skill-category" class="input"></select>
+                        <select id="admin-skill-visibility" class="input">
+                            <option value="">All visibility</option>
+                            <option value="displayed">Displayed</option>
+                            <option value="hidden">Hidden</option>
+                        </select>
                     </div>
-                    <div id="admin-skill-list" class="table-list"></div>
+                    <div id="admin-skill-list" class="table-list admin-card-grid admin-skill-grid"></div>
                 </div>
             </section>
         </main>
