@@ -39,7 +39,7 @@ const state = {
     notesPinnedOnly: false
 };
 
-const PROJECT_NOTE_TYPES = ["FEATURE_USED", "TECHNOLOGY_USED", "IMPLEMENTATION_DECISION", "MILESTONE", "REMINDER", "REFERENCE"];
+const PROJECT_NOTE_TYPES = ["FEATURE_USED", "TECHNOLOGY_USED", "IMPLEMENTATION_DECISION", "MILESTONE", "REMINDER", "REFERENCE", "PENDING", "IN_PROGRESS", "REVIEW", "COMPLETED"];
 
 function markupOptions(values, includeAll = false) {
     const source = includeAll ? ["", ...values] : values;
@@ -70,7 +70,6 @@ function createSidebar() {
     const links = [
         ["dashboard", "Dashboard", "fa-solid fa-chart-pie"],
         ["projects", "Projects", "fa-solid fa-briefcase"],
-        ["project-notes", "Project Notes", "fa-solid fa-book-bookmark"],
         ["skills", "Skills", "fa-solid fa-bolt"],
         ["certifications", "Certifications", "fa-solid fa-certificate"],
         ["messages", "Messages", "fa-solid fa-envelope"],
@@ -812,72 +811,191 @@ function bindProjectNoteComposer(formId, onSaved) {
     });
 }
 
-async function openProjectNotes(project) {
-    const modal = document.getElementById("project-notes-modal");
-    const title = document.getElementById("project-notes-title");
-    const copy = document.getElementById("project-notes-copy");
-    const archiveLink = document.getElementById("project-notes-view-archive");
-    if (!modal || !title || !copy) {
+let notesFilter = "ALL";
+let notesSort = "createdAt_DESC";
+
+async function refreshRedesignedNotes() {
+    if (!state.currentProject) return;
+    const listContainer = document.getElementById("project-notes-list-redesigned");
+    if (listContainer) {
+        listContainer.innerHTML = `<div class="notes-loading">Loading notes...</div>`;
+    }
+    try {
+        const notes = await fetchProjectNotes(state.currentProject.id);
+        state.currentProjectNotes = notes;
+        renderRedesignedNotesList();
+    } catch (error) {
+        if (listContainer) {
+            listContainer.innerHTML = emptyMarkup(error.message || "Unable to load notes.");
+        }
+    }
+}
+
+function renderRedesignedNotesList() {
+    const listContainer = document.getElementById("project-notes-list-redesigned");
+    if (!listContainer) return;
+
+    let notes = state.currentProjectNotes || [];
+    
+    // Filter
+    if (notesFilter !== "ALL") {
+        notes = notes.filter(n => n.type === notesFilter);
+    }
+    
+    // Sort
+    const [field, direction] = notesSort.split("_");
+    notes.sort((left, right) => {
+        if (field === "title") {
+            return direction === "ASC"
+                ? (left.title || "").localeCompare(right.title || "")
+                : (right.title || "").localeCompare(left.title || "");
+        }
+        const leftValue = new Date(left[field] || left.createdAt || 0).getTime();
+        const rightValue = new Date(right[field] || right.createdAt || 0).getTime();
+        return direction === "ASC" ? leftValue - rightValue : rightValue - leftValue;
+    });
+
+    if (notes.length === 0) {
+        listContainer.innerHTML = emptyMarkup("No notes found.");
         return;
     }
+
+    listContainer.innerHTML = notes.map(note => {
+        const statusClass = (note.type || "PENDING").toLowerCase().replace("_", "-");
+        const statusLabel = formatEnumLabel(note.type || "PENDING");
+        const dateStr = formatTimestamp(note.createdAt).split(",")[0] || "";
+        const timeStr = formatTimestamp(note.createdAt).split(",")[1] || "";
+        
+        return `
+            <div class="note-card-redesigned border-${statusClass}" data-note-id="${note.id}">
+                <div class="note-card-main-content">
+                    <h3>${escapeHtml(note.title)}</h3>
+                    <p>${escapeHtml(note.content)}</p>
+                    <div class="note-card-status-pill pill-${statusClass}">
+                        <span class="dot dot-${statusClass}"></span>
+                        <span>${statusLabel}</span>
+                    </div>
+                </div>
+                <div class="note-card-meta-actions">
+                    <div class="note-card-meta-info">
+                        <div class="meta-item"><i class="fa-regular fa-calendar"></i> <span>${dateStr}</span></div>
+                        <div class="meta-item"><i class="fa-regular fa-clock"></i> <span>${timeStr}</span></div>
+                        <div class="meta-item"><i class="fa-regular fa-user"></i> <span>Added by You</span></div>
+                    </div>
+                    <div class="note-card-actions-menu">
+                        <button class="note-actions-trigger" type="button" aria-label="Note actions"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                        <div class="note-actions-dropdown hidden">
+                            <button class="note-action-btn edit-btn" type="button" data-id="${note.id}"><i class="fa-solid fa-pen"></i> Edit</button>
+                            <button class="note-action-btn delete-btn" type="button" data-id="${note.id}"><i class="fa-solid fa-trash"></i> Delete</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join("");
+
+    // Bind ellipsis actions
+    listContainer.querySelectorAll(".note-actions-trigger").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            // Close all other dropdowns
+            listContainer.querySelectorAll(".note-actions-dropdown").forEach(dropdown => {
+                if (dropdown !== btn.nextElementSibling) {
+                    dropdown.classList.add("hidden");
+                }
+            });
+            btn.nextElementSibling.classList.toggle("hidden");
+        });
+    });
+
+    // Edit action
+    listContainer.querySelectorAll(".edit-btn").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const noteId = btn.getAttribute("data-id");
+            const note = state.currentProjectNotes.find(n => String(n.id) === String(noteId));
+            if (note) {
+                state.editingProjectNoteId = note.id;
+                document.getElementById("quick-note-title").value = note.title || "";
+                document.getElementById("quick-note-content").value = note.content || "";
+                document.getElementById("quick-note-status").value = note.type || "PENDING";
+                
+                const form = document.getElementById("project-notes-quick-form");
+                const submitBtn = form.querySelector(".quick-add-btn");
+                if (submitBtn) submitBtn.textContent = "Save Note";
+                
+                document.getElementById("quick-note-title").focus();
+            }
+        });
+    });
+
+    // Delete action
+    listContainer.querySelectorAll(".delete-btn").forEach(btn => {
+        btn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            const noteId = btn.getAttribute("data-id");
+            if (confirmDanger("Are you sure you want to delete this note?")) {
+                try {
+                    await projectsApi.removeNote(state.currentProject.id, noteId);
+                    await refreshRedesignedNotes();
+                } catch (error) {
+                    alert("Failed to delete note: " + error.message);
+                }
+            }
+        });
+    });
+}
+
+// Global click listener to close dropdowns
+document.addEventListener("click", () => {
+    document.querySelectorAll(".note-actions-dropdown").forEach(dropdown => {
+        dropdown.classList.add("hidden");
+    });
+});
+
+async function openProjectNotes(project) {
+    const modal = document.getElementById("project-notes-modal");
+    if (!modal) return;
+    
     state.currentProject = project;
     state.editingProjectNoteId = null;
-    title.textContent = `${project.title || "Project"} notes`;
-    copy.textContent = "Quick-add a note here, then use the archive to inspect the full history with filters and sorting.";
-    if (archiveLink) {
-        archiveLink.href = `/api/v1/admin/project-notes.html?projectId=${project.id}`;
+    notesFilter = "ALL";
+    notesSort = "createdAt_DESC";
+
+    // Set header details
+    const headerTitle = document.getElementById("project-notes-header-title");
+    const headerDesc = document.getElementById("project-notes-header-desc");
+    const avatarContainer = document.getElementById("project-notes-avatar");
+    const statusSelect = document.getElementById("project-notes-status-select");
+    
+    if (headerTitle) headerTitle.textContent = project.title || "Project";
+    if (headerDesc) headerDesc.textContent = project.shortDescription || "";
+    if (avatarContainer) {
+        if (project.imageUrl || (project.imageFile && project.imageFile.downloadUrl)) {
+            avatarContainer.innerHTML = `<img src="${project.imageFile?.downloadUrl || project.imageUrl}" alt="" class="project-avatar-img">`;
+        } else {
+            const initials = (project.title || "P").substring(0, 2).toUpperCase();
+            avatarContainer.innerHTML = `<div class="project-avatar-initials">${initials}</div>`;
+        }
     }
+    if (statusSelect) {
+        statusSelect.value = project.status || "PLANNED";
+    }
+
     modal.classList.remove("hidden");
     modal.setAttribute("aria-hidden", "false");
     document.body.style.overflow = "hidden";
-    renderProjectNoteForm(null, "project-note-form");
-    const summary = document.getElementById("project-notes-summary");
-    const list = document.getElementById("project-notes-list");
-    if (summary) {
-        summary.innerHTML = `<div class="notes-loading">Loading notes...</div>`;
+
+    // Reset quick add form
+    const quickForm = document.getElementById("project-notes-quick-form");
+    if (quickForm) {
+        quickForm.reset();
+        const submitBtn = quickForm.querySelector(".quick-add-btn");
+        if (submitBtn) submitBtn.textContent = "Add Note";
     }
-    if (list) {
-        list.innerHTML = `<div class="notes-loading">Loading recent notes...</div>`;
-    }
-    try {
-        const notes = await fetchProjectNotes(project.id);
-        if (!state.currentProject || state.currentProject.id !== project.id) {
-            return;
-        }
-        state.currentProjectNotes = notes;
-        if (summary) {
-            summary.innerHTML = renderProjectNotesSummary(project, notes);
-        }
-        renderProjectNotesList(notes, {
-            summaryId: "project-notes-summary",
-            containerId: "project-notes-list",
-            limit: 5,
-            emptyMessage: "No recent notes yet. Add the first one to begin your project log."
-        });
-    } catch (error) {
-        if (summary) {
-            summary.innerHTML = emptyMarkup(error.message || "Unable to load notes.");
-        }
-        if (list) {
-            list.innerHTML = emptyMarkup("Unable to load notes.");
-        }
-    }
-    bindProjectNoteComposer("project-note-form", async () => {
-        const notes = await fetchProjectNotes(project.id);
-        if (!state.currentProject || state.currentProject.id !== project.id) {
-            return;
-        }
-        state.currentProjectNotes = notes;
-        if (summary) {
-            summary.innerHTML = renderProjectNotesSummary(project, notes);
-        }
-        renderProjectNotesList(notes, {
-            summaryId: "project-notes-summary",
-            containerId: "project-notes-list",
-            limit: 5,
-            emptyMessage: "No recent notes yet. Add the first one to begin your project log."
-        });
-    });
+
+    // Load and render
+    await refreshRedesignedNotes();
 }
 
 function closeProjectNotes() {
@@ -1162,8 +1280,8 @@ async function initProjects() {
     });
 
     const notesModal = document.getElementById("project-notes-modal");
-    document.getElementById("project-notes-close").addEventListener("click", closeProjectNotes);
-    notesModal.addEventListener("click", (event) => {
+    document.getElementById("project-notes-back-btn")?.addEventListener("click", closeProjectNotes);
+    notesModal?.addEventListener("click", (event) => {
         if (event.target === notesModal) {
             closeProjectNotes();
         }
@@ -1173,18 +1291,95 @@ async function initProjects() {
             closeProjectNotes();
         }
     });
-    ["project-notes-search", "project-notes-pinned-only"].forEach((id) => {
-        const field = document.getElementById(id);
-        field.addEventListener("input", () => {
-            state.notesSearch = document.getElementById("project-notes-search").value;
-            state.notesPinnedOnly = document.getElementById("project-notes-pinned-only").checked;
-            renderProjectNotesList(state.currentProjectNotes);
-        });
-        field.addEventListener("change", () => {
-            state.notesSearch = document.getElementById("project-notes-search").value;
-            state.notesPinnedOnly = document.getElementById("project-notes-pinned-only").checked;
-            renderProjectNotesList(state.currentProjectNotes);
-        });
+
+    // Add Note button click
+    document.getElementById("project-notes-add-btn")?.addEventListener("click", () => {
+        const titleField = document.getElementById("quick-note-title");
+        titleField?.focus();
+        titleField?.scrollIntoView({ behavior: "smooth", block: "end" });
+    });
+
+    // Status Filters
+    const filterContainer = document.getElementById("notes-status-filters");
+    filterContainer?.addEventListener("click", (event) => {
+        const button = event.target.closest(".filter-pill");
+        if (!button) return;
+        
+        filterContainer.querySelectorAll(".filter-pill").forEach(btn => btn.classList.remove("active"));
+        button.classList.add("active");
+        
+        notesFilter = button.getAttribute("data-filter");
+        renderRedesignedNotesList();
+    });
+
+    // Sort Selector
+    document.getElementById("notes-sort-select")?.addEventListener("change", (event) => {
+        notesSort = event.target.value;
+        renderRedesignedNotesList();
+    });
+
+    // Project Status Selector in Header
+    document.getElementById("project-notes-status-select")?.addEventListener("change", async (event) => {
+        if (!state.currentProject) return;
+        const newStatus = event.target.value;
+        try {
+            const payload = {
+                ...state.currentProject,
+                status: newStatus
+            };
+            if (state.currentProject.imageFile) {
+                payload.imageFileId = state.currentProject.imageFile.id;
+            }
+            await projectsApi.update(state.currentProject.id, payload);
+            state.currentProject.status = newStatus;
+            await loadProjectsAdmin();
+        } catch (error) {
+            alert("Failed to update project status: " + error.message);
+            event.target.value = state.currentProject.status;
+        }
+    });
+
+    // Quick Add Form Submit
+    const quickForm = document.getElementById("project-notes-quick-form");
+    quickForm?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const titleInput = document.getElementById("quick-note-title");
+        const contentInput = document.getElementById("quick-note-content");
+        const statusSelect = document.getElementById("quick-note-status");
+        
+        const title = titleInput.value.trim();
+        const content = contentInput.value.trim();
+        const status = statusSelect.value;
+        
+        if (!title || !content) {
+            alert("Note title and description are required.");
+            return;
+        }
+        
+        try {
+            const payload = {
+                title,
+                content,
+                type: status,
+                tags: "",
+                pinned: false
+            };
+            
+            if (state.editingProjectNoteId) {
+                await projectsApi.updateNote(state.currentProject.id, state.editingProjectNoteId, payload);
+            } else {
+                await projectsApi.createNote(state.currentProject.id, payload);
+            }
+            
+            state.editingProjectNoteId = null;
+            quickForm.reset();
+            const submitBtn = quickForm.querySelector(".quick-add-btn");
+            if (submitBtn) submitBtn.textContent = "Add Note";
+            
+            await refreshRedesignedNotes();
+        } catch (error) {
+            alert("Failed to save note: " + error.message);
+        }
     });
 
     document.getElementById("admin-project-category").innerHTML = markupOptions(PROJECT_CATEGORIES, true);

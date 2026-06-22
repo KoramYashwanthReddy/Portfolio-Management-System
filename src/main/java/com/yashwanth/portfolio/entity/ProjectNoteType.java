@@ -6,5 +6,9 @@ public enum ProjectNoteType {
     IMPLEMENTATION_DECISION,
     MILESTONE,
     REMINDER,
-    REFERENCE
+    REFERENCE,
+    PENDING,
+    IN_PROGRESS,
+    REVIEW,
+    COMPLETED
 }
