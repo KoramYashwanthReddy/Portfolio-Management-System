@@ -260,14 +260,89 @@ function bindLogout() {
     });
 }
 
+function safeArray(value) {
+    return Array.isArray(value) ? value : [];
+}
+
+function extractPagedItems(value) {
+    if (Array.isArray(value)) {
+        return value;
+    }
+    return safeArray(value?.content);
+}
+
+function formatCount(value) {
+    return Number(value || 0).toLocaleString();
+}
+
+function formatRelativeTime(value) {
+    if (!value) {
+        return "";
+    }
+    const date = new Date(value);
+    const diff = Date.now() - date.getTime();
+    const minutes = Math.max(1, Math.round(diff / 60000));
+    if (minutes < 60) {
+        return `${minutes}m ago`;
+    }
+    const hours = Math.round(minutes / 60);
+    if (hours < 24) {
+        return `${hours}h ago`;
+    }
+    const days = Math.round(hours / 24);
+    return `${days}d ago`;
+}
+
+function formatDateRange(start, end) {
+    if (!start || !end) {
+        return "Last 30 days";
+    }
+    return `${start.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })} - ${end.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}`;
+}
+
+function getInitials(name = "") {
+    const parts = String(name || "")
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+    if (!parts.length) {
+        return "P";
+    }
+    return parts.slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join("");
+}
+
+function formatDashboardDate(value) {
+    if (!value) {
+        return "-";
+    }
+    const date = new Date(value);
+    return date.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+}
+
+function buildConicGradient(entries, palette, total) {
+    if (!entries.length || !total) {
+        return "conic-gradient(#e5e7eb 0deg 360deg)";
+    }
+    let cursor = 0;
+    const segments = entries.map(([, count], index) => {
+        const start = cursor;
+        cursor += (count / total) * 360;
+        return `${palette[index % palette.length]} ${start}deg ${cursor}deg`;
+    });
+    return `conic-gradient(${segments.join(", ")})`;
+}
+
 function renderMetricCards(metrics) {
     return metrics.map((metric) => `
-        <article class="metric-card">
+        <article class="metric-card dashboard-metric-card ${metric.variant ? `is-${metric.variant}` : ""}">
             <div class="metric-card-header">
-                <span class="muted-label">${metric.label}</span>
-                <i class="${metric.icon || 'fa-solid fa-chart-line'}"></i>
+                <span class="dashboard-metric-icon ${metric.variant ? `is-${metric.variant}` : ""}">
+                    <i class="${metric.icon || 'fa-solid fa-chart-line'}"></i>
+                </span>
             </div>
+            <span class="muted-label">${metric.label}</span>
             <strong>${metric.value}</strong>
+            ${metric.delta ? `<p class="dashboard-metric-delta ${metric.deltaClass || ""}">${metric.delta}</p>` : ""}
         </article>
     `).join("");
 }
@@ -291,73 +366,172 @@ function fillForm(form, values) {
 }
 
 async function initDashboard() {
-    const response = await dashboardApi.get();
-    const data = response.data;
-    document.getElementById("dashboard-metrics").innerHTML = renderMetricCards([
-        { label: "Total Projects", value: data.totalProjects, icon: "fa-solid fa-briefcase" },
-        { label: "Total Skills", value: data.totalSkills, icon: "fa-solid fa-bolt" },
-        { label: "Certifications", value: data.totalCertifications, icon: "fa-solid fa-certificate" },
-        { label: "Messages", value: data.totalMessages, icon: "fa-solid fa-envelope" },
-        { label: "Featured", value: data.totalFeaturedProjects, icon: "fa-solid fa-star" }
+    const [dashboardResult, meResult, projectsResult, skillsResult, certificationsResult, messagesResult] = await Promise.allSettled([
+        dashboardApi.get(),
+        authApi.me(),
+        projectsApi.getAdmin(),
+        skillsApi.listAdmin(),
+        certificationsApi.listAdmin(),
+        contactApi.list()
     ]);
-    document.getElementById("dashboard-messages").innerHTML = (data.recentMessages || []).map((message) => `
-        <article class="message-card">
-            <header><strong>${message.subject}</strong><span>${message.readStatus ? "Read" : "Unread"}</span></header>
-            <p>${message.name} | ${message.email}</p>
-        </article>
-    `).join("") || emptyMarkup("No recent messages.");
-    document.getElementById("dashboard-projects").innerHTML = (data.recentProjects || []).map((project, index) => `
-        <article class="table-card dashboard-project-card">
-            <header>
-                <div>
-                    <span class="card-number">No ${String(index + 1).padStart(2, "0")}</span>
-                    <strong>${project.title}</strong>
-                    <p class="section-copy">${project.shortDescription}</p>
+
+    const dashboard = dashboardResult.status === "fulfilled" ? (dashboardResult.value.data || {}) : {};
+    const profile = meResult.status === "fulfilled" ? (meResult.value.data?.profile || meResult.value.data || {}) : {};
+    const allProjects = projectsResult.status === "fulfilled" ? extractPagedItems(projectsResult.value.data) : safeArray(dashboard.recentProjects);
+    const allSkills = skillsResult.status === "fulfilled" ? safeArray(skillsResult.value.data) : [];
+    const allCertifications = certificationsResult.status === "fulfilled" ? safeArray(certificationsResult.value.data) : [];
+    const allMessages = messagesResult.status === "fulfilled" ? safeArray(messagesResult.value.data) : safeArray(dashboard.recentMessages);
+
+    const recentProjects = safeArray(dashboard.recentProjects).length ? safeArray(dashboard.recentProjects) : allProjects.slice(0, 5);
+    const recentMessages = safeArray(dashboard.recentMessages).length ? safeArray(dashboard.recentMessages) : allMessages.slice(0, 5);
+    const displayedProjects = allProjects.filter((project) => isDisplayedValue(project.displayed));
+    const distributionSource = displayedProjects.length ? displayedProjects : allProjects;
+    const distributionCounts = distributionSource.reduce((acc, project) => {
+        const category = formatEnumLabel(project.category || "OTHER");
+        acc[category] = (acc[category] || 0) + 1;
+        return acc;
+    }, {});
+    const distributionEntries = Object.entries(distributionCounts)
+        .sort((left, right) => right[1] - left[1])
+        .slice(0, 4);
+    const distributionTotal = distributionEntries.reduce((sum, [, count]) => sum + count, 0);
+    const total = distributionTotal || distributionSource.length || dashboard.totalProjects || 0;
+    const palette = ["#6d5efc", "#73d0aa", "#8ab4f8", "#f7d87c", "#ffb86b", "#d4a5ff"];
+
+    const monthAgo = new Date();
+    monthAgo.setDate(monthAgo.getDate() - 30);
+    document.getElementById("dashboard-date-range").textContent = formatDateRange(monthAgo, new Date());
+    document.getElementById("dashboard-profile-name").textContent = profile.name || "Admin";
+    document.getElementById("dashboard-profile-email").textContent = profile.email || "admin";
+    document.getElementById("dashboard-profile-avatar").textContent = getInitials(profile.name || profile.email || "P");
+
+    const unreadCount = allMessages.filter((message) => message.readStatus === false).length;
+    document.getElementById("dashboard-notification-count").textContent = String(unreadCount || recentMessages.filter((message) => message.readStatus === false).length || 0);
+    document.getElementById("dashboard-notification-button")?.addEventListener("click", () => {
+        window.location.href = "/api/v1/admin/messages.html";
+    });
+
+    const recentProjectsDelta = recentProjects.filter((project) => {
+        if (!project.createdAt) {
+            return false;
+        }
+        const createdAt = new Date(project.createdAt);
+        return createdAt >= monthAgo;
+    }).length;
+    const recentMessagesDelta = recentMessages.filter((message) => {
+        if (!message.createdAt) {
+            return false;
+        }
+        const createdAt = new Date(message.createdAt);
+        return createdAt >= monthAgo;
+    }).length;
+
+    document.getElementById("dashboard-metrics").innerHTML = renderMetricCards([
+        {
+            label: "Total Projects",
+            value: formatCount(dashboard.totalProjects ?? allProjects.length),
+            icon: "fa-solid fa-briefcase",
+            variant: "violet",
+            delta: recentProjectsDelta ? `+${recentProjectsDelta} this month` : "Live inventory",
+            deltaClass: recentProjectsDelta ? "" : "is-neutral"
+        },
+        {
+            label: "Total Skills",
+            value: formatCount(dashboard.totalSkills ?? allSkills.length),
+            icon: "fa-solid fa-bolt",
+            variant: "blue",
+            delta: allSkills.length ? `${allSkills.filter((skill) => skill.displayed !== false).length} visible` : "Skill catalog",
+            deltaClass: "is-neutral"
+        },
+        {
+            label: "Certifications",
+            value: formatCount(dashboard.totalCertifications ?? allCertifications.length),
+            icon: "fa-solid fa-certificate",
+            variant: "slate",
+            delta: allCertifications.length ? `${allCertifications.filter((certification) => certification.displayed !== false).length} displayed` : "Credential vault",
+            deltaClass: "is-neutral"
+        },
+        {
+            label: "Messages",
+            value: formatCount(dashboard.totalMessages ?? allMessages.length),
+            icon: "fa-solid fa-envelope",
+            variant: "ink",
+            delta: recentMessagesDelta ? `+${recentMessagesDelta} this month` : "Inbox queue",
+            deltaClass: recentMessagesDelta ? "" : "is-neutral"
+        },
+        {
+            label: "Featured",
+            value: formatCount(dashboard.totalFeaturedProjects ?? allProjects.filter((project) => project.featured).length),
+            icon: "fa-regular fa-star",
+            variant: "amber",
+            delta: dashboard.totalFeaturedProjects ? "Highlighted work" : "No featured projects",
+            deltaClass: "is-neutral"
+        }
+    ]);
+
+    document.getElementById("dashboard-messages").innerHTML = recentMessages.length ? recentMessages.map((message) => `
+        <article class="dashboard-message-card ${message.readStatus ? "" : "is-unread"} ${message.starred ? "is-starred" : ""}">
+            <div class="dashboard-message-avatar">${getInitials(message.name || message.email || "A")}</div>
+            <div class="dashboard-message-content">
+                <div class="dashboard-message-topline">
+                    <strong>${escapeHtml(message.subject || "No subject")}</strong>
+                    <span>${formatRelativeTime(message.createdAt)}</span>
                 </div>
-                <span class="chip">${project.status || "Updated"}</span>
-            </header>
-            <div class="chip-row">
-                <span class="chip">${project.category || "OTHER"}</span>
-                ${project.featured ? '<span class="chip">Featured</span>' : ""}
-                ${project.completionDate ? `<span class="chip">${project.completionDate}</span>` : ""}
+                <p>${escapeHtml(message.message || "No message content provided.")}</p>
+                <div class="chip-row dashboard-message-chips">
+                    <span class="chip">${escapeHtml(message.name || "Anonymous")}</span>
+                    <span class="chip">${escapeHtml(message.email || "Email not provided")}</span>
+                </div>
+            </div>
+            <div class="dashboard-message-state">
+                <span class="dashboard-message-dot ${message.readStatus ? "is-read" : "is-unread"}"></span>
+                <span>${message.readStatus ? "Read" : "Unread"}</span>
             </div>
         </article>
-    `).join("") || emptyMarkup("No recent projects.");
+    `).join("") : emptyMarkup("No recent messages.");
 
-    const canvas = document.getElementById("dashboard-chart");
-    if (canvas && window.Chart) {
-        new window.Chart(canvas, {
-            type: "doughnut",
-            data: {
-                labels: ["Projects", "Skills", "Certifications", "Messages"],
-                datasets: [{
-                    data: [data.totalProjects, data.totalSkills, data.totalCertifications, data.totalMessages],
-                    backgroundColor: ["#6366f1", "#8b5cf6", "#14b8a6", "#f59e0b"],
-                    borderWidth: 0,
-                    hoverOffset: 4
-                }]
-            },
-            options: {
-                cutout: '70%',
-                plugins: {
-                    legend: { 
-                        position: 'bottom',
-                        labels: { 
-                            color: "#4b5563",
-                            padding: 20,
-                            font: {
-                                family: "'IBM Plex Sans', sans-serif",
-                                size: 13
-                            },
-                            usePointStyle: true
-                        } 
-                    }
-                },
-                layout: {
-                    padding: 20
-                }
-            }
-        });
+    document.getElementById("dashboard-projects").innerHTML = recentProjects.length ? recentProjects.map((project, index) => {
+        const technologies = parseTags(project.technologies).slice(0, 3);
+        return `
+        <article class="dashboard-project-card">
+            <header class="dashboard-project-header">
+                <div class="dashboard-project-index">No ${String(index + 1).padStart(2, "0")}</div>
+                <span class="chip dashboard-project-status">${formatEnumLabel(project.status || "UPDATED")}</span>
+            </header>
+            <div class="dashboard-project-body">
+                <h3>${escapeHtml(project.title || "Untitled project")}</h3>
+                <p>${escapeHtml(project.shortDescription || "No short description provided.")}</p>
+            </div>
+            <div class="dashboard-project-meta">
+                <span class="chip">${formatEnumLabel(project.category || "OTHER")}</span>
+                ${project.featured ? '<span class="chip">Featured</span>' : ""}
+                ${project.completionDate ? `<span class="chip">${formatDashboardDate(project.completionDate)}</span>` : ""}
+            </div>
+            <div class="dashboard-project-tech-row">
+                ${technologies.map((technology) => `<span class="chip">${escapeHtml(technology)}</span>`).join("") || '<span class="chip">Stack unavailable</span>'}
+            </div>
+        </article>`;
+    }).join("") : emptyMarkup("No recent projects.");
+
+    document.getElementById("dashboard-distribution-total").textContent = `${formatCount(total)} item${total === 1 ? "" : "s"}`;
+    document.getElementById("dashboard-chart-total").textContent = formatCount(total);
+    document.getElementById("dashboard-distribution-legend").innerHTML = distributionEntries.length ? distributionEntries.map(([label, count], index) => {
+        const percentage = total ? Math.round((count / total) * 100) : 0;
+        return `
+            <div class="dashboard-legend-item">
+                <span class="dashboard-legend-dot" style="background:${palette[index % palette.length]}"></span>
+                <div class="dashboard-legend-copy">
+                    <strong>${escapeHtml(label)}</strong>
+                    <span>${formatCount(count)} projects</span>
+                </div>
+                <strong class="dashboard-legend-value">${percentage}%</strong>
+            </div>
+        `;
+    }).join("") : emptyMarkup("Project distribution appears once projects are published.");
+
+    const chart = document.getElementById("dashboard-chart");
+    if (chart) {
+        chart.style.background = buildConicGradient(distributionEntries, palette, total);
     }
 }
 

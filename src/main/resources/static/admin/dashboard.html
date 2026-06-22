@@ -11,11 +11,10 @@
         } catch {
             window.location.replace("/api/v1/admin/login.html");
         }
-        // Apply theme immediately to prevent flash
         (function() {
-            var t = localStorage.getItem("pms-theme") || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-            document.documentElement.dataset.theme = t;
-            document.documentElement.style.backgroundColor = t === "dark" ? "#000000" : "#fdfdfd";
+            const theme = localStorage.getItem("pms-theme") || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+            document.documentElement.dataset.theme = theme;
+            document.documentElement.style.backgroundColor = theme === "dark" ? "#000000" : "#fdfdfd";
         })();
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -29,35 +28,85 @@
     <link rel="stylesheet" href="/api/v1/assets/css/dashboard.css">
     <link rel="stylesheet" href="/api/v1/assets/css/responsive.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/chart.js/4.5.0/chart.umd.min.js"></script>
     <script type="module" src="/api/v1/assets/js/admin.js"></script>
 </head>
-<body data-page="dashboard" class="admin-body">
-    <div class="admin-shell">
+<body data-page="dashboard" class="admin-body admin-dashboard-body">
+    <div class="admin-shell dashboard-shell">
         <aside class="admin-sidebar"></aside>
-        <main class="admin-main">
-            <section class="admin-header">
-                <div>
+        <main class="admin-main dashboard-main">
+            <section class="dashboard-header">
+                <div class="dashboard-title-block">
                     <p class="eyebrow">Dashboard</p>
                     <h1>System telemetry</h1>
+                    <p class="dashboard-subtitle">Welcome back! Here's what's happening with your system.</p>
                 </div>
-                <button class="button button-ghost" data-logout type="button">Logout</button>
-            </section>
-            <section id="dashboard-metrics" class="metric-grid"></section>
-            <section class="admin-grid">
-                <div class="panel">
-                    <div class="panel-header"><span>Portfolio Distribution</span></div>
-                    <canvas id="dashboard-chart" height="240"></canvas>
+                <div class="dashboard-header-actions">
+                    <div class="dashboard-date-pill" id="dashboard-date-range">Last 30 days</div>
+                    <button class="dashboard-icon-button" id="dashboard-notification-button" type="button" aria-label="Open recent messages">
+                        <i class="fa-regular fa-bell"></i>
+                        <span class="dashboard-badge" id="dashboard-notification-count">0</span>
+                    </button>
+                    <button class="dashboard-profile-button" type="button" aria-label="Signed-in admin">
+                        <span class="dashboard-profile-avatar" id="dashboard-profile-avatar">P</span>
+                        <span class="dashboard-profile-copy">
+                            <span id="dashboard-profile-name">Admin</span>
+                            <small id="dashboard-profile-email">Loading profile</small>
+                        </span>
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </button>
                 </div>
-                <div class="panel">
-                    <div class="panel-header"><span>Recent Messages</span></div>
-                    <div id="dashboard-messages" class="stack"></div>
+            </section>
+
+            <section id="dashboard-metrics" class="dashboard-metrics-grid" aria-label="Key metrics"></section>
+
+            <section class="dashboard-hero-grid">
+                <article class="panel dashboard-panel dashboard-distribution-panel">
+                    <div class="panel-header dashboard-panel-header">
+                        <div>
+                            <p class="eyebrow">Portfolio Distribution</p>
+                            <h2>Work mix at a glance</h2>
+                        </div>
+                        <span class="chip" id="dashboard-distribution-total">0 items</span>
+                    </div>
+                    <div class="dashboard-chart-layout">
+                        <div class="dashboard-chart-frame">
+                            <div id="dashboard-chart" class="dashboard-chart-ring" aria-hidden="true"></div>
+                            <div class="dashboard-chart-center">
+                                <strong id="dashboard-chart-total">0</strong>
+                                <span>Total</span>
+                            </div>
+                        </div>
+                        <div class="dashboard-legend" id="dashboard-distribution-legend"></div>
+                    </div>
+                </article>
+
+                <article class="panel dashboard-panel dashboard-messages-panel">
+                    <div class="panel-header dashboard-panel-header">
+                        <div>
+                            <p class="eyebrow">Recent Messages</p>
+                            <h2>Inbox signal</h2>
+                        </div>
+                        <a class="text-button" href="/api/v1/admin/messages.html">View all</a>
+                    </div>
+                    <div id="dashboard-messages" class="dashboard-message-stack"></div>
+                </article>
+            </section>
+
+            <section class="panel dashboard-panel dashboard-projects-panel">
+                <div class="panel-header dashboard-panel-header">
+                    <div>
+                        <p class="eyebrow">Recent Projects</p>
+                        <h2>Latest portfolio work</h2>
+                    </div>
+                    <a class="text-button" href="/api/v1/admin/projects.html">View all projects</a>
                 </div>
+                <div id="dashboard-projects" class="dashboard-project-grid"></div>
             </section>
-            <section class="panel">
-                <div class="panel-header"><span>Recent Projects</span></div>
-                <div id="dashboard-projects" class="catalog-grid compact-grid"></div>
-            </section>
+
+            <footer class="dashboard-footer">
+                <span>(c) 2026 PMS Console. All rights reserved.</span>
+                <span>Version 1.0.0</span>
+            </footer>
         </main>
     </div>
 </body>
