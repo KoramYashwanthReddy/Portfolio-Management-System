@@ -22,6 +22,7 @@ This project is designed to help a developer present and manage a professional p
 - Skills, certifications, resume, and about sections managed from the backend.
 - Contact form for receiving messages from visitors.
 - Secure admin dashboard for CRUD operations on portfolio content.
+- Redesigned, interactive Project Notes console with tabbed views (Overview, About, Tech Stack, Features, Gallery, Notes status-filtered grid, and chronological timeline history).
 - Multipart file upload support for resumes and media assets.
 - JWT security with stateless sessions and role-protected admin routes.
 - Email support for password recovery flows.
@@ -87,6 +88,7 @@ This project is designed to help a developer present and manage a professional p
 - `GET|PUT /api/v1/admin/about`
 - `GET|POST|PUT|DELETE /api/v1/admin/skills`
 - `GET|POST|PUT|DELETE /api/v1/admin/projects`
+- `GET|POST|PUT|DELETE /api/v1/admin/projects/{projectId}/notes`
 - `GET|POST|PUT|DELETE /api/v1/admin/certifications`
 - `GET|POST /api/v1/admin/resume`
 - `POST /api/v1/admin/files`

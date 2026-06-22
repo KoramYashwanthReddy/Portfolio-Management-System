@@ -132,68 +132,144 @@
             </div>
             
             <div class="project-notes-tabs">
-                <button class="tab-btn" type="button">Overview</button>
-                <button class="tab-btn" type="button">About Project</button>
-                <button class="tab-btn" type="button">Tech Stack</button>
-                <button class="tab-btn" type="button">Features</button>
-                <button class="tab-btn" type="button">Gallery</button>
-                <button class="tab-btn active" type="button">Notes</button>
-                <button class="tab-btn" type="button">Timeline</button>
+                <button class="tab-btn" data-tab="overview" type="button">Overview</button>
+                <button class="tab-btn" data-tab="about" type="button">About Project</button>
+                <button class="tab-btn" data-tab="tech" type="button">Tech Stack</button>
+                <button class="tab-btn" data-tab="features" type="button">Features</button>
+                <button class="tab-btn" data-tab="gallery" type="button">Gallery</button>
+                <button class="tab-btn active" data-tab="notes" type="button">Notes</button>
+                <button class="tab-btn" data-tab="timeline" type="button">Timeline</button>
             </div>
             
-            <div class="notes-tab-content">
-                <div class="notes-section-header">
-                    <div class="notes-section-title">
-                        <i class="fa-solid fa-file-lines note-section-icon"></i>
-                        <div>
-                            <h2>Project Notes</h2>
-                            <p>Add notes, ideas, and reminders related to this project.</p>
+            <div class="project-notes-tab-panels">
+                <!-- Overview Panel -->
+                <div class="tab-panel hidden" id="panel-overview">
+                    <div class="overview-grid">
+                        <div class="overview-item">
+                            <span class="overview-label">Title</span>
+                            <span class="overview-val" id="overview-title"></span>
+                        </div>
+                        <div class="overview-item">
+                            <span class="overview-label">Category</span>
+                            <span class="overview-val" id="overview-category"></span>
+                        </div>
+                        <div class="overview-item">
+                            <span class="overview-label">Project URL</span>
+                            <span class="overview-val" id="overview-url"></span>
+                        </div>
+                        <div class="overview-item">
+                            <span class="overview-label">Github URL</span>
+                            <span class="overview-val" id="overview-github"></span>
+                        </div>
+                        <div class="overview-item">
+                            <span class="overview-label">Completion Date</span>
+                            <span class="overview-val" id="overview-date"></span>
+                        </div>
+                        <div class="overview-item">
+                            <span class="overview-label">Featured Status</span>
+                            <span class="overview-val" id="overview-featured"></span>
+                        </div>
+                        <div class="overview-item">
+                            <span class="overview-label">Visibility</span>
+                            <span class="overview-val" id="overview-displayed"></span>
                         </div>
                     </div>
-                    <button id="project-notes-add-btn" class="button button-primary" type="button"><i class="fa-solid fa-plus"></i> Add Note</button>
                 </div>
-                
-                <div class="notes-filters-row">
-                    <div class="status-filters" id="notes-status-filters">
-                        <button class="filter-pill active" data-filter="ALL" type="button">All Notes</button>
-                        <button class="filter-pill" data-filter="PENDING" type="button"><span class="dot dot-pending"></span>Pending</button>
-                        <button class="filter-pill" data-filter="IN_PROGRESS" type="button"><span class="dot dot-in-progress"></span>In Progress</button>
-                        <button class="filter-pill" data-filter="REVIEW" type="button"><span class="dot dot-review"></span>Review</button>
-                        <button class="filter-pill" data-filter="COMPLETED" type="button"><span class="dot dot-completed"></span>Completed</button>
-                    </div>
-                    <div class="sort-selector">
-                        <span>Sort by:</span>
-                        <select id="notes-sort-select" class="sort-select">
-                            <option value="createdAt_DESC">Latest</option>
-                            <option value="createdAt_ASC">Oldest</option>
-                            <option value="title_ASC">Title A-Z</option>
-                        </select>
+
+                <!-- About Project Panel -->
+                <div class="tab-panel hidden" id="panel-about">
+                    <div class="about-content-box">
+                        <h3>Detailed Description</h3>
+                        <p id="about-detailed-desc"></p>
                     </div>
                 </div>
-                
-                <div id="project-notes-list-redesigned" class="notes-cards-list"></div>
-                
-                <div class="notes-quick-add-bar">
-                    <form id="project-notes-quick-form" class="quick-notes-form" novalidate>
-                        <div class="quick-add-input-wrapper">
-                            <i class="fa-solid fa-file-pen quick-input-icon"></i>
-                            <div class="quick-fields-container">
-                                <input id="quick-note-title" class="quick-input-field" type="text" placeholder="Note title..." required>
-                                <input id="quick-note-content" class="quick-input-field content-field" type="text" placeholder="Write a new note..." required>
+
+                <!-- Tech Stack Panel -->
+                <div class="tab-panel hidden" id="panel-tech">
+                    <div class="tech-stack-container">
+                        <h3>Technologies Used</h3>
+                        <div id="tech-stack-list" class="tech-chips-list"></div>
+                    </div>
+                </div>
+
+                <!-- Features Panel -->
+                <div class="tab-panel hidden" id="panel-features">
+                    <div class="features-container">
+                        <h3>Project Features</h3>
+                        <ul id="features-list" class="features-bullets"></ul>
+                    </div>
+                </div>
+
+                <!-- Gallery Panel -->
+                <div class="tab-panel hidden" id="panel-gallery">
+                    <div class="gallery-container">
+                        <h3>Project Media</h3>
+                        <div id="gallery-image-wrapper" class="gallery-image-wrapper"></div>
+                    </div>
+                </div>
+
+                <!-- Notes Panel -->
+                <div class="tab-panel" id="panel-notes">
+                    <div class="notes-tab-content">
+                        <div class="notes-section-header">
+                            <div class="notes-section-title">
+                                <i class="fa-solid fa-file-lines note-section-icon"></i>
+                                <div>
+                                    <h2>Project Notes</h2>
+                                    <p>Add notes, ideas, and reminders related to this project.</p>
+                                </div>
                             </div>
+                            <button id="project-notes-add-btn" class="button button-primary" type="button"><i class="fa-solid fa-plus"></i> Add Note</button>
                         </div>
-                        <div class="quick-add-actions">
-                            <div class="select-wrapper status-select-wrapper">
-                                <select id="quick-note-status" class="quick-status-select">
-                                    <option value="PENDING">Pending</option>
-                                    <option value="IN_PROGRESS">In Progress</option>
-                                    <option value="REVIEW">Review</option>
-                                    <option value="COMPLETED">Completed</option>
+                        
+                        <div class="notes-filters-row">
+                            <div class="status-filters" id="notes-status-filters">
+                                <button class="filter-pill active" data-filter="ALL" type="button">All Notes</button>
+                                <button class="filter-pill" data-filter="PENDING" type="button"><span class="dot dot-pending"></span>Pending</button>
+                                <button class="filter-pill" data-filter="IN_PROGRESS" type="button"><span class="dot dot-in-progress"></span>In Progress</button>
+                                <button class="filter-pill" data-filter="REVIEW" type="button"><span class="dot dot-review"></span>Review</button>
+                                <button class="filter-pill" data-filter="COMPLETED" type="button"><span class="dot dot-completed"></span>Completed</button>
+                            </div>
+                            <div class="sort-selector">
+                                <span>Sort by:</span>
+                                <select id="notes-sort-select" class="sort-select">
+                                    <option value="createdAt_DESC">Latest</option>
+                                    <option value="createdAt_ASC">Oldest</option>
+                                    <option value="title_ASC">Title A-Z</option>
                                 </select>
                             </div>
-                            <button type="submit" class="button button-primary quick-add-btn">Add Note</button>
                         </div>
-                    </form>
+                        
+                        <div id="project-notes-list-redesigned" class="notes-cards-list"></div>
+                        
+                        <div class="notes-quick-add-bar">
+                            <form id="project-notes-quick-form" class="quick-notes-form" novalidate>
+                                <div class="quick-add-input-wrapper">
+                                    <i class="fa-solid fa-file-pen quick-input-icon"></i>
+                                    <div class="quick-fields-container">
+                                        <input id="quick-note-title" class="quick-input-field" type="text" placeholder="Note title..." required>
+                                        <input id="quick-note-content" class="quick-input-field content-field" type="text" placeholder="Write a new note..." required>
+                                    </div>
+                                </div>
+                                <div class="quick-add-actions">
+                                    <div class="select-wrapper status-select-wrapper">
+                                        <select id="quick-note-status" class="quick-status-select">
+                                            <option value="PENDING">Pending</option>
+                                            <option value="IN_PROGRESS">In Progress</option>
+                                            <option value="REVIEW">Review</option>
+                                            <option value="COMPLETED">Completed</option>
+                                        </select>
+                                    </div>
+                                    <button type="submit" class="button button-primary quick-add-btn">Add Note</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timeline Panel -->
+                <div class="tab-panel hidden" id="panel-timeline">
+                    <!-- Loaded dynamically via timeline logic -->
                 </div>
             </div>
         </div>

@@ -953,6 +953,133 @@ document.addEventListener("click", () => {
     });
 });
 
+function switchNotesTab(tabName) {
+    const modal = document.getElementById("project-notes-modal");
+    if (!modal) return;
+    
+    // Toggle active classes on buttons
+    modal.querySelectorAll(".project-notes-tabs .tab-btn").forEach(btn => {
+        if (btn.getAttribute("data-tab") === tabName) {
+            btn.classList.add("active");
+        } else {
+            btn.classList.remove("active");
+        }
+    });
+
+    // Toggle hidden on panels
+    modal.querySelectorAll(".project-notes-tab-panels .tab-panel").forEach(panel => {
+        if (panel.id === `panel-${tabName}`) {
+            panel.classList.remove("hidden");
+        } else {
+            panel.classList.add("hidden");
+        }
+    });
+
+    // Render tab-specific content
+    renderTabPanelContent(tabName);
+}
+
+function renderTabPanelContent(tabName) {
+    const project = state.currentProject;
+    if (!project) return;
+
+    if (tabName === "overview") {
+        document.getElementById("overview-title").textContent = project.title || "";
+        document.getElementById("overview-category").textContent = formatEnumLabel(project.category || "");
+        document.getElementById("overview-url").innerHTML = project.liveUrl 
+            ? `<a href="${project.liveUrl}" target="_blank" class="admin-link">${project.liveUrl} <i class="fa-solid fa-arrow-up-right-from-square"></i></a>` 
+            : '<span class="muted-label">None</span>';
+        document.getElementById("overview-github").innerHTML = project.githubUrl 
+            ? `<a href="${project.githubUrl}" target="_blank" class="admin-link">${project.githubUrl} <i class="fa-solid fa-arrow-up-right-from-square"></i></a>` 
+            : '<span class="muted-label">None</span>';
+        document.getElementById("overview-date").textContent = project.completionDate || "Not completed yet";
+        document.getElementById("overview-featured").textContent = project.featured ? "Yes" : "No";
+        document.getElementById("overview-displayed").textContent = project.displayed !== false ? "Visible on Portfolio" : "Hidden from Portfolio";
+    } else if (tabName === "about") {
+        document.getElementById("about-detailed-desc").textContent = project.detailedDescription || project.shortDescription || "No description provided.";
+    } else if (tabName === "tech") {
+        const list = document.getElementById("tech-stack-list");
+        if (list) {
+            const techs = parseTags(project.technologies);
+            if (techs.length === 0) {
+                list.innerHTML = `<span class="muted-label">No technologies listed</span>`;
+            } else {
+                list.innerHTML = techs.map(t => `<span class="tech-chip-redesigned">${escapeHtml(t)}</span>`).join("");
+            }
+        }
+    } else if (tabName === "features") {
+        const list = document.getElementById("features-list");
+        if (list) {
+            const desc = project.detailedDescription || "";
+            const bulletLines = desc.split("\n")
+                .map(line => line.trim())
+                .filter(line => line.startsWith("-") || line.startsWith("*") || line.startsWith("•") || /^\d+\./.test(line));
+            
+            if (bulletLines.length === 0) {
+                const sentences = desc.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 15);
+                if (sentences.length === 0) {
+                    list.innerHTML = `<li>No features documented yet.</li>`;
+                } else {
+                    list.innerHTML = sentences.slice(0, 5).map(s => `<li>${escapeHtml(s)}.</li>`).join("");
+                }
+            } else {
+                list.innerHTML = bulletLines.map(line => {
+                    const cleanLine = line.replace(/^[-*•]\s*/, "").replace(/^\d+\.\s*/, "");
+                    return `<li>${escapeHtml(cleanLine)}</li>`;
+                }).join("");
+            }
+        }
+    } else if (tabName === "gallery") {
+        const container = document.getElementById("gallery-image-wrapper");
+        if (container) {
+            const imgUrl = project.imageFile?.downloadUrl || project.imageUrl;
+            if (imgUrl) {
+                container.innerHTML = `<img src="${imgUrl}" alt="${escapeHtml(project.title)} Project Screenshot">`;
+            } else {
+                container.innerHTML = `<div class="gallery-no-image"><i class="fa-regular fa-image fa-3x"></i><p>No project image uploaded yet.</p></div>`;
+            }
+        }
+    } else if (tabName === "notes") {
+        // Handled by refreshRedesignedNotes()
+    } else if (tabName === "timeline") {
+        const container = document.getElementById("panel-timeline");
+        if (container) {
+            let notes = [...(state.currentProjectNotes || [])];
+            notes.sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
+            
+            if (notes.length === 0) {
+                container.innerHTML = `<div class="about-content-box"><h3>Timeline History</h3>${emptyMarkup("No activity logged yet.")}</div>`;
+            } else {
+                const timelineItems = notes.map(note => {
+                    const statusClass = (note.type || "PENDING").toLowerCase().replace("_", "-");
+                    const dateStr = formatTimestamp(note.createdAt);
+                    return `
+                        <div class="timeline-item">
+                            <div class="timeline-dot dot-${statusClass}"></div>
+                            <div class="timeline-content">
+                                <div class="timeline-header-row">
+                                    <h4>${escapeHtml(note.title)}</h4>
+                                    <span class="timeline-time">${dateStr}</span>
+                                </div>
+                                <p class="timeline-desc">${escapeHtml(note.content)}</p>
+                            </div>
+                        </div>
+                    `;
+                }).join("");
+                
+                container.innerHTML = `
+                    <div class="about-content-box">
+                        <h3>Timeline History</h3>
+                        <div class="timeline-list">
+                            ${timelineItems}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+    }
+}
+
 async function openProjectNotes(project) {
     const modal = document.getElementById("project-notes-modal");
     if (!modal) return;
@@ -993,6 +1120,9 @@ async function openProjectNotes(project) {
         const submitBtn = quickForm.querySelector(".quick-add-btn");
         if (submitBtn) submitBtn.textContent = "Add Note";
     }
+
+    // Set notes tab active by default
+    switchNotesTab("notes");
 
     // Load and render
     await refreshRedesignedNotes();
@@ -1173,7 +1303,6 @@ async function loadProjectsAdmin() {
             <div class="table-actions">
                 <button class="button button-ghost" data-project-view="${project.id}" type="button">View project</button>
                 <button class="button button-primary button-notes" data-project-notes="${project.id}" type="button">Notes</button>
-                <a class="button button-ghost" href="/api/v1/admin/project-notes.html?projectId=${project.id}" data-project-notes-view="${project.id}">View notes</a>
                 <button class="button button-ghost" data-project-edit="${project.id}" type="button">Edit</button>
                 <button class="button button-ghost" data-project-delete="${project.id}" type="button">Delete</button>
             </div>
@@ -1195,10 +1324,6 @@ async function loadProjectsAdmin() {
         });
         document.querySelector(`[data-project-notes="${project.id}"]`)?.addEventListener("click", () => {
             openProjectNotes(project);
-        });
-        document.querySelector(`[data-project-notes-view="${project.id}"]`)?.addEventListener("click", (event) => {
-            event.preventDefault();
-            window.location.href = `/api/v1/admin/project-notes.html?projectId=${project.id}`;
         });
         document.querySelector(`[data-project-delete="${project.id}"]`)?.addEventListener("click", async () => {
             if (!confirmDanger(`Delete "${project.title}"? This cannot be undone.`)) {
@@ -1290,6 +1415,16 @@ async function initProjects() {
         if (event.key === "Escape" && notesModal && !notesModal.classList.contains("hidden")) {
             closeProjectNotes();
         }
+    });
+
+    // Bind Tab Click Handlers
+    notesModal?.querySelectorAll(".project-notes-tabs .tab-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const tabName = btn.getAttribute("data-tab");
+            if (tabName) {
+                switchNotesTab(tabName);
+            }
+        });
     });
 
     // Add Note button click
