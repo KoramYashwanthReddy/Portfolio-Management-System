@@ -18,7 +18,7 @@
         })();
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Management</title>
+    <title>Projects | Portfolio Management</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -37,17 +37,47 @@
             <section class="admin-header">
                 <div>
                     <p class="eyebrow">Projects API</p>
-                    <h1>Project management</h1>
+                    <h1>Projects</h1>
+                    <p class="section-copy">Browse and manage all your engineering projects.</p>
                 </div>
-                <div class="admin-header-actions" style="display: flex; gap: 12px; align-items: center;">
-                    <button id="add-project-btn" class="button button-primary" type="button"><i class="fa-solid fa-plus" style="margin-right:6px;"></i>Add project</button>
+                <div class="admin-header-actions projects-page-toolbar">
+                    <button id="add-project-btn" class="button button-primary" type="button"><i class="fa-solid fa-plus"></i> Add project</button>
+                    <button id="toggle-filters" class="button button-outline" type="button"><i class="fa-solid fa-filter"></i> Filters</button>
+                    <div class="projects-view-toggle" role="group" aria-label="Project view">
+                        <button id="project-view-grid" class="button button-outline is-active" type="button" aria-label="Grid view" aria-pressed="true"><i class="fa-solid fa-border-all"></i></button>
+                        <button id="project-view-list" class="button button-outline" type="button" aria-label="List view" aria-pressed="false"><i class="fa-solid fa-list"></i></button>
+                    </div>
                     <button class="button button-ghost" data-logout type="button">Logout</button>
                 </div>
             </section>
-            <section class="admin-grid form-layout admin-stack-layout" style="grid-template-columns: 1fr;">
-                <div class="panel">
-                    <div class="explorer-controls admin-filter-bar">
-                        <input id="admin-project-search" class="input" type="search" placeholder="Search projects">
+            <section class="section">
+                <div class="section-shell">
+                    <div id="admin-project-metrics" class="projects-metrics-grid"></div>
+                    <div class="projects-section-header">
+                        <div class="projects-section-header-left">
+                            <p class="eyebrow" style="color: var(--accent-alt);">PROJECTS HUB</p>
+                            <h2>Projects you can update and publish</h2>
+                            <p class="section-copy">Use the filters, search, and cards below to manage each project record.</p>
+                        </div>
+                    </div>
+                    <div class="projects-controls-bar">
+                        <div class="projects-search-wrapper">
+                            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                            <input id="admin-project-search" class="input" type="search" placeholder="Search projects, tech stack, title..." />
+                        </div>
+                        <div class="projects-filter-pills" id="admin-project-status-pills">
+                            <button class="filter-pill active" data-status="">All</button>
+                            <button class="filter-pill" data-status="PLANNED">Planned</button>
+                            <button class="filter-pill" data-status="IN_PROGRESS">In progress</button>
+                            <button class="filter-pill" data-status="COMPLETED">Completed</button>
+                            <button class="filter-pill" data-status="ARCHIVED">Archived</button>
+                        </div>
+                        <select id="admin-project-year-filter" class="input year-filter">
+                            <option value="">All years</option>
+                        </select>
+                    </div>
+                    <div id="project-compare-tray" class="project-compare-tray hidden" aria-live="polite"></div>
+                    <div id="admin-project-advanced-filters" class="explorer-controls admin-filter-bar is-hidden" style="margin-top: 20px;">
                         <select id="admin-project-category" class="input"></select>
                         <select id="admin-project-status" class="input"></select>
                         <select id="admin-project-visibility" class="input">
@@ -56,7 +86,7 @@
                             <option value="hidden">Hidden</option>
                         </select>
                     </div>
-                    <div id="admin-project-list" class="table-list admin-card-grid admin-project-grid"></div>
+                    <div id="admin-project-list" class="projects-mnc-grid admin-project-grid"></div>
                     <div class="pagination-bar">
                         <button id="admin-project-prev" class="button button-ghost" type="button">Previous</button>
                         <span id="admin-project-page-label">Page 1</span>
@@ -100,6 +130,23 @@
                     </button>
                 </div>
                 <div id="project-detail-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="project-compare-modal" class="modal-overlay hidden" aria-hidden="true">
+        <div class="modal-content project-detail-modal">
+            <div class="project-detail-content">
+                <div class="modal-header" style="margin-bottom: 20px;">
+                    <div>
+                        <p class="eyebrow">Project compare</p>
+                        <h2 id="project-compare-title" style="margin: 0;">Compare projects</h2>
+                    </div>
+                    <button id="project-compare-close" class="modal-close" type="button" aria-label="Close project compare">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div id="project-compare-content"></div>
             </div>
         </div>
     </div>

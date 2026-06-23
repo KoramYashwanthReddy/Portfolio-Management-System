@@ -1,4 +1,4 @@
-import { ensureAuthenticated, redirectToLogin } from "./api/base-api.js";
+﻿import { ensureAuthenticated, redirectToLogin } from "./api/base-api.js";
 import { authApi } from "./api/auth-api.js";
 import { dashboardApi } from "./api/dashboard-api.js";
 import { projectsApi } from "./api/projects-api.js";
@@ -18,6 +18,11 @@ const page = document.body.dataset.page;
 const state = {
     projectPage: 0,
     projectSize: 8,
+    projectViewMode: "grid",
+    projectYearFilter: "",
+    projectsCache: [],
+    starredProjects: readStoredArray("starred_projects"),
+    comparedProjects: readStoredArray("compared_projects"),
     editingProjectId: null,
     editingProjectNoteId: null,
     editingSkillId: null,
@@ -40,6 +45,7 @@ const state = {
 };
 
 const PROJECT_NOTE_TYPES = ["FEATURE_USED", "TECHNOLOGY_USED", "IMPLEMENTATION_DECISION", "MILESTONE", "REMINDER", "REFERENCE", "PENDING", "IN_PROGRESS", "REVIEW", "COMPLETED"];
+const PROJECT_NOTE_PAGE_TYPES = ["PENDING", "IN_PROGRESS", "REVIEW", "COMPLETED"];
 
 function markupOptions(values, includeAll = false) {
     const source = includeAll ? ["", ...values] : values;
@@ -317,6 +323,329 @@ function formatDashboardDate(value) {
     }
     const date = new Date(value);
     return date.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+}
+
+function readStoredArray(key) {
+    try {
+        const raw = safeStorageGet(key);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed.map((value) => String(value)) : [];
+    } catch {
+        return [];
+    }
+}
+
+function writeStoredArray(key, value) {
+    safeStorageSet(key, JSON.stringify(safeArray(value).map((item) => String(item))));
+}
+
+function splitTechnologiesList(technologies) {
+    return parseTags(technologies);
+}
+
+function getProjectYear(project) {
+    const source = project?.completionDate || project?.createdAt || "";
+    if (!source) {
+        return "";
+    }
+    const year = new Date(source).getFullYear();
+    return Number.isNaN(year) ? "" : String(year);
+}
+
+function formatProjectStatus(status) {
+    return status ? formatEnumLabel(status) : "Unknown";
+}
+
+function formatProjectStatusTone(project) {
+    switch (project.status) {
+        case "COMPLETED":
+            return "completed";
+        case "IN_PROGRESS":
+            return "progress";
+        case "PLANNED":
+            return "planned";
+        case "ARCHIVED":
+            return "archived";
+        default:
+            return "default";
+    }
+}
+
+function isStarredProject(projectId) {
+    return state.starredProjects.includes(String(projectId));
+}
+
+function isComparedProject(projectId) {
+    return state.comparedProjects.includes(String(projectId));
+}
+
+function syncProjectCardToggle(button, active, activeLabel, inactiveLabel) {
+    if (!button) {
+        return;
+    }
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+    button.title = active ? activeLabel : inactiveLabel;
+    button.setAttribute("aria-label", active ? activeLabel : inactiveLabel);
+}
+
+function animateProjectToggle(button, active) {
+    if (!button) {
+        return;
+    }
+    button.classList.remove("is-animating", "is-toggling-on", "is-toggling-off");
+    void button.offsetWidth;
+    button.classList.add("is-animating", active ? "is-toggling-on" : "is-toggling-off");
+    window.setTimeout(() => {
+        button.classList.remove("is-animating", "is-toggling-on", "is-toggling-off");
+    }, 260);
+}
+
+function projectMetricCardMarkup(label, value, subtitle, iconClass, tone = "") {
+    return `
+        <article class="projects-metric-card ${tone ? `is-${tone}` : ""}">
+            <div class="projects-metric-icon"><i class="${iconClass}"></i></div>
+            <div class="projects-metric-copy">
+                <span>${escapeHtml(label)}</span>
+                <strong>${escapeHtml(String(value))}</strong>
+                <p>${escapeHtml(subtitle)}</p>
+            </div>
+        </article>
+    `;
+}
+
+function projectCardMarkup(project, index = 0) {
+    const techs = splitTechnologiesList(project.technologies);
+    const year = getProjectYear(project);
+    const summary = project.shortDescription || project.detailedDescription || "No summary provided.";
+    const statusTone = formatProjectStatusTone(project);
+    const starred = isStarredProject(project.id);
+    const compared = isComparedProject(project.id);
+    return `
+        <article class="table-card admin-project-card" data-project-card="${project.id}">
+            <header class="project-card-header-top">
+                <div class="project-card-top-pills">
+                    <span class="project-number">${String(index + 1).padStart(2, "0")}</span>
+                    <span class="project-status-pill ${statusTone}">${escapeHtml(formatProjectStatus(project.status))}</span>
+                    <span class="project-year">${year || "-"}</span>
+                </div>
+                <div class="project-card-top-actions">
+                    <button class="project-mini-btn project-compare-btn ${compared ? "is-active" : ""}" data-project-compare="${project.id}" type="button" title="${compared ? "Remove from compare" : "Add to compare"}" aria-label="${compared ? "Remove from compare" : "Add to compare"}" aria-pressed="${compared}">
+                        <i class="fa-solid fa-code-compare"></i>
+                    </button>
+                    <button class="project-mini-btn project-star-btn ${starred ? "is-active" : ""}" data-project-star="${project.id}" type="button" title="${starred ? "Unstar project" : "Star project"}" aria-label="${starred ? "Unstar project" : "Star project"}" aria-pressed="${starred}">
+                        <i class="fa-solid fa-star"></i>
+                    </button>
+                    <div class="project-card-menu-wrap">
+                        <button class="project-mini-btn project-menu-button" data-project-menu-open="${project.id}" type="button" aria-label="More options" aria-expanded="false">
+                            <i class="fa-solid fa-ellipsis-vertical"></i>
+                        </button>
+                        <div class="project-card-menu" data-project-card-menu="${project.id}" role="menu" aria-label="Project actions">
+                            <button class="project-card-menu-item" data-project-edit="${project.id}" type="button" role="menuitem">
+                                <i class="fa-solid fa-pen"></i>
+                                <span>Edit</span>
+                            </button>
+                            <button class="project-card-menu-item is-danger" data-project-delete="${project.id}" type="button" role="menuitem">
+                                <i class="fa-solid fa-trash"></i>
+                                <span>Delete</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            <div class="project-card-title-block">
+                <strong>${escapeHtml(project.title || "Untitled project")}</strong>
+                <p class="section-copy">${escapeHtml(summary)}</p>
+            </div>
+            <div class="chip-row project-tech-row">
+                <span class="chip">${escapeHtml(formatEnumLabel(project.category || "OTHER"))}</span>
+                <span class="chip">${escapeHtml(formatProjectStatus(project.status))}</span>
+                ${project.featured ? '<span class="chip chip-highlight">Featured</span>' : ""}
+                ${project.displayed === false ? '<span class="chip chip-muted">Hidden</span>' : ""}
+            </div>
+            <div class="project-card-tech-list">
+                ${techs.slice(0, 6).map((tech) => `<span class="chip">${escapeHtml(tech)}</span>`).join("") || '<span class="chip">Stack unavailable</span>'}
+            </div>
+            <div class="project-card-actions">
+                <div class="project-card-action-row">
+                    <button class="button button-outline project-view-button" data-project-view="${project.id}" type="button">
+                        <span>View project</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                    </button>
+                    <a class="button button-outline project-notes-link" href="/api/v1/admin/project-notes.html?projectId=${project.id}" data-project-notes="${project.id}">
+                        <span>Notes page</span>
+                        <i class="fa-solid fa-file-lines"></i>
+                    </a>
+                </div>
+            </div>
+        </article>
+    `;
+}
+
+function projectCompareCardMarkup(project) {
+    const technologies = parseTags(project.technologies);
+    const year = getProjectYear(project) || "In progress";
+    const rows = [
+        { label: "Category", value: project.category || "Project" },
+        { label: "Status", value: formatProjectStatus(project.status) },
+        { label: "Featured", value: project.featured ? "Yes" : "No" },
+        { label: "Displayed", value: project.displayed === false ? "Hidden" : "Visible" },
+        { label: "Year", value: year },
+        { label: "Stack", value: `${technologies.length} tech${technologies.length === 1 ? "" : "s"}` }
+    ];
+    return `
+        <article class="project-compare-card">
+            <div class="project-compare-card-top">
+                <span class="project-number">${getProjectYear(project) || "-"}</span>
+                <span class="chip ${formatProjectStatusTone(project)}">${escapeHtml(formatProjectStatus(project.status))}</span>
+            </div>
+            <div class="project-compare-card-title">
+                <h3>${escapeHtml(project.title || "Untitled project")}</h3>
+                <p class="section-copy">${escapeHtml(project.shortDescription || "No short description provided.")}</p>
+            </div>
+            <div class="project-compare-card-grid">
+                ${rows.map((row) => `
+                    <article class="project-compare-meta">
+                        <span>${escapeHtml(row.label)}</span>
+                        <strong>${escapeHtml(String(row.value))}</strong>
+                    </article>
+                `).join("")}
+            </div>
+            <div class="project-compare-card-body">
+                <p>${escapeHtml(project.detailedDescription || "No detailed description provided.")}</p>
+            </div>
+            <div class="chip-row project-tech-row">
+                ${technologies.slice(0, 8).map((tech) => `<span class="chip">${escapeHtml(tech)}</span>`).join("") || '<span class="chip">Stack unavailable</span>'}
+            </div>
+            <div class="project-compare-card-links">
+                ${project.githubUrl ? `<a class="button button-outline" href="${escapeHtml(project.githubUrl)}" target="_blank" rel="noreferrer">GitHub</a>` : ""}
+                ${project.liveUrl ? `<a class="button button-outline" href="${escapeHtml(project.liveUrl)}" target="_blank" rel="noreferrer">Live site</a>` : ""}
+                ${project.notesCount != null ? `<span class="chip">Notes: ${escapeHtml(String(project.notesCount))}</span>` : ""}
+            </div>
+        </article>
+    `;
+}
+
+function getComparedProjects() {
+    const selectedIds = state.comparedProjects.map(String);
+    return state.projectsCache.filter((project) => selectedIds.includes(String(project.id)));
+}
+
+function renderProjectCompareTray() {
+    const tray = document.getElementById("project-compare-tray");
+    if (!tray) {
+        return;
+    }
+    const selected = getComparedProjects();
+    if (!selected.length) {
+        tray.classList.add("hidden");
+        tray.innerHTML = "";
+        return;
+    }
+    tray.classList.remove("hidden");
+    tray.innerHTML = `
+        <div class="project-compare-tray-copy">
+            <span class="eyebrow">Compare selected</span>
+            <strong>${selected.length} project${selected.length === 1 ? "" : "s"} selected</strong>
+            <p>${selected.map((project) => escapeHtml(project.title || "Untitled project")).join(" &bull; ")}</p>
+        </div>
+        <div class="project-compare-tray-actions">
+            <button id="project-compare-open" class="button button-primary" type="button" ${selected.length < 2 ? "disabled" : ""}>
+                <i class="fa-solid fa-code-compare"></i>
+                <span>${selected.length < 2 ? "Select one more" : "Compare"}</span>
+            </button>
+            <button id="project-compare-cancel" class="button button-outline" type="button">
+                <i class="fa-solid fa-xmark"></i>
+                <span>Cancel</span>
+            </button>
+        </div>
+    `;
+}
+
+function renderProjectCompareModal() {
+    const content = document.getElementById("project-compare-content");
+    if (!content) {
+        return;
+    }
+    const selected = getComparedProjects();
+    if (selected.length < 2) {
+        content.innerHTML = emptyMarkup("Select at least two projects to compare.");
+        return;
+    }
+    content.innerHTML = `
+        <div class="project-compare-grid">
+            ${selected.map((project) => projectCompareCardMarkup(project)).join("")}
+        </div>
+    `;
+}
+
+function openProjectCompareModal() {
+    const modal = document.getElementById("project-compare-modal");
+    if (!modal) {
+        return;
+    }
+    renderProjectCompareModal();
+    modal.classList.remove("hidden");
+    modal.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+}
+
+function closeProjectCompareModal() {
+    const modal = document.getElementById("project-compare-modal");
+    if (!modal) {
+        return;
+    }
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+}
+
+function closeProjectMenus(exceptButton = null) {
+    document.querySelectorAll("[data-project-menu-open]").forEach((button) => {
+        if (button !== exceptButton) {
+            button.closest(".project-card-menu-wrap")?.classList.remove("is-open");
+            button.setAttribute("aria-expanded", "false");
+        }
+    });
+}
+
+function toggleStarProject(projectId) {
+    const id = String(projectId);
+    const starred = [...state.starredProjects];
+    const idx = starred.indexOf(id);
+    if (idx >= 0) {
+        starred.splice(idx, 1);
+    } else {
+        starred.unshift(id);
+    }
+    state.starredProjects = starred;
+    writeStoredArray("starred_projects", starred);
+}
+
+function toggleCompareProject(projectId) {
+    const id = String(projectId);
+    const compared = [...state.comparedProjects];
+    const idx = compared.indexOf(id);
+    if (idx >= 0) {
+        compared.splice(idx, 1);
+    } else {
+        if (compared.length >= 3) {
+            alert("You can compare up to 3 projects at once.");
+            return false;
+        }
+        compared.push(id);
+    }
+    state.comparedProjects = compared;
+    writeStoredArray("compared_projects", compared);
+    return true;
+}
+
+function syncProjectStatusPills(activeStatus = "") {
+    document.querySelectorAll("#admin-project-status-pills .filter-pill").forEach((button) => {
+        const isActive = normalizeValue(button.dataset.status) === normalizeValue(activeStatus);
+        button.classList.toggle("active", isActive);
+        button.setAttribute("aria-pressed", String(isActive));
+    });
 }
 
 function buildConicGradient(entries, palette, total) {
@@ -678,13 +1007,11 @@ function closeProjectEditor() {
 }
 
 function buildProjectDetailMarkup(project) {
-    const technologies = (project.technologies || "")
-        .split(",")
-        .map((item) => item.trim())
-        .filter(Boolean);
+    const technologies = parseTags(project.technologies);
+    const mediaUrl = project.imageFile?.downloadUrl || project.imageUrl || "";
     const rows = [
         { label: "Category", value: project.category || "Project" },
-        { label: "Status", value: project.status || "Unknown" },
+        { label: "Status", value: formatEnumLabel(project.status || "Unknown") },
         { label: "Featured", value: project.featured ? "Yes" : "No" },
         { label: "Displayed", value: isDisplayedValue(project.displayed) ? "Yes" : "No" },
         { label: "Completed", value: project.completionDate || "In progress" },
@@ -692,32 +1019,43 @@ function buildProjectDetailMarkup(project) {
     ];
     return `
         <div class="project-detail-shell">
-            <div class="project-detail-header">
-                <div>
-                    <p class="eyebrow" style="color: var(--accent-alt); margin-bottom: 8px;">PROJECT DETAILS</p>
-                    <h2 style="margin: 0;">${project.title}</h2>
+            <div class="project-detail-hero">
+                <div class="project-detail-hero-main">
+                    <div class="project-detail-media ${mediaUrl ? "has-image" : ""}">
+                        ${mediaUrl ? `<img src="${mediaUrl}" alt="${escapeHtml(project.title || "Project")} preview">` : `<span>${escapeHtml((project.title || "P").substring(0, 2).toUpperCase())}</span>`}
+                    </div>
+                    <div class="project-detail-hero-copy">
+                        <p class="eyebrow" style="color: var(--accent-alt); margin-bottom: 6px;">PROJECT DETAILS</p>
+                        <h2>${escapeHtml(project.title || "Untitled project")}</h2>
+                        <p class="project-detail-subtitle">${escapeHtml(project.shortDescription || "No short description provided.")}</p>
+                    </div>
                 </div>
-                <span class="chip">${project.displayed === false ? "Hidden" : "Displayed"}</span>
+                <div class="project-detail-hero-aside">
+                    <span class="chip">${project.displayed === false ? "Hidden" : "Displayed"}</span>
+                    <span class="chip">${escapeHtml(formatProjectStatus(project.status))}</span>
+                </div>
             </div>
             <div class="project-detail-grid">
                 ${rows.map((row) => `
                     <article class="project-detail-card">
-                        <span>${row.label}</span>
-                        <strong>${row.value}</strong>
+                        <span>${escapeHtml(row.label)}</span>
+                        <strong>${escapeHtml(String(row.value))}</strong>
                     </article>
                 `).join("")}
             </div>
             <div class="project-detail-body">
-                <p>${project.shortDescription || ""}</p>
-                <p>${project.detailedDescription || ""}</p>
+                <p>${escapeHtml(project.detailedDescription || "No detailed description provided.")}</p>
                 <div class="chip-row" style="margin-top: 4px;">
-                    ${technologies.map((tech) => `<span class="chip">${tech}</span>`).join("")}
+                    ${technologies.map((tech) => `<span class="chip">${escapeHtml(tech)}</span>`).join("") || '<span class="chip">Stack unavailable</span>'}
                 </div>
             </div>
             <div class="project-detail-actions">
-                <button class="button button-primary" type="button" data-project-notes-open="true">Notes</button>
-                ${project.githubUrl ? `<a class="button button-outline" href="${project.githubUrl}" target="_blank" rel="noreferrer">GitHub</a>` : ""}
-                ${project.liveUrl ? `<a class="button button-outline" href="${project.liveUrl}" target="_blank" rel="noreferrer">Live</a>` : ""}
+                <a class="button button-outline project-notes-link" href="/api/v1/admin/project-notes.html?projectId=${project.id}" data-project-notes="${project.id}">
+                    <i class="fa-solid fa-file-lines"></i>
+                    <span>Notes page</span>
+                </a>
+                ${project.githubUrl ? `<a class="button button-outline" href="${escapeHtml(project.githubUrl)}" target="_blank" rel="noreferrer">GitHub</a>` : ""}
+                ${project.liveUrl ? `<a class="button button-outline" href="${escapeHtml(project.liveUrl)}" target="_blank" rel="noreferrer">Live</a>` : ""}
             </div>
         </div>
     `;
@@ -730,12 +1068,8 @@ function openProjectDetail(project) {
     if (!modal || !content || !title) {
         return;
     }
-    title.textContent = project.title || "Project details";
+    title.textContent = "Project overview";
     content.innerHTML = buildProjectDetailMarkup(project);
-    content.querySelector("[data-project-notes-open]")?.addEventListener("click", async () => {
-        closeProjectDetail();
-        await openProjectNotes(project);
-    });
     modal.classList.remove("hidden");
     modal.setAttribute("aria-hidden", "false");
     document.body.style.overflow = "hidden";
@@ -833,6 +1167,46 @@ function renderProjectNoteForm(note = null, formId = "project-note-form") {
         return;
     }
     const isEditing = Boolean(note);
+    if (formId === "project-notes-page-form") {
+        form.innerHTML = `
+            <div class="notes-composer-header">
+                <div>
+                    <p class="eyebrow">Track work</p>
+                    <h2>${isEditing ? "Edit note" : "Add note"}</h2>
+                    <p class="form-help">Write a note, choose a status, and save it to the project timeline.</p>
+                </div>
+                <span class="chip">${isEditing ? "Updating" : "Journal entry"}</span>
+            </div>
+            <div class="notes-composer-row">
+                <label class="notes-composer-title">
+                    <span>Note title</span>
+                    <input class="input" name="title" required maxlength="120" placeholder="Write a new note...">
+                </label>
+                <label class="notes-composer-status select-wrapper">
+                    <span>Type</span>
+                    <select class="input" name="type">
+                        ${PROJECT_NOTE_PAGE_TYPES.map((type) => `<option value="${type}">${formatEnumLabel(type)}</option>`).join("")}
+                    </select>
+                </label>
+                <button class="button button-primary notes-composer-submit" type="submit">
+                    <i class="fa-solid fa-note-sticky" style="margin-right:6px;"></i>${isEditing ? "Save note" : "Add Note"}
+                </button>
+            </div>
+            <input type="hidden" name="content">
+            <div class="form-actions notes-composer-footer">
+                <button class="button button-ghost" type="button" data-note-reset>Clear</button>
+            </div>
+        `;
+        if (note) {
+            fillForm(form, note);
+            form.elements.title.value = note.title || "";
+            form.elements.type.value = PROJECT_NOTE_PAGE_TYPES.includes(note.type) ? note.type : "PENDING";
+        } else {
+            form.reset();
+            form.elements.type.value = "PENDING";
+        }
+        return;
+    }
     form.innerHTML = `
         <div class="form-hero" style="padding-top: 0;">
             <div>
@@ -875,39 +1249,55 @@ function renderProjectNotesList(notes, options = {}) {
     if (!container) {
         return;
     }
-    const filtered = filterProjectNotes(notes, {
-        search: options.search ?? document.getElementById(options.searchId || "project-notes-search")?.value,
-        pinnedOnly: options.pinnedOnly ?? document.getElementById(options.pinnedOnlyId || "project-notes-pinned-only")?.checked,
-        type: options.type ?? (document.getElementById(options.typeId || "")?.value || "")
-    });
-    const sorted = sortProjectNotes(filtered, options.sort ?? (document.getElementById(options.sortId || "")?.value || "createdAt_DESC"));
+    const notesPageMode = options.pageMode || document.body.dataset.page === "project-notes";
+    const filtered = notesPageMode
+        ? notes.filter((note) => notesFilter === "ALL" ? true : (note.type || "").toUpperCase() === notesFilter)
+        : filterProjectNotes(notes, {
+            search: options.search ?? document.getElementById(options.searchId || "project-notes-search")?.value,
+            pinnedOnly: options.pinnedOnly ?? document.getElementById(options.pinnedOnlyId || "project-notes-pinned-only")?.checked,
+            type: options.type ?? (document.getElementById(options.typeId || "")?.value || "")
+        });
+    const sorted = sortProjectNotes(filtered, notesPageMode ? notesSort : (options.sort ?? (document.getElementById(options.sortId || "")?.value || "createdAt_DESC")));
     const limited = typeof options.limit === "number" ? sorted.slice(0, options.limit) : sorted;
     const showActions = options.showActions !== false;
-    container.innerHTML = limited.length ? limited.map((note) => `
-        <article class="note-card ${note.pinned ? "is-pinned" : ""}">
-            <header class="note-card-header">
-                <div>
-                    <p class="eyebrow note-type-label">${formatEnumLabel(note.type)}</p>
-                    <h3>${escapeHtml(note.title)}</h3>
+    container.innerHTML = limited.length ? limited.map((note) => {
+        const statusClass = (note.type || "PENDING").toLowerCase().replaceAll("_", "-");
+        const fullTimestamp = formatTimestamp(note.createdAt);
+        const timestampParts = fullTimestamp.split(",");
+        const dateLabel = timestampParts[0] || fullTimestamp;
+        const timeLabel = timestampParts.slice(1).join(",").trim();
+        return `
+            <article class="project-note-card border-${statusClass} ${note.pinned ? "is-pinned" : ""}">
+                <div class="project-note-card-main">
+                    <div class="project-note-card-copy">
+                        <h3>${escapeHtml(note.title)}</h3>
+                        <p>${escapeHtml(note.content)}</p>
+                        <div class="project-note-status-pill pill-${statusClass}">
+                            <span class="dot dot-${statusClass}"></span>
+                            <span>${formatEnumLabel(note.type || "PENDING")}</span>
+                        </div>
+                        ${note.pinned ? '<span class="project-note-mini-chip">Pinned</span>' : ""}
+                    </div>
+                    <div class="project-note-card-meta">
+                        <div class="project-note-meta-item"><i class="fa-regular fa-calendar"></i><span>${escapeHtml(dateLabel)}</span></div>
+                        <div class="project-note-meta-item"><i class="fa-regular fa-clock"></i><span>${escapeHtml(timeLabel || "")}</span></div>
+                        <div class="project-note-meta-item"><i class="fa-regular fa-user"></i><span>Added by You</span></div>
+                    </div>
+                    ${showActions ? `
+                        <div class="project-note-actions-menu">
+                            <button class="project-note-actions-trigger" type="button" aria-label="Note actions">
+                                <i class="fa-solid fa-ellipsis-vertical"></i>
+                            </button>
+                            <div class="note-actions-dropdown hidden">
+                                <button class="note-action-btn edit-btn" type="button" data-id="${note.id}"><i class="fa-solid fa-pen"></i> Edit</button>
+                                <button class="note-action-btn delete-btn" type="button" data-id="${note.id}"><i class="fa-solid fa-trash"></i> Delete</button>
+                            </div>
+                        </div>
+                    ` : ""}
                 </div>
-                <div class="note-card-meta">
-                    ${note.pinned ? '<span class="chip">Pinned</span>' : ""}
-                    <span class="chip">${formatTimestamp(note.createdAt)}</span>
-                    ${(note.updatedAt && note.updatedAt !== note.createdAt) ? `<span class="chip">Edited ${formatTimestamp(note.updatedAt)}</span>` : ""}
-                </div>
-            </header>
-            <p class="note-card-content">${escapeHtml(note.content)}</p>
-            <div class="chip-row note-tag-row">
-                ${parseTags(note.tags).map((tag) => `<span class="chip">${escapeHtml(tag)}</span>`).join("")}
-            </div>
-            ${showActions ? `
-                <div class="table-actions">
-                    <button class="button button-ghost" data-note-edit="${note.id}" type="button">Edit</button>
-                    <button class="button button-ghost" data-note-delete="${note.id}" type="button">Delete</button>
-                </div>
-            ` : ""}
-        </article>
-    `).join("") : emptyMarkup(options.emptyMessage || "No notes recorded yet. Add the first one to begin your project log.");
+            </article>
+        `;
+    }).join("") : emptyMarkup(options.emptyMessage || "No notes recorded yet. Add the first one to begin your project log.");
 
     if (!showActions) {
         return;
@@ -957,7 +1347,7 @@ function bindProjectNoteComposer(formId, onSaved) {
             const payload = {
                 title: normalizeValue(fd.get("title")),
                 type: fd.get("type"),
-                content: normalizeValue(fd.get("content")),
+                content: normalizeValue(fd.get("content")) || normalizeValue(fd.get("title")),
                 tags: normalizeValue(fd.get("tags")),
                 pinned: fd.get("pinned") === "on"
             };
@@ -1254,54 +1644,6 @@ function renderTabPanelContent(tabName) {
     }
 }
 
-async function openProjectNotes(project) {
-    const modal = document.getElementById("project-notes-modal");
-    if (!modal) return;
-    
-    state.currentProject = project;
-    state.editingProjectNoteId = null;
-    notesFilter = "ALL";
-    notesSort = "createdAt_DESC";
-
-    // Set header details
-    const headerTitle = document.getElementById("project-notes-header-title");
-    const headerDesc = document.getElementById("project-notes-header-desc");
-    const avatarContainer = document.getElementById("project-notes-avatar");
-    const statusSelect = document.getElementById("project-notes-status-select");
-    
-    if (headerTitle) headerTitle.textContent = project.title || "Project";
-    if (headerDesc) headerDesc.textContent = project.shortDescription || "";
-    if (avatarContainer) {
-        if (project.imageUrl || (project.imageFile && project.imageFile.downloadUrl)) {
-            avatarContainer.innerHTML = `<img src="${project.imageFile?.downloadUrl || project.imageUrl}" alt="" class="project-avatar-img">`;
-        } else {
-            const initials = (project.title || "P").substring(0, 2).toUpperCase();
-            avatarContainer.innerHTML = `<div class="project-avatar-initials">${initials}</div>`;
-        }
-    }
-    if (statusSelect) {
-        statusSelect.value = project.status || "PLANNED";
-    }
-
-    modal.classList.remove("hidden");
-    modal.setAttribute("aria-hidden", "false");
-    document.body.style.overflow = "hidden";
-
-    // Reset quick add form
-    const quickForm = document.getElementById("project-notes-quick-form");
-    if (quickForm) {
-        quickForm.reset();
-        const submitBtn = quickForm.querySelector(".quick-add-btn");
-        if (submitBtn) submitBtn.textContent = "Add Note";
-    }
-
-    // Set notes tab active by default
-    switchNotesTab("notes");
-
-    // Load and render
-    await refreshRedesignedNotes();
-}
-
 function closeProjectNotes() {
     const modal = document.getElementById("project-notes-modal");
     if (!modal) {
@@ -1318,22 +1660,29 @@ function closeProjectNotes() {
 async function initProjectNotesPage() {
     const projectId = new URLSearchParams(window.location.search).get("projectId");
     const hero = document.getElementById("project-notes-page-hero");
+    const tabs = document.getElementById("project-notes-page-tabs");
     const summary = document.getElementById("project-notes-page-summary");
     const list = document.getElementById("project-notes-page-list");
-    const typeSelect = document.getElementById("project-notes-page-type");
     const form = document.getElementById("project-notes-page-form");
     if (!projectId) {
-        document.querySelector(".project-notes-page-grid")?.classList.add("is-hidden");
+        document.querySelector(".project-notes-workspace")?.classList.add("is-hidden");
         const projectsResponse = await projectsApi.getAdmin({ page: 0, size: 50, sortBy: "createdAt", sortDirection: "DESC" });
         const projects = projectsResponse.data?.content || [];
         hero.innerHTML = `
-            <div class="form-hero" style="padding-top: 0;">
-                <div>
-                    <p class="eyebrow">Project Notes Archive</p>
-                    <h2>Select a project</h2>
-                    <p class="form-help">Choose a project to inspect, filter, and edit the full note history.</p>
+            <div class="project-notes-hero">
+                <div class="project-notes-hero-main">
+                    <div class="project-notes-avatar">
+                        <span class="project-notes-avatar-initials">P</span>
+                    </div>
+                    <div class="project-notes-hero-copy">
+                        <p class="eyebrow">Project Notes</p>
+                        <h2>Select a project</h2>
+                        <p>Choose a project to inspect, filter, and edit the full note history.</p>
+                        <div class="chip-row project-notes-meta-row">
+                            <span class="chip">${projects.length} loaded</span>
+                        </div>
+                    </div>
                 </div>
-                <span class="chip">${projects.length} loaded</span>
             </div>
             <div class="field-grid">
                 <label>
@@ -1358,10 +1707,107 @@ async function initProjectNotesPage() {
         return;
     }
 
-    document.querySelector(".project-notes-page-grid")?.classList.remove("is-hidden");
-    typeSelect.innerHTML = markupOptions(PROJECT_NOTE_TYPES, true);
+    document.querySelector(".project-notes-workspace")?.classList.remove("is-hidden");
     const projectResponse = await projectsApi.getAdminById(projectId);
     state.currentProject = projectResponse.data;
+    const renderProjectNotesHero = (noteCount = state.currentProjectNotes.length) => {
+        const project = state.currentProject || {};
+        const mediaUrl = project.imageFile?.downloadUrl || project.imageUrl || "";
+        const techCount = parseTags(project.technologies).length;
+        const statusOptions = PROJECT_STATUSES.map((status) => {
+            const selected = status === (project.status || PROJECT_STATUSES[0]) ? " selected" : "";
+            return `<option value="${status}"${selected}>${formatEnumLabel(status)}</option>`;
+        }).join("");
+        hero.innerHTML = `
+            <div class="project-notes-hero">
+                <div class="project-notes-hero-main">
+                    <div class="project-notes-avatar ${mediaUrl ? "has-image" : ""}">
+                        ${mediaUrl
+                            ? `<img class="project-notes-avatar-image" src="${mediaUrl}" alt="${escapeHtml(project.title || "Project")}" loading="lazy">`
+                            : `<span class="project-notes-avatar-initials">${escapeHtml(getInitials(project.title || "Project"))}</span>`}
+                    </div>
+                    <div class="project-notes-hero-copy">
+                        <p class="eyebrow">Project Notes</p>
+                        <h2>${escapeHtml(project.title || "Project")}</h2>
+                        <p>${escapeHtml(project.shortDescription || "Capture every milestone, implementation note, and release decision in one place.")}</p>
+                        <div class="chip-row project-notes-meta-row">
+                            <span class="chip ${formatProjectStatusTone(project)}">${escapeHtml(formatProjectStatus(project.status || "PLANNED"))}</span>
+                            <span class="chip">${noteCount} note${noteCount === 1 ? "" : "s"}</span>
+                            <span class="chip">${techCount} tech${techCount === 1 ? "" : "s"}</span>
+                            ${project.displayed === false ? '<span class="chip">Hidden</span>' : '<span class="chip">Displayed</span>'}
+                        </div>
+                    </div>
+                </div>
+                <div class="project-status-block select-wrapper">
+                    <span class="status-label">Project Status</span>
+                    <select id="project-notes-status-select" class="project-status-select">
+                        ${statusOptions}
+                    </select>
+                </div>
+            </div>
+        `;
+    };
+
+    const renderProjectTabs = () => {
+        if (!tabs) {
+            return;
+        }
+        tabs.innerHTML = `
+            <nav class="project-notes-tabs" aria-label="Project sections">
+                ${[
+                    ["overview", "Overview"],
+                    ["about", "About Project"],
+                    ["tech", "Tech Stack"],
+                    ["features", "Features"],
+                    ["gallery", "Gallery"],
+                    ["notes", "Notes", true],
+                    ["timeline", "Timeline"]
+                ].map(([key, label, active]) => `<button class="tab-btn ${active ? "active" : ""}" type="button" data-tab="${key}">${label}</button>`).join("")}
+            </nav>
+        `;
+        const scrollTargets = {
+            overview: "#project-notes-page-hero",
+            about: "#project-notes-page-hero",
+            tech: "#project-notes-page-hero",
+            features: "#project-notes-page-list",
+            gallery: "#project-notes-page-list",
+            notes: "#project-notes-page-list",
+            timeline: "#project-notes-page-form"
+        };
+        tabs.querySelectorAll(".tab-btn").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                tabs.querySelectorAll(".tab-btn").forEach((item) => item.classList.remove("active"));
+                btn.classList.add("active");
+                const target = document.querySelector(scrollTargets[btn.dataset.tab] || "#project-notes-page-hero");
+                target?.scrollIntoView({ behavior: "smooth", block: "start" });
+            });
+        });
+    };
+
+    renderProjectNotesHero();
+    renderProjectTabs();
+    document.getElementById("project-notes-status-select")?.addEventListener("change", async (event) => {
+        if (!state.currentProject) {
+            return;
+        }
+        const newStatus = event.target.value;
+        try {
+            const payload = {
+                ...state.currentProject,
+                status: newStatus
+            };
+            if (state.currentProject.imageFile) {
+                payload.imageFileId = state.currentProject.imageFile.id;
+            }
+            await projectsApi.update(state.currentProject.id, payload);
+            state.currentProject.status = newStatus;
+            renderProjectNotesHero();
+            await loadProjectsAdmin();
+        } catch (error) {
+            alert("Failed to update project status: " + error.message);
+            event.target.value = state.currentProject.status;
+        }
+    });
     const backLink = document.getElementById("project-notes-back");
     if (backLink) {
         backLink.href = "/api/v1/admin/projects.html";
@@ -1371,71 +1817,57 @@ async function initProjectNotesPage() {
         });
     }
 
-    hero.innerHTML = `
-        <div class="form-hero" style="padding-top: 0;">
-            <div>
-                <p class="eyebrow">Project Notes Archive</p>
-                <h2>${escapeHtml(state.currentProject.title || "Project")}</h2>
-                <p class="form-help">${escapeHtml(state.currentProject.shortDescription || "Browse every note, filter the history, and study how the project evolved.")}</p>
-            </div>
-            <span class="chip">${formatEnumLabel(state.currentProject.status || "UNKNOWN")}</span>
-        </div>
-        <div class="notes-summary-grid">
-            <article class="notes-summary-card">
-                <span class="muted-label">Technologies</span>
-                <strong>${parseTags(state.currentProject.technologies).length}</strong>
-                <p class="section-copy">${parseTags(state.currentProject.technologies).slice(0, 6).join(", ") || "No technologies listed"}</p>
-            </article>
-            <article class="notes-summary-card">
-                <span class="muted-label">Quick Add</span>
-                <strong>Live</strong>
-                <p class="section-copy">Use the composer to log new features and decisions without leaving the archive.</p>
-            </article>
-        </div>
-    `;
-
     renderProjectNoteForm(null, "project-notes-page-form");
     bindProjectNoteComposer("project-notes-page-form", async () => {
         await loadProjectNotesArchive();
     });
 
-    const filters = ["project-notes-page-search", "project-notes-page-type", "project-notes-page-sort", "project-notes-page-pinned"];
-    filters.forEach((id) => {
-        document.getElementById(id).addEventListener("input", async () => {
-            await loadProjectNotesArchive();
-        });
-        document.getElementById(id).addEventListener("change", async () => {
-            await loadProjectNotesArchive();
-        });
+    const statusFilters = document.getElementById("notes-status-filters");
+    statusFilters.innerHTML = [
+        ["ALL", "All Notes", "violet"],
+        ["PENDING", "Pending", "amber"],
+        ["IN_PROGRESS", "In Progress", "blue"],
+        ["REVIEW", "Review", "violet"],
+        ["COMPLETED", "Completed", "green"]
+    ].map(([value, label, tone], index) => `<button class="filter-pill ${index === 0 ? "active" : ""}" type="button" data-filter="${value}"><span class="dot dot-${value.toLowerCase().replaceAll("_", "-")}"></span>${label}</button>`).join("");
+    statusFilters.addEventListener("click", (event) => {
+        const button = event.target.closest(".filter-pill");
+        if (!button) {
+            return;
+        }
+        statusFilters.querySelectorAll(".filter-pill").forEach((item) => item.classList.remove("active"));
+        button.classList.add("active");
+        notesFilter = button.getAttribute("data-filter");
+        loadProjectNotesArchive();
+    });
+
+    const sortSelect = document.getElementById("notes-sort-select");
+    sortSelect.value = notesSort;
+    sortSelect.addEventListener("change", (event) => {
+        notesSort = event.target.value;
+        loadProjectNotesArchive();
+    });
+
+    document.getElementById("project-notes-add-btn")?.addEventListener("click", () => {
+        const titleField = document.querySelector("#project-notes-page-form [name='title']");
+        titleField?.focus();
+        titleField?.scrollIntoView({ behavior: "smooth", block: "center" });
     });
 
     async function loadProjectNotesArchive() {
-        summary.innerHTML = `<div class="notes-loading">Loading archive...</div>`;
         list.innerHTML = `<div class="notes-loading">Loading notes...</div>`;
         try {
             const notes = await fetchProjectNotes(projectId);
             state.currentProjectNotes = notes;
-            const filtered = filterProjectNotes(notes, {
-                search: document.getElementById("project-notes-page-search").value,
-                type: document.getElementById("project-notes-page-type").value,
-                pinnedOnly: document.getElementById("project-notes-page-pinned").checked
-            });
-            const sortValue = document.getElementById("project-notes-page-sort").value;
-            const sorted = sortProjectNotes(filtered, sortValue);
-            summary.innerHTML = renderProjectNotesSummary(state.currentProject, sorted);
-            renderProjectNotesList(sorted, {
-                summaryId: "project-notes-page-summary",
+            renderProjectNotesHero(notes.length);
+            renderProjectNotesList(notes, {
                 containerId: "project-notes-page-list",
-                searchId: "project-notes-page-search",
-                typeId: "project-notes-page-type",
-                pinnedOnlyId: "project-notes-page-pinned",
-                sortId: "project-notes-page-sort",
                 formId: "project-notes-page-form",
+                pageMode: true,
                 showActions: true,
                 emptyMessage: notes.length ? "No notes match the selected filters." : "No notes recorded yet. Add the first one to begin your archive."
             });
         } catch (error) {
-            summary.innerHTML = emptyMarkup(error.message || "Unable to load notes archive.");
             list.innerHTML = emptyMarkup("Unable to load notes archive.");
         }
     }
@@ -1445,66 +1877,161 @@ async function initProjectNotesPage() {
 
 async function loadProjectsAdmin() {
     const visibility = document.getElementById("admin-project-visibility")?.value || "";
-    const response = await projectsApi.getAdmin({
-        page: state.projectPage,
-        size: state.projectSize,
-        search: document.getElementById("admin-project-search").value.trim(),
-        category: document.getElementById("admin-project-category").value,
-        status: document.getElementById("admin-project-status").value,
-        displayed: visibility === "displayed" ? true : visibility === "hidden" ? false : ""
+    const summaryResponse = await projectsApi.getAdmin({
+        page: 0,
+        size: 5000,
+        search: "",
+        category: "",
+        status: "",
+        displayed: ""
     });
-    const data = response.data;
-    document.getElementById("admin-project-list").innerHTML = (data.content || []).map((project, index) => `
-        <article class="table-card admin-project-card">
-            <header>
-                <div>
-                    <span class="card-number">No ${String(index + 1).padStart(2, "0")}</span>
-                    <strong>${project.title}</strong>
-                    <p class="section-copy">${project.shortDescription}</p>
-                </div>
-                <span class="chip">${project.displayed === false ? "Hidden" : "Displayed"}</span>
-            </header>
-            <div class="admin-project-body">
-                <div class="admin-project-summary">
-                    <p class="section-copy">${project.detailedDescription || project.shortDescription}</p>
-                </div>
-            </div>
-            <div class="chip-row">
-                <span class="chip">${project.category}</span>
-                ${project.featured ? '<span class="chip">Featured</span>' : ""}
-                ${project.completionDate ? `<span class="chip">${project.completionDate}</span>` : ""}
-            </div>
-            <div class="table-actions">
-                <button class="button button-ghost" data-project-view="${project.id}" type="button">View project</button>
-                <button class="button button-primary button-notes" data-project-notes="${project.id}" type="button">Notes</button>
-                <button class="button button-ghost" data-project-edit="${project.id}" type="button">Edit</button>
-                <button class="button button-ghost" data-project-delete="${project.id}" type="button">Delete</button>
-            </div>
-        </article>
-    `).join("") || emptyMarkup("No projects found.");
-    document.getElementById("admin-project-page-label").textContent = `Page ${data.page + 1} of ${Math.max(data.totalPages, 1)}`;
-    document.getElementById("admin-project-prev").disabled = data.first;
-    document.getElementById("admin-project-next").disabled = data.last;
+    const summaryData = summaryResponse.data || {};
+    const allProjects = safeArray(summaryData.content);
+    state.projectsCache = allProjects;
 
-    (data.content || []).forEach((project) => {
-        document.querySelector(`[data-project-edit="${project.id}"]`)?.addEventListener("click", () => {
+    const counts = {
+        total: Number(summaryData.totalElements || allProjects.length || 0),
+        inProgress: allProjects.filter((project) => project.status === "IN_PROGRESS").length,
+        completed: allProjects.filter((project) => project.status === "COMPLETED").length,
+        planned: allProjects.filter((project) => project.status === "PLANNED").length,
+        archived: allProjects.filter((project) => project.status === "ARCHIVED").length,
+        hidden: allProjects.filter((project) => project.displayed === false).length
+    };
+    const metricsContainer = document.getElementById("admin-project-metrics");
+    if (metricsContainer) {
+        metricsContainer.innerHTML = [
+            projectMetricCardMarkup("Total projects", counts.total, "All time", "fa-solid fa-briefcase", "violet"),
+            projectMetricCardMarkup("In progress", counts.inProgress, `${counts.total ? Math.round((counts.inProgress / counts.total) * 100) : 0}% of total`, "fa-solid fa-spinner", "blue"),
+            projectMetricCardMarkup("Completed", counts.completed, `${counts.total ? Math.round((counts.completed / counts.total) * 100) : 0}% of total`, "fa-regular fa-circle-check", "green"),
+            projectMetricCardMarkup("On hold", counts.planned, `${counts.total ? Math.round((counts.planned / counts.total) * 100) : 0}% of total`, "fa-regular fa-clock", "amber"),
+            projectMetricCardMarkup("Archived", counts.archived || counts.hidden, `${counts.archived || counts.hidden} items`, "fa-solid fa-box-archive", "slate")
+        ].join("");
+    }
+
+    const searchText = normalizeValue(document.getElementById("admin-project-search")?.value).toLowerCase();
+    const selectedCategory = normalizeValue(document.getElementById("admin-project-category")?.value);
+    const selectedStatus = normalizeValue(document.getElementById("admin-project-status")?.value);
+    const projectYearFilter = document.getElementById("admin-project-year-filter");
+    const selectedYear = state.projectYearFilter || projectYearFilter?.value || "";
+    if (projectYearFilter) {
+        const years = [...new Set(allProjects.map(getProjectYear).filter(Boolean))].sort((left, right) => Number(right) - Number(left));
+        if (selectedYear && !years.includes(selectedYear)) {
+            years.unshift(selectedYear);
+        }
+        projectYearFilter.innerHTML = [`<option value="">All years</option>`, ...years.map((year) => `<option value="${year}">${year}</option>`)].join("");
+        projectYearFilter.value = selectedYear;
+    }
+
+    const filteredProjects = allProjects.filter((project) => {
+        const haystack = [
+            project.title,
+            project.shortDescription,
+            project.detailedDescription,
+            project.technologies,
+            project.category,
+            project.status
+        ].join(" ").toLowerCase();
+        const matchesSearch = !searchText || haystack.includes(searchText);
+        const matchesCategory = !selectedCategory || project.category === selectedCategory;
+        const matchesStatus = !selectedStatus || project.status === selectedStatus;
+        const matchesVisibility = !visibility
+            || (visibility === "displayed" && project.displayed !== false)
+            || (visibility === "hidden" && project.displayed === false);
+        const matchesYear = !selectedYear || getProjectYear(project) === selectedYear;
+        return matchesSearch && matchesCategory && matchesStatus && matchesVisibility && matchesYear;
+    });
+
+    const totalProjects = filteredProjects.length;
+    const totalPages = Math.max(Math.ceil(totalProjects / state.projectSize), 1);
+    if (state.projectPage > totalPages - 1) {
+        state.projectPage = totalPages - 1;
+    }
+    const startIndex = state.projectPage * state.projectSize;
+    const endIndex = startIndex + state.projectSize;
+    const projects = filteredProjects.slice(startIndex, endIndex);
+    const list = document.getElementById("admin-project-list");
+    list.classList.toggle("is-list-view", state.projectViewMode === "list");
+    list.classList.toggle("has-empty-state", !projects.length);
+    list.innerHTML = projects.map((project, index) => projectCardMarkup(project, index)).join("") || emptyMarkup("No projects found.");
+    renderProjectCompareTray();
+
+    const startItem = totalProjects ? startIndex + 1 : 0;
+    const endItem = totalProjects ? Math.min(endIndex, totalProjects) : 0;
+    document.getElementById("admin-project-page-label").textContent = `Showing ${startItem} to ${endItem} of ${totalProjects} projects`;
+    document.getElementById("admin-project-prev").disabled = state.projectPage <= 0;
+    document.getElementById("admin-project-next").disabled = state.projectPage >= totalPages - 1;
+
+    projects.forEach((project) => {
+        const starButton = document.querySelector(`[data-project-star="${project.id}"]`);
+        const compareButton = document.querySelector(`[data-project-compare="${project.id}"]`);
+        const menuButton = document.querySelector(`[data-project-menu-open="${project.id}"]`);
+        const menuWrap = menuButton?.closest(".project-card-menu-wrap");
+        const menuPanel = document.querySelector(`[data-project-card-menu="${project.id}"]`);
+
+        syncProjectCardToggle(
+            starButton,
+            isStarredProject(project.id),
+            "Unstar project",
+            "Star project"
+        );
+        syncProjectCardToggle(
+            compareButton,
+            isComparedProject(project.id),
+            "Remove from compare",
+            "Add to compare"
+        );
+
+        starButton?.addEventListener("click", async () => {
+            toggleStarProject(project.id);
+            syncProjectCardToggle(
+                starButton,
+                isStarredProject(project.id),
+                "Unstar project",
+                "Star project"
+            );
+            animateProjectToggle(starButton, isStarredProject(project.id));
+        });
+
+        compareButton?.addEventListener("click", async () => {
+            const changed = toggleCompareProject(project.id);
+            if (!changed) {
+                return;
+            }
+            syncProjectCardToggle(
+                compareButton,
+                isComparedProject(project.id),
+                "Remove from compare",
+                "Add to compare"
+            );
+            animateProjectToggle(compareButton, isComparedProject(project.id));
+            renderProjectCompareTray();
+        });
+
+        menuButton?.addEventListener("click", (event) => {
+            event.stopPropagation();
+            const willOpen = !menuWrap?.classList.contains("is-open");
+            closeProjectMenus(menuButton);
+            menuWrap?.classList.toggle("is-open", willOpen);
+            menuButton.setAttribute("aria-expanded", String(willOpen));
+        });
+
+        menuPanel?.querySelector(`[data-project-edit="${project.id}"]`)?.addEventListener("click", () => {
             state.editingProjectId = project.id;
             state.currentProject = project;
             openProjectEditor();
             fillForm(document.getElementById("project-form"), project);
         });
-        document.querySelector(`[data-project-view="${project.id}"]`)?.addEventListener("click", () => {
-            openProjectDetail(project);
-        });
-        document.querySelector(`[data-project-notes="${project.id}"]`)?.addEventListener("click", () => {
-            openProjectNotes(project);
-        });
-        document.querySelector(`[data-project-delete="${project.id}"]`)?.addEventListener("click", async () => {
+        menuPanel?.querySelector(`[data-project-delete="${project.id}"]`)?.addEventListener("click", async () => {
             if (!confirmDanger(`Delete "${project.title}"? This cannot be undone.`)) {
                 return;
             }
             await projectsApi.remove(project.id);
+            state.projectPage = 0;
             await loadProjectsAdmin();
+        });
+
+        document.querySelector(`[data-project-view="${project.id}"]`)?.addEventListener("click", () => {
+            openProjectDetail(project);
         });
     });
 }
@@ -1691,8 +2218,64 @@ async function initProjects() {
         }
     });
 
+    document.getElementById("toggle-filters")?.addEventListener("click", () => {
+        document.getElementById("admin-project-advanced-filters")?.classList.toggle("is-hidden");
+    });
+
+    const viewButtons = [
+        { id: "project-view-grid", mode: "grid" },
+        { id: "project-view-list", mode: "list" }
+    ];
+    viewButtons.forEach(({ id, mode }) => {
+        document.getElementById(id)?.addEventListener("click", async () => {
+            state.projectViewMode = mode;
+            viewButtons.forEach(({ id: buttonId, mode: buttonMode }) => {
+                const button = document.getElementById(buttonId);
+                if (!button) {
+                    return;
+                }
+                const isActive = buttonMode === state.projectViewMode;
+                button.classList.toggle("is-active", isActive);
+                button.setAttribute("aria-pressed", String(isActive));
+            });
+            await loadProjectsAdmin();
+        });
+    });
+    viewButtons.forEach(({ id, mode }) => {
+        const button = document.getElementById(id);
+        if (!button) {
+            return;
+        }
+        const isActive = mode === state.projectViewMode;
+        button.classList.toggle("is-active", isActive);
+        button.setAttribute("aria-pressed", String(isActive));
+    });
+
     document.getElementById("admin-project-category").innerHTML = markupOptions(PROJECT_CATEGORIES, true);
     document.getElementById("admin-project-status").innerHTML = markupOptions(PROJECT_STATUSES, true);
+    syncProjectStatusPills(document.getElementById("admin-project-status")?.value || "");
+    document.getElementById("admin-project-status-pills")?.addEventListener("click", async (event) => {
+        const button = event.target.closest(".filter-pill");
+        if (!button) {
+            return;
+        }
+        const statusSelect = document.getElementById("admin-project-status");
+        const nextStatus = button.dataset.status || "";
+        if (statusSelect) {
+            statusSelect.value = nextStatus;
+        }
+        syncProjectStatusPills(nextStatus);
+        state.projectPage = 0;
+        await loadProjectsAdmin();
+    });
+    document.getElementById("admin-project-status")?.addEventListener("change", async (event) => {
+        syncProjectStatusPills(event.target.value || "");
+    });
+    document.getElementById("admin-project-year-filter")?.addEventListener("change", async (event) => {
+        state.projectYearFilter = event.target.value || "";
+        state.projectPage = 0;
+        await loadProjectsAdmin();
+    });
     ["admin-project-search", "admin-project-category", "admin-project-status", "admin-project-visibility"].forEach((id) => {
         document.getElementById(id).addEventListener("input", async () => {
             state.projectPage = 0;
@@ -1717,10 +2300,33 @@ async function initProjects() {
             closeProjectDetail();
         }
     });
+    document.getElementById("project-compare-close")?.addEventListener("click", closeProjectCompareModal);
+    document.getElementById("project-compare-modal")?.addEventListener("click", (event) => {
+        if (event.target.id === "project-compare-modal") {
+            closeProjectCompareModal();
+        }
+    });
     document.addEventListener("keydown", (event) => {
         const detailModal = document.getElementById("project-detail-modal");
         if (event.key === "Escape" && detailModal && !detailModal.classList.contains("hidden")) {
             closeProjectDetail();
+        }
+        const compareModal = document.getElementById("project-compare-modal");
+        if (event.key === "Escape" && compareModal && !compareModal.classList.contains("hidden")) {
+            closeProjectCompareModal();
+        }
+    });
+    document.addEventListener("click", async (event) => {
+        if (!event.target.closest(".project-card-menu-wrap")) {
+            closeProjectMenus();
+        }
+        if (event.target.closest("#project-compare-open")) {
+            openProjectCompareModal();
+        }
+        if (event.target.closest("#project-compare-cancel")) {
+            state.comparedProjects = [];
+            writeStoredArray("compared_projects", []);
+            await loadProjectsAdmin();
         }
     });
     await loadProjectsAdmin();

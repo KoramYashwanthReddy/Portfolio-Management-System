@@ -45,29 +45,39 @@
                 </div>
             </section>
             <section class="admin-grid form-layout admin-stack-layout" style="grid-template-columns: 1fr;">
-                <div class="panel">
+                <div class="panel project-notes-page-shell">
                     <div id="project-notes-page-hero"></div>
-                    <div class="project-notes-page-grid">
-                        <div class="panel notes-composer-panel">
-                            <form id="project-notes-page-form" class="notes-form" novalidate></form>
+                    <div id="project-notes-page-summary" class="is-hidden"></div>
+                    <div id="project-notes-page-tabs"></div>
+                    <section class="project-notes-workspace">
+                        <div class="project-notes-section-header">
+                            <div class="project-notes-section-title">
+                                <span class="project-notes-section-icon"><i class="fa-solid fa-note-sticky"></i></span>
+                                <div>
+                                    <h2>Project Notes</h2>
+                                    <p>Add notes, ideas, and reminders related to this project.</p>
+                                </div>
+                            </div>
+                            <button id="project-notes-add-btn" class="button button-primary" type="button">
+                                <i class="fa-solid fa-plus"></i>
+                                <span>Add Note</span>
+                            </button>
                         </div>
-                        <div class="panel notes-list-panel">
-                            <div class="notes-toolbar">
-                                <input id="project-notes-page-search" class="input" type="search" placeholder="Search the archive">
-                                <select id="project-notes-page-type" class="input"></select>
-                                <select id="project-notes-page-sort" class="input">
-                                    <option value="createdAt_DESC">Newest first</option>
-                                    <option value="createdAt_ASC">Oldest first</option>
+                        <div class="project-notes-toolbar">
+                            <div class="notes-status-pills" id="notes-status-filters"></div>
+                            <div class="notes-sort-control">
+                                <span>Sort by:</span>
+                                <select id="notes-sort-select" class="input">
+                                    <option value="createdAt_DESC">Latest</option>
+                                    <option value="createdAt_ASC">Oldest</option>
                                     <option value="updatedAt_DESC">Recently edited</option>
                                     <option value="title_ASC">Title A-Z</option>
                                 </select>
-                                <label class="notes-toggle">
-                                    <input id="project-notes-page-pinned" type="checkbox">
-                                    <span>Pinned only</span>
-                                </label>
                             </div>
-                            <div id="project-notes-page-summary"></div>
-                            <div id="project-notes-page-list" class="notes-timeline"></div>
+                        </div>
+                        <div id="project-notes-page-list" class="project-notes-list"></div>
+                        <div class="panel notes-composer-panel">
+                            <form id="project-notes-page-form" class="notes-form" novalidate></form>
                         </div>
                     </div>
                 </div>
