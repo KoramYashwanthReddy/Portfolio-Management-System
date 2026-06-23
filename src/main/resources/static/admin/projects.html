@@ -64,6 +64,11 @@
                         <div class="projects-search-wrapper">
                             <i class="fa-solid fa-magnifying-glass search-icon"></i>
                             <input id="admin-project-search" class="input" type="search" placeholder="Search projects, tech stack, title..." />
+                            <button id="admin-project-hidden-toggle" class="project-hidden-toggle" type="button" aria-pressed="false">
+                                <i class="fa-solid fa-eye-slash"></i>
+                                <span>Hidden</span>
+                                <span class="project-hidden-count">0</span>
+                            </button>
                         </div>
                         <div class="projects-filter-pills" id="admin-project-status-pills">
                             <button class="filter-pill active" data-status="">All</button>
@@ -147,6 +152,47 @@
                     </button>
                 </div>
                 <div id="project-compare-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="project-delete-modal" class="modal-overlay hidden" aria-hidden="true">
+        <div class="modal-content project-danger-modal">
+            <div class="project-detail-content">
+                <div class="modal-header" style="margin-bottom: 20px;">
+                    <div>
+                        <p class="eyebrow">Danger zone</p>
+                        <h2 id="project-delete-title" style="margin: 0;">Delete project</h2>
+                    </div>
+                    <button id="project-delete-close" class="modal-close" type="button" aria-label="Close delete confirmation">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <form id="project-delete-form" class="project-delete-form">
+                    <div class="project-delete-callout">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <div>
+                            <strong>This cannot be undone.</strong>
+                            <p>To confirm, type the exact project title and then type <span>DELETE</span>.</p>
+                        </div>
+                    </div>
+                    <div class="project-delete-target">
+                        <span>Project</span>
+                        <strong id="project-delete-project-name">Untitled project</strong>
+                    </div>
+                    <label class="project-delete-field">
+                        <span>Type project title</span>
+                        <input id="project-delete-title-input" class="input" type="text" autocomplete="off" spellcheck="false" placeholder="Enter the exact title" />
+                    </label>
+                    <label class="project-delete-field">
+                        <span>Type DELETE to confirm</span>
+                        <input id="project-delete-token-input" class="input" type="text" autocomplete="off" spellcheck="false" placeholder="DELETE" />
+                    </label>
+                    <div class="project-delete-actions">
+                        <button id="project-delete-cancel" class="button button-outline" type="button">Cancel</button>
+                        <button id="project-delete-submit" class="button button-danger" type="submit" disabled>Delete project</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

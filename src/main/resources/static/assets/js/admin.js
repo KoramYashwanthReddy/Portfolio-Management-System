@@ -29,6 +29,7 @@ const state = {
     editingCertificationId: null,
     currentProject: null,
     currentProjectNotes: [],
+    projectDeleteTarget: null,
     currentCertification: null,
     skillsCache: [],
     certificationsCache: [],
@@ -215,6 +216,47 @@ function confirmDanger(message) {
     return window.confirm(message);
 }
 
+function buildProjectPayload(project, overrides = {}) {
+    return {
+        title: project?.title ?? "",
+        shortDescription: project?.shortDescription ?? "",
+        detailedDescription: project?.detailedDescription ?? "",
+        technologies: project?.technologies ?? "",
+        githubUrl: project?.githubUrl ?? "",
+        liveUrl: project?.liveUrl ?? "",
+        imageUrl: project?.imageUrl ?? "",
+        category: project?.category ?? "OTHER",
+        status: project?.status ?? "PLANNED",
+        featured: Boolean(project?.featured),
+        displayed: project?.displayed !== false,
+        completionDate: project?.completionDate || null,
+        imageFileId: project?.imageFile?.id ?? null,
+        ...overrides
+    };
+}
+
+async function copyTextToClipboard(text) {
+    const value = String(text || "").trim();
+    if (!value) {
+        return false;
+    }
+    try {
+        await navigator.clipboard.writeText(value);
+        return true;
+    } catch {
+        const textarea = document.createElement("textarea");
+        textarea.value = value;
+        textarea.setAttribute("readonly", "true");
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        const copied = document.execCommand("copy");
+        textarea.remove();
+        return copied;
+    }
+}
+
 function formatBytes(size) {
     if (!size && size !== 0) {
         return "";
@@ -371,6 +413,86 @@ function formatProjectStatusTone(project) {
     }
 }
 
+function getProjectProgressMeta(project) {
+    switch (project?.status) {
+        case "COMPLETED":
+            return {
+                label: "Completed",
+                detail: "Ready to ship",
+                iconClass: "fa-solid fa-circle-check",
+                spinIcon: false,
+                percent: 100,
+                stateClass: "is-completed"
+            };
+        case "IN_PROGRESS":
+            return {
+                label: "In progress",
+                detail: "Loading build",
+                iconClass: "fa-solid fa-spinner",
+                spinIcon: true,
+                percent: 68,
+                stateClass: "is-progress"
+            };
+        case "ARCHIVED":
+            return {
+                label: "Archived",
+                detail: "Stored away",
+                iconClass: "fa-solid fa-box-archive",
+                spinIcon: false,
+                percent: 100,
+                stateClass: "is-archived"
+            };
+        case "PLANNED":
+        default:
+            return {
+                label: "Planned",
+                detail: "Queued next",
+                iconClass: "fa-regular fa-calendar-check",
+                spinIcon: false,
+                percent: 18,
+                stateClass: "is-planned"
+            };
+    }
+}
+
+function getProjectCardStatusMeta(project) {
+    switch (project?.status) {
+        case "COMPLETED":
+            return {
+                label: "Completed",
+                color: "#10b981",
+                background: "rgba(16, 185, 129, 0.1)",
+                border: "rgba(16, 185, 129, 0.2)",
+                dot: "#10b981"
+            };
+        case "ARCHIVED":
+            return {
+                label: "Archived",
+                color: "#64748b",
+                background: "rgba(148, 163, 184, 0.14)",
+                border: "rgba(148, 163, 184, 0.22)",
+                dot: "#94a3b8"
+            };
+        case "PLANNED":
+            return {
+                label: "Planned",
+                color: "#b45309",
+                background: "rgba(245, 158, 11, 0.12)",
+                border: "rgba(245, 158, 11, 0.2)",
+                dot: "#f59e0b"
+            };
+        case "IN_PROGRESS":
+        default:
+            return {
+                label: "In development",
+                color: "#8b5cf6",
+                background: "rgba(139, 92, 246, 0.1)",
+                border: "rgba(139, 92, 246, 0.2)",
+                dot: "#8b5cf6"
+            };
+    }
+}
+
 function isStarredProject(projectId) {
     return state.starredProjects.includes(String(projectId));
 }
@@ -416,35 +538,70 @@ function projectMetricCardMarkup(label, value, subtitle, iconClass, tone = "") {
 
 function projectCardMarkup(project, index = 0) {
     const techs = splitTechnologiesList(project.technologies);
-    const year = getProjectYear(project);
     const summary = project.shortDescription || project.detailedDescription || "No summary provided.";
-    const statusTone = formatProjectStatusTone(project);
+    const statusMeta = getProjectCardStatusMeta(project);
     const starred = isStarredProject(project.id);
     const compared = isComparedProject(project.id);
+    const featuredLabel = project.featured ? "Unfeature" : "Mark featured";
+    const archiveLabel = project.status === "ARCHIVED" ? "Restore project" : "Archive project";
+    const visibilityLabel = project.displayed === false ? "Show in portfolio" : "Hide from portfolio";
+    const linkLabel = project.liveUrl ? "Copy live link" : (project.githubUrl ? "Copy GitHub link" : "Copy project link");
     return `
-        <article class="table-card admin-project-card" data-project-card="${project.id}">
+        <article class="table-card admin-project-card ${project.featured ? "is-featured" : ""} ${project.displayed === false ? "is-hidden-project" : ""}" data-project-card="${project.id}">
             <header class="project-card-header-top">
                 <div class="project-card-top-pills">
                     <span class="project-number">${String(index + 1).padStart(2, "0")}</span>
-                    <span class="project-status-pill ${statusTone}">${escapeHtml(formatProjectStatus(project.status))}</span>
-                    <span class="project-year">${year || "-"}</span>
+                    <span class="project-status-pill" style="background:${statusMeta.background};color:${statusMeta.color};border:1px solid ${statusMeta.border};">
+                        <span class="mnc-status-dot" style="background:${statusMeta.dot};"></span>
+                        ${escapeHtml(statusMeta.label)}
+                    </span>
+                    <span class="project-year">${getProjectYear(project) || "-"}</span>
                 </div>
                 <div class="project-card-top-actions">
-                    <button class="project-mini-btn project-compare-btn ${compared ? "is-active" : ""}" data-project-compare="${project.id}" type="button" title="${compared ? "Remove from compare" : "Add to compare"}" aria-label="${compared ? "Remove from compare" : "Add to compare"}" aria-pressed="${compared}">
-                        <i class="fa-solid fa-code-compare"></i>
-                    </button>
                     <button class="project-mini-btn project-star-btn ${starred ? "is-active" : ""}" data-project-star="${project.id}" type="button" title="${starred ? "Unstar project" : "Star project"}" aria-label="${starred ? "Unstar project" : "Star project"}" aria-pressed="${starred}">
                         <i class="fa-solid fa-star"></i>
+                    </button>
+                    <button class="project-mini-btn project-compare-btn ${compared ? "is-active" : ""}" data-project-compare="${project.id}" type="button" title="${compared ? "Remove from compare" : "Add to compare"}" aria-label="${compared ? "Remove from compare" : "Add to compare"}" aria-pressed="${compared}">
+                        <i class="fa-solid fa-code-compare"></i>
                     </button>
                     <div class="project-card-menu-wrap">
                         <button class="project-mini-btn project-menu-button" data-project-menu-open="${project.id}" type="button" aria-label="More options" aria-expanded="false">
                             <i class="fa-solid fa-ellipsis-vertical"></i>
                         </button>
                         <div class="project-card-menu" data-project-card-menu="${project.id}" role="menu" aria-label="Project actions">
+                            <button class="project-card-menu-item" data-project-details="${project.id}" type="button" role="menuitem">
+                                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                <span>View details</span>
+                            </button>
                             <button class="project-card-menu-item" data-project-edit="${project.id}" type="button" role="menuitem">
                                 <i class="fa-solid fa-pen"></i>
                                 <span>Edit</span>
                             </button>
+                            <button class="project-card-menu-item" data-project-duplicate="${project.id}" type="button" role="menuitem">
+                                <i class="fa-solid fa-clone"></i>
+                                <span>Duplicate</span>
+                            </button>
+                            <button class="project-card-menu-item" data-project-toggle-featured="${project.id}" type="button" role="menuitem">
+                                <i class="fa-solid fa-star"></i>
+                                <span>${escapeHtml(featuredLabel)}</span>
+                            </button>
+                            <button class="project-card-menu-item" data-project-toggle-archive="${project.id}" type="button" role="menuitem">
+                                <i class="fa-solid fa-box-archive"></i>
+                                <span>${escapeHtml(archiveLabel)}</span>
+                            </button>
+                            <button class="project-card-menu-item" data-project-toggle-visibility="${project.id}" type="button" role="menuitem">
+                                <i class="fa-solid fa-eye-slash"></i>
+                                <span>${escapeHtml(visibilityLabel)}</span>
+                            </button>
+                            <button class="project-card-menu-item" data-project-copy-link="${project.id}" type="button" role="menuitem">
+                                <i class="fa-solid fa-copy"></i>
+                                <span>${escapeHtml(linkLabel)}</span>
+                            </button>
+                            <button class="project-card-menu-item" data-project-notes-open="${project.id}" type="button" role="menuitem">
+                                <i class="fa-solid fa-file-lines"></i>
+                                <span>Open notes</span>
+                            </button>
+                            <div class="project-card-menu-divider" role="separator"></div>
                             <button class="project-card-menu-item is-danger" data-project-delete="${project.id}" type="button" role="menuitem">
                                 <i class="fa-solid fa-trash"></i>
                                 <span>Delete</span>
@@ -457,26 +614,26 @@ function projectCardMarkup(project, index = 0) {
                 <strong>${escapeHtml(project.title || "Untitled project")}</strong>
                 <p class="section-copy">${escapeHtml(summary)}</p>
             </div>
-            <div class="chip-row project-tech-row">
-                <span class="chip">${escapeHtml(formatEnumLabel(project.category || "OTHER"))}</span>
-                <span class="chip">${escapeHtml(formatProjectStatus(project.status))}</span>
-                ${project.featured ? '<span class="chip chip-highlight">Featured</span>' : ""}
-                ${project.displayed === false ? '<span class="chip chip-muted">Hidden</span>' : ""}
-            </div>
-            <div class="project-card-tech-list">
-                ${techs.slice(0, 6).map((tech) => `<span class="chip">${escapeHtml(tech)}</span>`).join("") || '<span class="chip">Stack unavailable</span>'}
-            </div>
-            <div class="project-card-actions">
-                <div class="project-card-action-row">
-                    <button class="button button-outline project-view-button" data-project-view="${project.id}" type="button">
-                        <span>View project</span>
-                        <i class="fa-solid fa-arrow-up-right-from-square"></i>
-                    </button>
-                    <a class="button button-outline project-notes-link" href="/api/v1/admin/project-notes.html?projectId=${project.id}" data-project-notes="${project.id}">
-                        <span>Notes page</span>
-                        <i class="fa-solid fa-file-lines"></i>
-                    </a>
+            <div class="project-stack-block">
+                <div class="project-stack-header">
+                    <span class="project-stack-label">Stacks</span>
+                    <span class="project-stack-hint">${escapeHtml(techs.length ? `${techs.length} technologies` : "No stack listed")}</span>
                 </div>
+                <div class="project-card-tech-list">
+                    ${techs.slice(0, 6).map((tech) => `<span class="chip">${escapeHtml(tech)}</span>`).join("") || '<span class="chip">Stack unavailable</span>'}
+                </div>
+            </div>
+            <div class="project-card-footer">
+                <div class="project-footer-links">
+                    ${project.githubUrl ? `<a class="project-footer-link" href="${escapeHtml(project.githubUrl)}" target="_blank" rel="noreferrer"><i class="fa-brands fa-github"></i> GitHub</a>` : `<span class="project-footer-link is-disabled"><i class="fa-brands fa-github"></i> GitHub</span>`}
+                    <button class="project-footer-link project-notes-link" data-project-notes-open="${project.id}" type="button">
+                        <i class="fa-solid fa-file-lines"></i>
+                        <span>Notes</span>
+                    </button>
+                </div>
+                <button class="project-footer-arrow project-detail-toggle" data-project-view="${project.id}" type="button" aria-label="View project details" title="View project details">
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
             </div>
         </article>
     `;
@@ -484,6 +641,7 @@ function projectCardMarkup(project, index = 0) {
 
 function projectCompareCardMarkup(project) {
     const technologies = parseTags(project.technologies);
+    const progressMeta = getProjectProgressMeta(project);
     const year = getProjectYear(project) || "In progress";
     const rows = [
         { label: "Category", value: project.category || "Project" },
@@ -494,10 +652,21 @@ function projectCompareCardMarkup(project) {
         { label: "Stack", value: `${technologies.length} tech${technologies.length === 1 ? "" : "s"}` }
     ];
     return `
-        <article class="project-compare-card">
+        <article class="project-compare-card ${progressMeta.stateClass}">
             <div class="project-compare-card-top">
                 <span class="project-number">${getProjectYear(project) || "-"}</span>
-                <span class="chip ${formatProjectStatusTone(project)}">${escapeHtml(formatProjectStatus(project.status))}</span>
+                <div class="project-progress-pill ${progressMeta.stateClass}">
+                    <div class="project-progress-pill-top">
+                        <span class="project-progress-pill-label">
+                            <i class="${progressMeta.iconClass}${progressMeta.spinIcon ? " fa-spin" : ""}"></i>
+                            <span>${escapeHtml(progressMeta.label)}</span>
+                        </span>
+                        <span class="project-progress-pill-percent">${progressMeta.percent}%</span>
+                    </div>
+                    <div class="project-progress-track" aria-hidden="true">
+                        <span class="project-progress-fill" style="width: ${progressMeta.percent}%"></span>
+                    </div>
+                </div>
             </div>
             <div class="project-compare-card-title">
                 <h3>${escapeHtml(project.title || "Untitled project")}</h3>
@@ -514,8 +683,14 @@ function projectCompareCardMarkup(project) {
             <div class="project-compare-card-body">
                 <p>${escapeHtml(project.detailedDescription || "No detailed description provided.")}</p>
             </div>
-            <div class="chip-row project-tech-row">
-                ${technologies.slice(0, 8).map((tech) => `<span class="chip">${escapeHtml(tech)}</span>`).join("") || '<span class="chip">Stack unavailable</span>'}
+            <div class="project-stack-block">
+                <div class="project-stack-header">
+                    <span class="project-stack-label">Stacks</span>
+                    <span class="project-stack-hint">${escapeHtml(year)}</span>
+                </div>
+                <div class="chip-row project-tech-row">
+                    ${technologies.slice(0, 8).map((tech) => `<span class="chip">${escapeHtml(tech)}</span>`).join("") || '<span class="chip">Stack unavailable</span>'}
+                </div>
             </div>
             <div class="project-compare-card-links">
                 ${project.githubUrl ? `<a class="button button-outline" href="${escapeHtml(project.githubUrl)}" target="_blank" rel="noreferrer">GitHub</a>` : ""}
@@ -600,6 +775,117 @@ function closeProjectCompareModal() {
     document.body.style.overflow = "";
 }
 
+function getProjectDeleteRequirements(project) {
+    return {
+        title: normalizeValue(project?.title || ""),
+        token: "DELETE"
+    };
+}
+
+function syncProjectDeleteModal() {
+    const modal = document.getElementById("project-delete-modal");
+    const form = document.getElementById("project-delete-form");
+    const submit = document.getElementById("project-delete-submit");
+    const titleInput = document.getElementById("project-delete-title-input");
+    const tokenInput = document.getElementById("project-delete-token-input");
+    const project = state.projectDeleteTarget;
+    if (!modal || !form || !submit || !titleInput || !tokenInput || !project) {
+        return;
+    }
+    const requirements = getProjectDeleteRequirements(project);
+    const titleMatches = normalizeValue(titleInput.value) === requirements.title;
+    const tokenMatches = normalizeValue(tokenInput.value).toUpperCase() === requirements.token;
+    submit.disabled = !(titleMatches && tokenMatches);
+    form.dataset.ready = String(titleMatches && tokenMatches);
+}
+
+function openProjectDeleteModal(project) {
+    const modal = document.getElementById("project-delete-modal");
+    const titleNode = document.getElementById("project-delete-title");
+    const nameNode = document.getElementById("project-delete-project-name");
+    const titleInput = document.getElementById("project-delete-title-input");
+    const tokenInput = document.getElementById("project-delete-token-input");
+    const submit = document.getElementById("project-delete-submit");
+    if (!modal || !titleNode || !nameNode || !titleInput || !tokenInput || !submit) {
+        return;
+    }
+    state.projectDeleteTarget = project;
+    const requirements = getProjectDeleteRequirements(project);
+    titleNode.textContent = `Delete ${project?.title || "project"}`;
+    nameNode.textContent = requirements.title || "Untitled project";
+    titleInput.value = "";
+    tokenInput.value = "";
+    submit.disabled = true;
+    modal.classList.remove("hidden");
+    modal.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+    syncProjectDeleteModal();
+    window.setTimeout(() => titleInput.focus(), 0);
+}
+
+function closeProjectDeleteModal() {
+    const modal = document.getElementById("project-delete-modal");
+    const form = document.getElementById("project-delete-form");
+    const submit = document.getElementById("project-delete-submit");
+    if (!modal) {
+        return;
+    }
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+    state.projectDeleteTarget = null;
+    form?.reset();
+    if (submit) {
+        submit.disabled = true;
+    }
+}
+
+async function handleProjectDelete(project) {
+    openProjectDeleteModal(project);
+}
+
+async function applyProjectUpdate(project, overrides = {}) {
+    await projectsApi.update(project.id, buildProjectPayload(project, overrides));
+    state.projectPage = 0;
+    await loadProjectsAdmin();
+}
+
+async function duplicateProject(project) {
+    const copyPayload = buildProjectPayload(project, {
+        title: `Copy of ${project.title || "Untitled project"}`,
+        featured: false,
+        displayed: true,
+        status: "PLANNED",
+        completionDate: null
+    });
+    await projectsApi.create(copyPayload);
+    state.projectPage = 0;
+    await loadProjectsAdmin();
+}
+
+async function toggleProjectFeatured(project) {
+    await applyProjectUpdate(project, { featured: !project.featured });
+}
+
+async function toggleProjectArchive(project) {
+    const nextStatus = project.status === "ARCHIVED" ? "PLANNED" : "ARCHIVED";
+    await applyProjectUpdate(project, { status: nextStatus });
+}
+
+async function toggleProjectVisibility(project) {
+    await applyProjectUpdate(project, { displayed: project.displayed === false });
+}
+
+async function openProjectLink(project) {
+    const url = project.liveUrl || project.githubUrl || "";
+    if (!url) {
+        alert("This project does not have a public link yet.");
+        return;
+    }
+    const copied = await copyTextToClipboard(url);
+    alert(copied ? "Project link copied to clipboard." : "Could not copy the link automatically.");
+}
+
 function closeProjectMenus(exceptButton = null) {
     document.querySelectorAll("[data-project-menu-open]").forEach((button) => {
         if (button !== exceptButton) {
@@ -646,6 +932,26 @@ function syncProjectStatusPills(activeStatus = "") {
         button.classList.toggle("active", isActive);
         button.setAttribute("aria-pressed", String(isActive));
     });
+}
+
+function syncProjectHiddenToggle(visibility = "", hiddenCount = 0) {
+    const button = document.getElementById("admin-project-hidden-toggle");
+    if (!button) {
+        return;
+    }
+    const isHiddenOnly = normalizeValue(visibility) === "hidden";
+    button.classList.toggle("active", isHiddenOnly);
+    button.setAttribute("aria-pressed", String(isHiddenOnly));
+    button.setAttribute("aria-label", isHiddenOnly ? "Showing hidden projects" : "Show hidden projects");
+    button.title = isHiddenOnly ? "Showing hidden projects" : "Show hidden projects";
+    const countNode = button.querySelector(".project-hidden-count");
+    if (countNode) {
+        countNode.textContent = String(hiddenCount || 0);
+    }
+    const labelNode = button.querySelector("span");
+    if (labelNode) {
+        labelNode.textContent = isHiddenOnly ? "Hidden only" : "Hidden";
+    }
 }
 
 function buildConicGradient(entries, palette, total) {
@@ -1161,6 +1467,58 @@ function renderProjectNotesSummary(project, notes) {
     `;
 }
 
+function getProjectNoteCounts(notes = []) {
+    return {
+        total: notes.length,
+        pinned: notes.filter((note) => note.pinned).length,
+        pending: notes.filter((note) => note.type === "PENDING").length,
+        inProgress: notes.filter((note) => note.type === "IN_PROGRESS").length,
+        review: notes.filter((note) => note.type === "REVIEW").length,
+        completed: notes.filter((note) => note.type === "COMPLETED").length
+    };
+}
+
+function renderProjectNoteCounts(notes = []) {
+    const grid = document.getElementById("notes-count-grid");
+    const total = document.getElementById("notes-count-total");
+    if (!grid || !total) {
+        return;
+    }
+    const counts = getProjectNoteCounts(notes);
+    total.textContent = `${counts.total} note${counts.total === 1 ? "" : "s"}`;
+    grid.innerHTML = [
+        ["Total", counts.total, "violet", true],
+        ["Pending", counts.pending, "amber", true],
+        ["In Progress", counts.inProgress, "blue", true],
+        ["Review", counts.review, "purple", true],
+        ["Completed", counts.completed, "green", true],
+        ["Pinned", counts.pinned, "slate", false]
+    ].map(([label, value, tone, clickable]) => `
+        <button class="notes-count-chip is-${tone}" type="${clickable ? "button" : "button"}" ${clickable ? `data-note-count-filter="${label.toLowerCase().replaceAll(" ", "-")}"` : "disabled"}>
+            <span>${escapeHtml(label)}</span>
+            <strong>${escapeHtml(String(value))}</strong>
+        </button>
+    `).join("");
+        grid.querySelectorAll("[data-note-count-filter]").forEach((button) => {
+        button.addEventListener("click", () => {
+            const filter = button.dataset.noteCountFilter || "total";
+            if (filter === "total") {
+                notesFilter = "ALL";
+            } else {
+                notesFilter = filter.toUpperCase().replaceAll("-", "_");
+            }
+            renderRedesignedNotesList();
+            const pageNotesTab = document.querySelector('#project-notes-page-tabs .tab-btn[data-tab="notes"]');
+            const modalNotesTab = document.querySelector('#project-notes-modal:not(.hidden) .project-notes-tabs .tab-btn[data-tab="notes"]');
+            (pageNotesTab || modalNotesTab)?.click();
+        });
+    });
+    const overviewAction = document.getElementById("project-notes-count-button");
+    if (overviewAction) {
+        overviewAction.dataset.countReady = "true";
+    }
+}
+
 function renderProjectNoteForm(note = null, formId = "project-note-form") {
     const form = document.getElementById(formId);
     if (!form) {
@@ -1290,6 +1648,8 @@ function renderProjectNotesList(notes, options = {}) {
                             </button>
                             <div class="note-actions-dropdown hidden">
                                 <button class="note-action-btn edit-btn" type="button" data-id="${note.id}"><i class="fa-solid fa-pen"></i> Edit</button>
+                                <button class="note-action-btn pin-btn" type="button" data-id="${note.id}"><i class="fa-solid fa-thumbtack"></i> ${note.pinned ? "Unpin" : "Pin"}</button>
+                                <button class="note-action-btn advance-status-btn" type="button" data-id="${note.id}"><i class="fa-solid fa-forward-step"></i> Advance</button>
                                 <button class="note-action-btn delete-btn" type="button" data-id="${note.id}"><i class="fa-solid fa-trash"></i> Delete</button>
                             </div>
                         </div>
@@ -1302,20 +1662,98 @@ function renderProjectNotesList(notes, options = {}) {
     if (!showActions) {
         return;
     }
-    limited.forEach((note) => {
-        document.querySelector(`[data-note-edit="${note.id}"]`)?.addEventListener("click", () => {
-            state.editingProjectNoteId = note.id;
-            renderProjectNoteForm(note, options.formId || "project-note-form");
-            document.getElementById(options.formId || "project-note-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
-        });
-        document.querySelector(`[data-note-delete="${note.id}"]`)?.addEventListener("click", async () => {
-            if (!confirmDanger(`Delete note "${note.title}"? This cannot be undone.`)) {
+    if (!container.dataset.menuBound) {
+        container.dataset.menuBound = "true";
+        container.addEventListener("click", async (event) => {
+            const trigger = event.target.closest(".project-note-actions-trigger");
+            const actionButton = event.target.closest(".edit-btn, .pin-btn, .advance-status-btn, .delete-btn");
+
+            if (trigger) {
+                event.stopPropagation();
+                const menuWrap = trigger.closest(".project-note-actions-menu");
+                container.querySelectorAll(".note-actions-dropdown").forEach((dropdown) => {
+                    if (dropdown !== trigger.nextElementSibling) {
+                        dropdown.classList.add("hidden");
+                    }
+                });
+                const dropdown = trigger.nextElementSibling;
+                dropdown?.classList.toggle("hidden");
+                menuWrap?.classList.toggle("is-open", dropdown ? !dropdown.classList.contains("hidden") : false);
                 return;
             }
-            await projectsApi.removeNote(state.currentProject.id, note.id);
-            await refreshProjectNotesSurface(options);
+
+            if (!actionButton) {
+                return;
+            }
+            event.stopPropagation();
+            const noteId = actionButton.getAttribute("data-id");
+            const note = state.currentProjectNotes.find((item) => String(item.id) === String(noteId));
+            if (!note) {
+                return;
+            }
+            const closeMenus = () => {
+                container.querySelectorAll(".note-actions-dropdown").forEach((dropdown) => dropdown.classList.add("hidden"));
+                container.querySelectorAll(".project-note-actions-menu").forEach((menu) => menu.classList.remove("is-open"));
+            };
+
+            if (actionButton.classList.contains("edit-btn")) {
+                state.editingProjectNoteId = note.id;
+                renderProjectNoteForm(note, options.formId || "project-note-form");
+                document.getElementById(options.formId || "project-note-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                closeMenus();
+                return;
+            }
+
+            if (actionButton.classList.contains("pin-btn")) {
+                try {
+                    await projectsApi.updateNote(state.currentProject.id, note.id, {
+                        title: note.title,
+                        content: note.content,
+                        type: note.type,
+                        tags: parseTags(note.tags).join(", "),
+                        pinned: !note.pinned
+                    });
+                    closeMenus();
+                    await refreshProjectNotesSurface(options);
+                } catch (error) {
+                    alert("Failed to update note: " + error.message);
+                }
+                return;
+            }
+
+            if (actionButton.classList.contains("advance-status-btn")) {
+                const order = ["PENDING", "IN_PROGRESS", "REVIEW", "COMPLETED"];
+                const currentIndex = Math.max(order.indexOf(note.type || "PENDING"), 0);
+                const nextType = order[(currentIndex + 1) % order.length];
+                try {
+                    await projectsApi.updateNote(state.currentProject.id, note.id, {
+                        title: note.title,
+                        content: note.content,
+                        type: nextType,
+                        tags: parseTags(note.tags).join(", "),
+                        pinned: Boolean(note.pinned)
+                    });
+                    closeMenus();
+                    await refreshProjectNotesSurface(options);
+                } catch (error) {
+                    alert("Failed to advance note status: " + error.message);
+                }
+                return;
+            }
+
+            if (actionButton.classList.contains("delete-btn")) {
+                if (confirmDanger(`Delete note "${note.title}"? This cannot be undone.`)) {
+                    try {
+                        await projectsApi.removeNote(state.currentProject.id, note.id);
+                        closeMenus();
+                        await refreshProjectNotesSurface(options);
+                    } catch (error) {
+                        alert("Failed to delete note: " + error.message);
+                    }
+                }
+            }
         });
-    });
+    }
 }
 
 async function refreshProjectNotesSurface(options = {}) {
@@ -1387,6 +1825,9 @@ async function refreshRedesignedNotes() {
     try {
         const notes = await fetchProjectNotes(state.currentProject.id);
         state.currentProjectNotes = notes;
+        if (document.getElementById("notes-count-grid")) {
+            renderTabPanelContent("overview");
+        }
         renderRedesignedNotesList();
     } catch (error) {
         if (listContainer) {
@@ -1450,6 +1891,8 @@ function renderRedesignedNotesList() {
                         <button class="note-actions-trigger" type="button" aria-label="Note actions"><i class="fa-solid fa-ellipsis-vertical"></i></button>
                         <div class="note-actions-dropdown hidden">
                             <button class="note-action-btn edit-btn" type="button" data-id="${note.id}"><i class="fa-solid fa-pen"></i> Edit</button>
+                            <button class="note-action-btn pin-btn" type="button" data-id="${note.id}"><i class="fa-solid fa-thumbtack"></i> ${note.pinned ? "Unpin" : "Pin"}</button>
+                            <button class="note-action-btn advance-status-btn" type="button" data-id="${note.id}"><i class="fa-solid fa-forward-step"></i> Advance</button>
                             <button class="note-action-btn delete-btn" type="button" data-id="${note.id}"><i class="fa-solid fa-trash"></i> Delete</button>
                         </div>
                     </div>
@@ -1458,62 +1901,107 @@ function renderRedesignedNotesList() {
         `;
     }).join("");
 
-    // Bind ellipsis actions
-    listContainer.querySelectorAll(".note-actions-trigger").forEach(btn => {
-        btn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            // Close all other dropdowns
-            listContainer.querySelectorAll(".note-actions-dropdown").forEach(dropdown => {
-                if (dropdown !== btn.nextElementSibling) {
-                    dropdown.classList.add("hidden");
-                }
-            });
-            btn.nextElementSibling.classList.toggle("hidden");
-        });
-    });
+    if (!listContainer.dataset.menuBound) {
+        listContainer.dataset.menuBound = "true";
+        listContainer.addEventListener("click", async (event) => {
+            const trigger = event.target.closest(".note-actions-trigger");
+            const actionButton = event.target.closest(".edit-btn, .pin-btn, .advance-status-btn, .delete-btn");
 
-    // Edit action
-    listContainer.querySelectorAll(".edit-btn").forEach(btn => {
-        btn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            const noteId = btn.getAttribute("data-id");
-            const note = state.currentProjectNotes.find(n => String(n.id) === String(noteId));
-            if (note) {
+            if (trigger) {
+                event.stopPropagation();
+                const menuWrap = trigger.closest(".note-card-actions-menu");
+                listContainer.querySelectorAll(".note-actions-dropdown").forEach((dropdown) => {
+                    if (dropdown !== trigger.nextElementSibling) {
+                        dropdown.classList.add("hidden");
+                    }
+                });
+                trigger.nextElementSibling?.classList.toggle("hidden");
+                menuWrap?.classList.toggle("is-open", !trigger.nextElementSibling?.classList.contains("hidden"));
+                return;
+            }
+
+            if (!actionButton) {
+                return;
+            }
+            event.stopPropagation();
+            const noteId = actionButton.getAttribute("data-id");
+            const note = state.currentProjectNotes.find((item) => String(item.id) === String(noteId));
+            if (!note) {
+                return;
+            }
+            const closeMenus = () => {
+                listContainer.querySelectorAll(".note-actions-dropdown").forEach((dropdown) => dropdown.classList.add("hidden"));
+                listContainer.querySelectorAll(".note-card-actions-menu").forEach((menu) => menu.classList.remove("is-open"));
+            };
+            if (actionButton.classList.contains("edit-btn")) {
                 state.editingProjectNoteId = note.id;
                 document.getElementById("quick-note-title").value = note.title || "";
                 document.getElementById("quick-note-content").value = note.content || "";
                 document.getElementById("quick-note-status").value = note.type || "PENDING";
-                
                 const form = document.getElementById("project-notes-quick-form");
-                const submitBtn = form.querySelector(".quick-add-btn");
+                const submitBtn = form?.querySelector(".quick-add-btn");
                 if (submitBtn) submitBtn.textContent = "Save Note";
-                
-                document.getElementById("quick-note-title").focus();
+                document.getElementById("quick-note-title")?.focus();
+                closeMenus();
+                return;
             }
-        });
-    });
-
-    // Delete action
-    listContainer.querySelectorAll(".delete-btn").forEach(btn => {
-        btn.addEventListener("click", async (e) => {
-            e.stopPropagation();
-            const noteId = btn.getAttribute("data-id");
-            if (confirmDanger("Are you sure you want to delete this note?")) {
+            if (actionButton.classList.contains("pin-btn")) {
                 try {
-                    await projectsApi.removeNote(state.currentProject.id, noteId);
+                    await projectsApi.updateNote(state.currentProject.id, note.id, {
+                        title: note.title,
+                        content: note.content,
+                        type: note.type,
+                        tags: parseTags(note.tags).join(", "),
+                        pinned: !note.pinned
+                    });
+                    closeMenus();
                     await refreshRedesignedNotes();
                 } catch (error) {
-                    alert("Failed to delete note: " + error.message);
+                    alert("Failed to update note: " + error.message);
+                }
+                return;
+            }
+            if (actionButton.classList.contains("advance-status-btn")) {
+                const order = ["PENDING", "IN_PROGRESS", "REVIEW", "COMPLETED"];
+                const currentIndex = Math.max(order.indexOf(note.type || "PENDING"), 0);
+                const nextType = order[(currentIndex + 1) % order.length];
+                try {
+                    await projectsApi.updateNote(state.currentProject.id, note.id, {
+                        title: note.title,
+                        content: note.content,
+                        type: nextType,
+                        tags: parseTags(note.tags).join(", "),
+                        pinned: Boolean(note.pinned)
+                    });
+                    closeMenus();
+                    await refreshRedesignedNotes();
+                } catch (error) {
+                    alert("Failed to advance note status: " + error.message);
+                }
+                return;
+            }
+            if (actionButton.classList.contains("delete-btn")) {
+                if (confirmDanger(`Delete note "${note.title}"? This cannot be undone.`)) {
+                    try {
+                        await projectsApi.removeNote(state.currentProject.id, note.id);
+                        closeMenus();
+                        await refreshRedesignedNotes();
+                    } catch (error) {
+                        alert("Failed to delete note: " + error.message);
+                    }
                 }
             }
         });
-    });
+    }
 }
 
 // Global click listener to close dropdowns
 document.addEventListener("click", () => {
     document.querySelectorAll(".note-actions-dropdown").forEach(dropdown => {
         dropdown.classList.add("hidden");
+    });
+    document.querySelectorAll(".project-note-actions-menu, .note-card-actions-menu").forEach((menu) => {
+        menu.classList.remove("is-open");
     });
 });
 
@@ -1546,6 +2034,7 @@ function switchNotesTab(tabName) {
 function renderTabPanelContent(tabName) {
     const project = state.currentProject;
     if (!project) return;
+    const notes = state.currentProjectNotes || [];
 
     if (tabName === "overview") {
         document.getElementById("overview-title").textContent = project.title || "";
@@ -1559,6 +2048,7 @@ function renderTabPanelContent(tabName) {
         document.getElementById("overview-date").textContent = project.completionDate || "Not completed yet";
         document.getElementById("overview-featured").textContent = project.featured ? "Yes" : "No";
         document.getElementById("overview-displayed").textContent = project.displayed !== false ? "Visible on Portfolio" : "Hidden from Portfolio";
+        renderProjectNoteCounts(notes);
     } else if (tabName === "about") {
         document.getElementById("about-detailed-desc").textContent = project.detailedDescription || project.shortDescription || "No description provided.";
     } else if (tabName === "tech") {
@@ -1606,15 +2096,14 @@ function renderTabPanelContent(tabName) {
     } else if (tabName === "notes") {
         // Handled by refreshRedesignedNotes()
     } else if (tabName === "timeline") {
-        const container = document.getElementById("panel-timeline");
+        const container = document.getElementById("panel-timeline-content") || document.getElementById("panel-timeline");
         if (container) {
-            let notes = [...(state.currentProjectNotes || [])];
-            notes.sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
+            const timelineNotes = [...notes].sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
             
-            if (notes.length === 0) {
+            if (timelineNotes.length === 0) {
                 container.innerHTML = `<div class="about-content-box"><h3>Timeline History</h3>${emptyMarkup("No activity logged yet.")}</div>`;
             } else {
-                const timelineItems = notes.map(note => {
+                const timelineItems = timelineNotes.map(note => {
                     const statusClass = (note.type || "PENDING").toLowerCase().replace("_", "-");
                     const dateStr = formatTimestamp(note.createdAt);
                     return `
@@ -1761,31 +2250,45 @@ async function initProjectNotesPage() {
                     ["features", "Features"],
                     ["gallery", "Gallery"],
                     ["notes", "Notes", true],
-                    ["timeline", "Timeline"]
+                    ["timeline", "Timeline"],
+                    ["count", "Count"]
                 ].map(([key, label, active]) => `<button class="tab-btn ${active ? "active" : ""}" type="button" data-tab="${key}">${label}</button>`).join("")}
             </nav>
         `;
-        const scrollTargets = {
-            overview: "#project-notes-page-hero",
-            about: "#project-notes-page-hero",
-            tech: "#project-notes-page-hero",
-            features: "#project-notes-page-list",
-            gallery: "#project-notes-page-list",
-            notes: "#project-notes-page-list",
-            timeline: "#project-notes-page-form"
-        };
-        tabs.querySelectorAll(".tab-btn").forEach((btn) => {
-            btn.addEventListener("click", () => {
-                tabs.querySelectorAll(".tab-btn").forEach((item) => item.classList.remove("active"));
-                btn.classList.add("active");
-                const target = document.querySelector(scrollTargets[btn.dataset.tab] || "#project-notes-page-hero");
-                target?.scrollIntoView({ behavior: "smooth", block: "start" });
-            });
+    };
+
+    const switchProjectNotesPageTab = (tabName) => {
+        const tabBar = document.getElementById("project-notes-page-tabs");
+        const panelRoot = document.getElementById("project-notes-page-tab-panels");
+        if (!tabBar || !panelRoot) {
+            return;
+        }
+        const resolvedTab = tabName === "count" ? "overview" : tabName;
+        tabBar.querySelectorAll(".tab-btn").forEach((btn) => {
+            btn.classList.toggle("active", btn.dataset.tab === tabName);
         });
+        panelRoot.querySelectorAll(".tab-panel").forEach((panel) => {
+            panel.classList.toggle("hidden", panel.id !== `panel-${resolvedTab}`);
+        });
+        renderTabPanelContent(resolvedTab);
+        panelRoot.querySelector(`#panel-${resolvedTab}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+        if (tabName === "count") {
+            window.setTimeout(() => {
+                document.getElementById("notes-count-grid")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }, 0);
+        }
     };
 
     renderProjectNotesHero();
     renderProjectTabs();
+    ["overview", "about", "tech", "features", "gallery", "timeline"].forEach((tabName) => renderTabPanelContent(tabName));
+    switchProjectNotesPageTab("notes");
+    document.getElementById("project-notes-count-button")?.addEventListener("click", () => {
+        switchProjectNotesPageTab("overview");
+        window.setTimeout(() => {
+            document.getElementById("notes-count-grid")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 0);
+    });
     document.getElementById("project-notes-status-select")?.addEventListener("change", async (event) => {
         if (!state.currentProject) {
             return;
@@ -1854,12 +2357,20 @@ async function initProjectNotesPage() {
         titleField?.scrollIntoView({ behavior: "smooth", block: "center" });
     });
 
+    tabs?.querySelectorAll(".tab-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            switchProjectNotesPageTab(btn.dataset.tab || "notes");
+        });
+    });
+
     async function loadProjectNotesArchive() {
         list.innerHTML = `<div class="notes-loading">Loading notes...</div>`;
         try {
             const notes = await fetchProjectNotes(projectId);
             state.currentProjectNotes = notes;
             renderProjectNotesHero(notes.length);
+            ["overview", "about", "tech", "features", "gallery", "timeline"].forEach((tabName) => renderTabPanelContent(tabName));
+            switchProjectNotesPageTab(tabs?.querySelector(".tab-btn.active")?.dataset.tab || "notes");
             renderProjectNotesList(notes, {
                 containerId: "project-notes-page-list",
                 formId: "project-notes-page-form",
@@ -1877,13 +2388,14 @@ async function initProjectNotesPage() {
 
 async function loadProjectsAdmin() {
     const visibility = document.getElementById("admin-project-visibility")?.value || "";
+    const displayedFilter = visibility === "displayed" ? true : visibility === "hidden" ? false : "";
     const summaryResponse = await projectsApi.getAdmin({
         page: 0,
         size: 5000,
         search: "",
         category: "",
         status: "",
-        displayed: ""
+        displayed: displayedFilter
     });
     const summaryData = summaryResponse.data || {};
     const allProjects = safeArray(summaryData.content);
@@ -1907,6 +2419,7 @@ async function loadProjectsAdmin() {
             projectMetricCardMarkup("Archived", counts.archived || counts.hidden, `${counts.archived || counts.hidden} items`, "fa-solid fa-box-archive", "slate")
         ].join("");
     }
+    syncProjectHiddenToggle(visibility, counts.hidden);
 
     const searchText = normalizeValue(document.getElementById("admin-project-search")?.value).toLowerCase();
     const selectedCategory = normalizeValue(document.getElementById("admin-project-category")?.value);
@@ -1967,6 +2480,14 @@ async function loadProjectsAdmin() {
         const menuButton = document.querySelector(`[data-project-menu-open="${project.id}"]`);
         const menuWrap = menuButton?.closest(".project-card-menu-wrap");
         const menuPanel = document.querySelector(`[data-project-card-menu="${project.id}"]`);
+        const detailsButton = menuPanel?.querySelector(`[data-project-details="${project.id}"]`);
+        const duplicateButton = menuPanel?.querySelector(`[data-project-duplicate="${project.id}"]`);
+        const toggleFeaturedButton = menuPanel?.querySelector(`[data-project-toggle-featured="${project.id}"]`);
+        const toggleArchiveButton = menuPanel?.querySelector(`[data-project-toggle-archive="${project.id}"]`);
+        const toggleVisibilityButton = menuPanel?.querySelector(`[data-project-toggle-visibility="${project.id}"]`);
+        const copyLinkButton = menuPanel?.querySelector(`[data-project-copy-link="${project.id}"]`);
+        const notesButton = menuPanel?.querySelector(`[data-project-notes-open="${project.id}"]`);
+        const deleteButton = menuPanel?.querySelector(`[data-project-delete="${project.id}"]`);
 
         syncProjectCardToggle(
             starButton,
@@ -2007,6 +2528,11 @@ async function loadProjectsAdmin() {
             renderProjectCompareTray();
         });
 
+        detailsButton?.addEventListener("click", () => {
+            closeProjectMenus();
+            openProjectDetail(project);
+        });
+
         menuButton?.addEventListener("click", (event) => {
             event.stopPropagation();
             const willOpen = !menuWrap?.classList.contains("is-open");
@@ -2021,17 +2547,43 @@ async function loadProjectsAdmin() {
             openProjectEditor();
             fillForm(document.getElementById("project-form"), project);
         });
-        menuPanel?.querySelector(`[data-project-delete="${project.id}"]`)?.addEventListener("click", async () => {
-            if (!confirmDanger(`Delete "${project.title}"? This cannot be undone.`)) {
-                return;
-            }
-            await projectsApi.remove(project.id);
-            state.projectPage = 0;
-            await loadProjectsAdmin();
+        duplicateButton?.addEventListener("click", async () => {
+            closeProjectMenus();
+            await duplicateProject(project);
+        });
+        toggleFeaturedButton?.addEventListener("click", async () => {
+            closeProjectMenus();
+            await toggleProjectFeatured(project);
+        });
+        toggleArchiveButton?.addEventListener("click", async () => {
+            closeProjectMenus();
+            await toggleProjectArchive(project);
+        });
+        toggleVisibilityButton?.addEventListener("click", async () => {
+            closeProjectMenus();
+            await toggleProjectVisibility(project);
+        });
+        copyLinkButton?.addEventListener("click", async () => {
+            closeProjectMenus();
+            await openProjectLink(project);
+        });
+        notesButton?.addEventListener("click", () => {
+            closeProjectMenus();
+            window.location.href = `/api/v1/admin/project-notes.html?projectId=${project.id}`;
+        });
+        deleteButton?.addEventListener("click", async () => {
+            closeProjectMenus();
+            await handleProjectDelete(project);
         });
 
         document.querySelector(`[data-project-view="${project.id}"]`)?.addEventListener("click", () => {
             openProjectDetail(project);
+        });
+        document.querySelectorAll(`[data-project-notes-open="${project.id}"]`).forEach((button) => {
+            button.addEventListener("click", () => {
+                closeProjectMenus();
+                window.location.href = `/api/v1/admin/project-notes.html?projectId=${project.id}`;
+            });
         });
     });
 }
@@ -2254,6 +2806,7 @@ async function initProjects() {
     document.getElementById("admin-project-category").innerHTML = markupOptions(PROJECT_CATEGORIES, true);
     document.getElementById("admin-project-status").innerHTML = markupOptions(PROJECT_STATUSES, true);
     syncProjectStatusPills(document.getElementById("admin-project-status")?.value || "");
+    syncProjectHiddenToggle(document.getElementById("admin-project-visibility")?.value || "", state.projectsCache.filter((project) => project.displayed === false).length);
     document.getElementById("admin-project-status-pills")?.addEventListener("click", async (event) => {
         const button = event.target.closest(".filter-pill");
         if (!button) {
@@ -2270,6 +2823,16 @@ async function initProjects() {
     });
     document.getElementById("admin-project-status")?.addEventListener("change", async (event) => {
         syncProjectStatusPills(event.target.value || "");
+    });
+    document.getElementById("admin-project-hidden-toggle")?.addEventListener("click", async () => {
+        const visibilitySelect = document.getElementById("admin-project-visibility");
+        if (!visibilitySelect) {
+            return;
+        }
+        visibilitySelect.value = visibilitySelect.value === "hidden" ? "" : "hidden";
+        syncProjectHiddenToggle(visibilitySelect.value, state.projectsCache.filter((project) => project.displayed === false).length);
+        state.projectPage = 0;
+        await loadProjectsAdmin();
     });
     document.getElementById("admin-project-year-filter")?.addEventListener("change", async (event) => {
         state.projectYearFilter = event.target.value || "";
@@ -2306,6 +2869,39 @@ async function initProjects() {
             closeProjectCompareModal();
         }
     });
+    document.getElementById("project-delete-close")?.addEventListener("click", closeProjectDeleteModal);
+    document.getElementById("project-delete-cancel")?.addEventListener("click", closeProjectDeleteModal);
+    document.getElementById("project-delete-modal")?.addEventListener("click", (event) => {
+        if (event.target.id === "project-delete-modal") {
+            closeProjectDeleteModal();
+        }
+    });
+    document.getElementById("project-delete-title-input")?.addEventListener("input", syncProjectDeleteModal);
+    document.getElementById("project-delete-token-input")?.addEventListener("input", syncProjectDeleteModal);
+    document.getElementById("project-delete-form")?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const project = state.projectDeleteTarget;
+        const titleInput = document.getElementById("project-delete-title-input");
+        const tokenInput = document.getElementById("project-delete-token-input");
+        if (!project || !titleInput || !tokenInput) {
+            return;
+        }
+        const requirements = getProjectDeleteRequirements(project);
+        const titleMatches = normalizeValue(titleInput.value) === requirements.title;
+        const tokenMatches = normalizeValue(tokenInput.value).toUpperCase() === requirements.token;
+        if (!titleMatches || !tokenMatches) {
+            alert("Type the exact project title and DELETE to confirm.");
+            return;
+        }
+        try {
+            await projectsApi.remove(project.id);
+            closeProjectDeleteModal();
+            state.projectPage = 0;
+            await loadProjectsAdmin();
+        } catch (error) {
+            alert("Failed to delete project: " + error.message);
+        }
+    });
     document.addEventListener("keydown", (event) => {
         const detailModal = document.getElementById("project-detail-modal");
         if (event.key === "Escape" && detailModal && !detailModal.classList.contains("hidden")) {
@@ -2314,6 +2910,10 @@ async function initProjects() {
         const compareModal = document.getElementById("project-compare-modal");
         if (event.key === "Escape" && compareModal && !compareModal.classList.contains("hidden")) {
             closeProjectCompareModal();
+        }
+        const deleteModal = document.getElementById("project-delete-modal");
+        if (event.key === "Escape" && deleteModal && !deleteModal.classList.contains("hidden")) {
+            closeProjectDeleteModal();
         }
     });
     document.addEventListener("click", async (event) => {

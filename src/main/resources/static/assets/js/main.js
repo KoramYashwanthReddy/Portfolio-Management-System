@@ -173,6 +173,44 @@ function projectInsightRows(project) {
     ];
 }
 
+function projectStatusMeta(project) {
+    switch (project?.status) {
+        case "COMPLETED":
+            return {
+                label: "Completed",
+                color: "#10b981",
+                background: "rgba(16, 185, 129, 0.1)",
+                border: "rgba(16, 185, 129, 0.2)",
+                dot: "#10b981"
+            };
+        case "ARCHIVED":
+            return {
+                label: "Archived",
+                color: "#64748b",
+                background: "rgba(148, 163, 184, 0.14)",
+                border: "rgba(148, 163, 184, 0.22)",
+                dot: "#94a3b8"
+            };
+        case "PLANNED":
+            return {
+                label: "Planned",
+                color: "#b45309",
+                background: "rgba(245, 158, 11, 0.12)",
+                border: "rgba(245, 158, 11, 0.2)",
+                dot: "#f59e0b"
+            };
+        case "IN_PROGRESS":
+        default:
+            return {
+                label: "In development",
+                color: "#8b5cf6",
+                background: "rgba(139, 92, 246, 0.1)",
+                border: "rgba(139, 92, 246, 0.2)",
+                dot: "#8b5cf6"
+            };
+    }
+}
+
 function projectHighlights(project) {
     const raw = (project.detailedDescription || "").replace(/\r/g, "");
     if (!raw) {
@@ -363,32 +401,26 @@ function renderSkills(skills) {
 
 function mncProjectCard(project, index = 0) {
     const technologies = splitTechnologies(project);
-    const isCompleted = project.status === "COMPLETED";
-    const statusColor = isCompleted ? "#10b981" : "#8b5cf6";
-    const statusBg = isCompleted ? "rgba(16, 185, 129, 0.1)" : "rgba(139, 92, 246, 0.1)";
-    const statusBorder = isCompleted ? "rgba(16, 185, 129, 0.2)" : "rgba(139, 92, 246, 0.2)";
-    const statusText = isCompleted ? "Completed" : "In development";
+    const status = projectStatusMeta(project);
     const year = project.completionDate ? project.completionDate.substring(0, 4) : new Date().getFullYear();
-    
     const isStarred = state.starredProjects.includes(String(project.id));
     const starClass = isStarred ? "fa-solid" : "fa-regular";
     const starTitle = isStarred ? "Unstar project" : "Star project";
-
     const isCompared = state.comparedProjects.includes(String(project.id));
     const compareClass = isCompared ? "fa-solid" : "fa-regular";
 
     return `
-        <article class="mnc-card" data-category="${project.category || ''}" data-status="${project.status || ''}">
-            <div class="mnc-card-header">
-                <div class="mnc-card-header-left">
-                    <span class="mnc-card-rank">${String(index ?? 0).padStart(2, "0")}</span>
-                    <span class="mnc-status-badge" style="background:${statusBg};color:${statusColor};border:1px solid ${statusBorder};">
-                        <span class="mnc-status-dot" style="background:${statusColor};"></span>
-                        ${statusText}
+        <article class="mnc-card project-card-shell" data-category="${project.category || ''}" data-status="${project.status || ''}">
+            <div class="project-card-header-top">
+                <div class="project-card-top-pills">
+                    <span class="project-number">${String(index + 1).padStart(2, "0")}</span>
+                    <span class="project-status-pill" style="background:${status.background};color:${status.color};border:1px solid ${status.border};">
+                        <span class="mnc-status-dot" style="background:${status.dot};"></span>
+                        ${status.label}
                     </span>
-                    <span class="mnc-card-year">${year}</span>
+                    <span class="project-year">${year}</span>
                 </div>
-                <div class="mnc-card-header-right">
+                <div class="project-card-top-actions">
                     <button class="mnc-icon-btn mnc-compare-btn ${isCompared ? "selected" : ""}" type="button" data-id="${project.id}" title="Toggle compare" aria-label="Toggle compare" aria-pressed="${isCompared}">
                         <i class="${compareClass} fa-code-fork"></i>
                     </button>
@@ -397,21 +429,30 @@ function mncProjectCard(project, index = 0) {
                     </button>
                 </div>
             </div>
-            <div class="mnc-card-body">
-                <h3 class="mnc-card-title">${project.title}</h3>
-                <p class="mnc-card-desc">
-                    ${(project.shortDescription || '').length > 120 
-                        ? `${(project.shortDescription || '').substring(0, 110)}... <button class="show-more-inline-btn" data-project-detail="${project.id}" style="background:none; border:none; color:var(--accent); font-weight:600; cursor:pointer; padding:0; font-family:inherit; font-size:inherit; transition: color 0.2s ease;">Show More</button>` 
-                        : (project.shortDescription || '')}
-                </p>
+            <div class="project-card-title-block">
+                <h3 class="mnc-card-title">${escapeHtml(project.title || "Untitled project")}</h3>
+                <p class="section-copy">${escapeHtml(project.shortDescription || "No short description provided.")}</p>
             </div>
-            <div class="mnc-card-tags">
-                ${technologies.map((tech) => `<span class="mnc-tech-tag">${tech}</span>`).join("")}
+            <div class="project-stack-block">
+                <div class="project-stack-header">
+                    <span class="project-stack-label">Stacks</span>
+                    <span class="project-stack-hint">${technologies.length} technologies</span>
+                </div>
+                <div class="project-card-tech-list">
+                    ${technologies.map((tech) => `<span class="mnc-tech-tag">${escapeHtml(tech)}</span>`).join("")}
+                </div>
             </div>
-            <div class="mnc-card-footer">
-                ${project.githubUrl ? `<a class="mnc-link" href="${project.githubUrl}" target="_blank" rel="noreferrer"><i class="fa-brands fa-github"></i> GitHub</a>` : `<span class="mnc-link mnc-link-disabled"><i class="fa-brands fa-github"></i> GitHub</span>`}
-                <button class="mnc-link project-more-toggle" type="button" data-project-detail="${project.id}" aria-expanded="false" style="background:none;border:none;cursor:pointer;padding:0;font-family:inherit;"><i class="fa-solid fa-circle-info"></i> View More</button>
-                <button class="mnc-arrow-link project-more-toggle" type="button" data-project-detail="${project.id}" aria-expanded="false" title="View details"><i class="fa-solid fa-arrow-right"></i></button>
+            <div class="project-card-footer">
+                <div class="project-footer-links">
+                    ${project.githubUrl ? `<a class="project-footer-link" href="${project.githubUrl}" target="_blank" rel="noreferrer"><i class="fa-brands fa-github"></i> GitHub</a>` : `<span class="project-footer-link is-disabled"><i class="fa-brands fa-github"></i> GitHub</span>`}
+                    <button class="project-footer-link project-more-toggle" type="button" data-project-detail="${project.id}" aria-expanded="false">
+                        <i class="fa-solid fa-circle-info"></i>
+                        <span>View More</span>
+                    </button>
+                </div>
+                <button class="project-footer-arrow project-more-toggle" type="button" data-project-detail="${project.id}" aria-expanded="false" title="View details" aria-label="View details">
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
             </div>
         </article>
     `;

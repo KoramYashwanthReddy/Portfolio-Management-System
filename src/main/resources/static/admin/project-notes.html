@@ -46,11 +46,84 @@
             </section>
             <section class="admin-grid form-layout admin-stack-layout" style="grid-template-columns: 1fr;">
                 <div class="panel project-notes-page-shell">
-                    <div id="project-notes-page-hero"></div>
-                    <div id="project-notes-page-summary" class="is-hidden"></div>
-                    <div id="project-notes-page-tabs"></div>
-                    <section class="project-notes-workspace">
-                        <div class="project-notes-section-header">
+                <div id="project-notes-page-hero"></div>
+                <div id="project-notes-page-summary" class="is-hidden"></div>
+                <div id="project-notes-page-tabs"></div>
+                <div id="project-notes-page-tab-panels" class="project-notes-tab-panels">
+                    <div class="tab-panel hidden" id="panel-overview">
+                        <div class="overview-grid">
+                            <div class="overview-item">
+                                <span class="overview-label">Title</span>
+                                <span class="overview-val" id="overview-title"></span>
+                            </div>
+                            <div class="overview-item">
+                                <span class="overview-label">Category</span>
+                                <span class="overview-val" id="overview-category"></span>
+                            </div>
+                            <div class="overview-item">
+                                <span class="overview-label">Project URL</span>
+                                <span class="overview-val" id="overview-url"></span>
+                            </div>
+                            <div class="overview-item">
+                                <span class="overview-label">Github URL</span>
+                                <span class="overview-val" id="overview-github"></span>
+                            </div>
+                            <div class="overview-item">
+                                <span class="overview-label">Completion Date</span>
+                                <span class="overview-val" id="overview-date"></span>
+                            </div>
+                            <div class="overview-item">
+                                <span class="overview-label">Featured Status</span>
+                                <span class="overview-val" id="overview-featured"></span>
+                            </div>
+                            <div class="overview-item">
+                                <span class="overview-label">Visibility</span>
+                                <span class="overview-val" id="overview-displayed"></span>
+                            </div>
+                        </div>
+                        <div class="notes-count-summary">
+                            <div class="notes-count-summary-header">
+                                <div>
+                                    <p class="eyebrow">Count</p>
+                                    <h3>Note breakdown</h3>
+                                </div>
+                                <button id="notes-count-button" class="notes-count-total" type="button">0 notes</button>
+                            </div>
+                            <div id="notes-count-grid" class="notes-count-grid"></div>
+                        </div>
+                    </div>
+
+                    <div class="tab-panel hidden" id="panel-about">
+                        <div class="about-content-box">
+                            <h3>Detailed Description</h3>
+                            <p id="about-detailed-desc"></p>
+                        </div>
+                    </div>
+
+                    <div class="tab-panel hidden" id="panel-tech">
+                        <div class="tech-stack-container">
+                            <h3>Technologies Used</h3>
+                            <div id="tech-stack-list" class="tech-chips-list"></div>
+                        </div>
+                    </div>
+
+                    <div class="tab-panel hidden" id="panel-features">
+                        <div class="features-container">
+                            <h3>Project Features</h3>
+                            <ul id="features-list" class="features-bullets"></ul>
+                        </div>
+                    </div>
+
+                    <div class="tab-panel hidden" id="panel-gallery">
+                        <div class="gallery-container">
+                            <h3>Project Media</h3>
+                            <div id="gallery-image-wrapper" class="gallery-image-wrapper"></div>
+                        </div>
+                    </div>
+
+                    <div class="tab-panel" id="panel-notes">
+                        <section class="project-notes-workspace">
+                            <div class="project-notes-section-header">
                             <div class="project-notes-section-title">
                                 <span class="project-notes-section-icon"><i class="fa-solid fa-note-sticky"></i></span>
                                 <div>
@@ -58,26 +131,40 @@
                                     <p>Add notes, ideas, and reminders related to this project.</p>
                                 </div>
                             </div>
-                            <button id="project-notes-add-btn" class="button button-primary" type="button">
-                                <i class="fa-solid fa-plus"></i>
-                                <span>Add Note</span>
-                            </button>
-                        </div>
-                        <div class="project-notes-toolbar">
-                            <div class="notes-status-pills" id="notes-status-filters"></div>
-                            <div class="notes-sort-control">
-                                <span>Sort by:</span>
-                                <select id="notes-sort-select" class="input">
-                                    <option value="createdAt_DESC">Latest</option>
-                                    <option value="createdAt_ASC">Oldest</option>
-                                    <option value="updatedAt_DESC">Recently edited</option>
-                                    <option value="title_ASC">Title A-Z</option>
-                                </select>
+                            <div class="project-notes-section-actions">
+                                <button id="project-notes-count-button" class="button button-outline" type="button">
+                                    <i class="fa-solid fa-chart-column"></i>
+                                    <span>Count</span>
+                                </button>
+                                <button id="project-notes-add-btn" class="button button-primary" type="button">
+                                    <i class="fa-solid fa-plus"></i>
+                                    <span>Add Note</span>
+                                </button>
                             </div>
                         </div>
-                        <div id="project-notes-page-list" class="project-notes-list"></div>
-                        <div class="panel notes-composer-panel">
-                            <form id="project-notes-page-form" class="notes-form" novalidate></form>
+                            <div class="project-notes-toolbar">
+                                <div class="notes-status-pills" id="notes-status-filters"></div>
+                                <div class="notes-sort-control">
+                                    <span>Sort by:</span>
+                                    <select id="notes-sort-select" class="input">
+                                        <option value="createdAt_DESC">Latest</option>
+                                        <option value="createdAt_ASC">Oldest</option>
+                                        <option value="updatedAt_DESC">Recently edited</option>
+                                        <option value="title_ASC">Title A-Z</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="project-notes-page-list" class="project-notes-list"></div>
+                            <div class="panel notes-composer-panel">
+                                <form id="project-notes-page-form" class="notes-form" novalidate></form>
+                            </div>
+                        </section>
+                    </div>
+
+                    <div class="tab-panel hidden" id="panel-timeline">
+                        <div class="about-content-box">
+                            <h3>Timeline History</h3>
+                            <div id="panel-timeline-content"></div>
                         </div>
                     </div>
                 </div>
