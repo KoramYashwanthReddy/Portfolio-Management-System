@@ -1480,12 +1480,17 @@ function getProjectNoteCounts(notes = []) {
 
 function renderProjectNoteCounts(notes = []) {
     const grid = document.getElementById("notes-count-grid");
-    const total = document.getElementById("notes-count-total");
-    if (!grid || !total) {
+    const totalButtons = [
+        document.getElementById("notes-count-total"),
+        document.getElementById("notes-count-button")
+    ].filter(Boolean);
+    if (!grid || !totalButtons.length) {
         return;
     }
     const counts = getProjectNoteCounts(notes);
-    total.textContent = `${counts.total} note${counts.total === 1 ? "" : "s"}`;
+    totalButtons.forEach((button) => {
+        button.textContent = `${counts.total} note${counts.total === 1 ? "" : "s"}`;
+    });
     grid.innerHTML = [
         ["Total", counts.total, "violet", true],
         ["Pending", counts.pending, "amber", true],
@@ -2048,7 +2053,6 @@ function renderTabPanelContent(tabName) {
         document.getElementById("overview-date").textContent = project.completionDate || "Not completed yet";
         document.getElementById("overview-featured").textContent = project.featured ? "Yes" : "No";
         document.getElementById("overview-displayed").textContent = project.displayed !== false ? "Visible on Portfolio" : "Hidden from Portfolio";
-        renderProjectNoteCounts(notes);
     } else if (tabName === "about") {
         document.getElementById("about-detailed-desc").textContent = project.detailedDescription || project.shortDescription || "No description provided.";
     } else if (tabName === "tech") {
@@ -2130,6 +2134,8 @@ function renderTabPanelContent(tabName) {
                 `;
             }
         }
+    } else if (tabName === "count") {
+        renderProjectNoteCounts(notes);
     }
 }
 
@@ -2263,28 +2269,22 @@ async function initProjectNotesPage() {
         if (!tabBar || !panelRoot) {
             return;
         }
-        const resolvedTab = tabName === "count" ? "overview" : tabName;
         tabBar.querySelectorAll(".tab-btn").forEach((btn) => {
             btn.classList.toggle("active", btn.dataset.tab === tabName);
         });
         panelRoot.querySelectorAll(".tab-panel").forEach((panel) => {
-            panel.classList.toggle("hidden", panel.id !== `panel-${resolvedTab}`);
+            panel.classList.toggle("hidden", panel.id !== `panel-${tabName}`);
         });
-        renderTabPanelContent(resolvedTab);
-        panelRoot.querySelector(`#panel-${resolvedTab}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-        if (tabName === "count") {
-            window.setTimeout(() => {
-                document.getElementById("notes-count-grid")?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }, 0);
-        }
+        renderTabPanelContent(tabName);
+        panelRoot.querySelector(`#panel-${tabName}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
     };
 
     renderProjectNotesHero();
     renderProjectTabs();
-    ["overview", "about", "tech", "features", "gallery", "timeline"].forEach((tabName) => renderTabPanelContent(tabName));
+    ["overview", "about", "tech", "features", "gallery", "timeline", "count"].forEach((tabName) => renderTabPanelContent(tabName));
     switchProjectNotesPageTab("notes");
     document.getElementById("project-notes-count-button")?.addEventListener("click", () => {
-        switchProjectNotesPageTab("overview");
+        switchProjectNotesPageTab("count");
         window.setTimeout(() => {
             document.getElementById("notes-count-grid")?.scrollIntoView({ behavior: "smooth", block: "start" });
         }, 0);
@@ -2369,7 +2369,7 @@ async function initProjectNotesPage() {
             const notes = await fetchProjectNotes(projectId);
             state.currentProjectNotes = notes;
             renderProjectNotesHero(notes.length);
-            ["overview", "about", "tech", "features", "gallery", "timeline"].forEach((tabName) => renderTabPanelContent(tabName));
+            ["overview", "about", "tech", "features", "gallery", "timeline", "count"].forEach((tabName) => renderTabPanelContent(tabName));
             switchProjectNotesPageTab(tabs?.querySelector(".tab-btn.active")?.dataset.tab || "notes");
             renderProjectNotesList(notes, {
                 containerId: "project-notes-page-list",
@@ -2942,7 +2942,10 @@ function renderSkillForm() {
         </div>
         <div class="field-grid">
             <label><span>Proficiency percentage</span><input class="input" type="number" name="proficiencyPercentage" min="0" max="100" required></label>
-            <label><span>Display order</span><input class="input" type="number" name="displayOrder" min="0" required></label>
+            <div>
+                <span>Visibility</span>
+                <p class="form-help" style="margin:10px 0 0;">Skills are ordered automatically and published in the selected visibility mode.</p>
+            </div>
         </div>
         <label><span><input type="checkbox" name="displayed" checked> Display in portfolio</span></label>
         <div class="form-actions">
@@ -2990,8 +2993,11 @@ function bindSkillForm() {
                 throw new Error("Skill already exists.");
             }
             payload.proficiencyPercentage = Number(payload.proficiencyPercentage);
-            payload.displayOrder = Number(payload.displayOrder);
             payload.displayed = payload.displayed === "on";
+            const existingSkill = state.skillsCache.find((skill) => String(skill.id) === String(state.editingSkillId));
+            payload.displayOrder = isEditing
+                ? Number(existingSkill?.displayOrder ?? 1)
+                : (Math.max(0, ...state.skillsCache.map((skill) => Number(skill.displayOrder) || 0)) + 1);
             if (isEditing) {
                 await skillsApi.update(state.editingSkillId, payload);
             } else {
@@ -3009,6 +3015,76 @@ function bindSkillForm() {
     });
 }
 
+function getSortedSkillsCache() {
+    return [...state.skillsCache].sort((left, right) => {
+        const leftOrder = Number(left.displayOrder) || 0;
+        const rightOrder = Number(right.displayOrder) || 0;
+        if (leftOrder !== rightOrder) {
+            return leftOrder - rightOrder;
+        }
+        return (left.skillName || "").localeCompare(right.skillName || "");
+    });
+}
+
+function buildSkillPayload(skill, overrides = {}) {
+    return {
+        skillName: skill.skillName,
+        category: skill.category,
+        proficiencyPercentage: Number(skill.proficiencyPercentage) || 0,
+        displayOrder: Number(skill.displayOrder) || 0,
+        displayed: skill.displayed !== false,
+        ...overrides
+    };
+}
+
+async function refreshSkillsView() {
+    await refreshSkillsCache();
+    await loadSkillsAdmin();
+}
+
+async function toggleSkillVisibility(skill) {
+    await skillsApi.update(skill.id, buildSkillPayload(skill, { displayed: !(skill.displayed !== false) }));
+    await refreshSkillsView();
+}
+
+async function moveSkillByOffset(skill, offset) {
+    const orderedSkills = getSortedSkillsCache();
+    const currentIndex = orderedSkills.findIndex((item) => String(item.id) === String(skill.id));
+    const targetIndex = currentIndex + offset;
+    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= orderedSkills.length) {
+        return;
+    }
+    const currentSkill = orderedSkills[currentIndex];
+    const targetSkill = orderedSkills[targetIndex];
+    await Promise.all([
+        skillsApi.update(currentSkill.id, buildSkillPayload(currentSkill, { displayOrder: Number(targetSkill.displayOrder) || 0 })),
+        skillsApi.update(targetSkill.id, buildSkillPayload(targetSkill, { displayOrder: Number(currentSkill.displayOrder) || 0 }))
+    ]);
+    await refreshSkillsView();
+}
+
+async function copySkillName(skill) {
+    const skillName = skill.skillName || "";
+    if (!skillName) {
+        return;
+    }
+    try {
+        if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(skillName);
+        } else {
+            const textarea = document.createElement("textarea");
+            textarea.value = skillName;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand("copy");
+            textarea.remove();
+        }
+        alert(`Copied "${skillName}"`);
+    } catch {
+        alert(skillName);
+    }
+}
+
 async function loadSkillsAdmin() {
     const response = await skillsApi.listAdmin(document.getElementById("admin-skill-category").value);
     const skills = response.data || [];
@@ -3019,20 +3095,41 @@ async function loadSkillsAdmin() {
             || (visibility === "displayed" && isVisible)
             || (visibility === "hidden" && !isVisible);
     });
-    document.getElementById("admin-skill-list").innerHTML = filtered.map((skill, index) => `
+    document.getElementById("admin-skill-list").innerHTML = filtered.map((skill) => `
         <article class="table-card admin-skill-card">
-            <header>
-                <div>
-                    <span class="card-number">No ${String(index + 1).padStart(2, "0")}</span>
-                    <strong>${skill.skillName}</strong>
-                    <p class="section-copy">Order ${skill.displayOrder}</p>
+            <header class="skill-card-top">
+                <div class="skill-card-copy">
+                    <div class="skill-card-badges">
+                        <span class="chip skill-card-category">${formatEnumLabel(skill.category || "OTHER")}</span>
+                        <span class="chip">${skill.displayed === false ? "Hidden" : "Displayed"}</span>
+                    </div>
+                    <strong class="skill-card-name">${skill.skillName}</strong>
                 </div>
-                <span class="chip">${skill.displayed === false ? "Hidden" : "Displayed"}</span>
+                <div class="skill-card-menu-wrap">
+                    <button class="skill-actions-trigger" type="button" aria-label="Skill actions" data-skill-menu-trigger="${skill.id}">
+                        <i class="fa-solid fa-ellipsis-vertical"></i>
+                    </button>
+                    <div class="skill-actions-dropdown hidden">
+                        <button class="skill-action-btn" type="button" data-skill-action="toggle-visibility" data-skill-id="${skill.id}">
+                            <i class="fa-solid fa-eye${skill.displayed === false ? "" : "-slash"}"></i>
+                            ${skill.displayed === false ? "Show" : "Hide"}
+                        </button>
+                        <button class="skill-action-btn" type="button" data-skill-action="move-up" data-skill-id="${skill.id}">
+                            <i class="fa-solid fa-arrow-up"></i>
+                            Move up
+                        </button>
+                        <button class="skill-action-btn" type="button" data-skill-action="move-down" data-skill-id="${skill.id}">
+                            <i class="fa-solid fa-arrow-down"></i>
+                            Move down
+                        </button>
+                        <button class="skill-action-btn" type="button" data-skill-action="copy-name" data-skill-id="${skill.id}">
+                            <i class="fa-regular fa-copy"></i>
+                            Copy name
+                        </button>
+                    </div>
+                </div>
             </header>
-            <div class="chip-row">
-                <span class="chip">${skill.category}</span>
-            </div>
-            <div class="admin-skill-metric">
+            <div class="skill-card-proficiency-row">
                 <span>Proficiency</span>
                 <strong>${skill.proficiencyPercentage}%</strong>
             </div>
@@ -3042,26 +3139,85 @@ async function loadSkillsAdmin() {
                 </div>
             </div>
             <div class="table-actions">
-                <button class="button button-ghost" data-skill-edit="${skill.id}" type="button">Edit</button>
-                <button class="button button-ghost" data-skill-delete="${skill.id}" type="button">Delete</button>
+                <button class="button button-ghost" data-skill-action="edit" data-skill-id="${skill.id}" type="button">Edit</button>
+                <button class="button button-danger" data-skill-action="delete" data-skill-id="${skill.id}" type="button">Delete</button>
             </div>
         </article>
     `).join("") || emptyMarkup("No skills found.");
-    skills.forEach((skill) => {
-        document.querySelector(`[data-skill-edit="${skill.id}"]`)?.addEventListener("click", () => {
-            state.editingSkillId = skill.id;
-            openSkillEditor();
-            fillForm(document.getElementById("skill-form"), skill);
-        });
-        document.querySelector(`[data-skill-delete="${skill.id}"]`)?.addEventListener("click", async () => {
-            if (!confirmDanger(`Delete skill "${skill.skillName}"? This cannot be undone.`)) {
-                return;
-            }
-            await skillsApi.remove(skill.id);
-            await refreshSkillsCache();
-            await loadSkillsAdmin();
-        });
-    });
+    if (!document.getElementById("admin-skill-list")?.dataset.menuBound) {
+        const list = document.getElementById("admin-skill-list");
+        if (list) {
+            list.dataset.menuBound = "true";
+            list.addEventListener("click", async (event) => {
+                const trigger = event.target.closest("[data-skill-menu-trigger]");
+                const actionButton = event.target.closest("[data-skill-action]");
+                if (trigger) {
+                    event.stopPropagation();
+                    const menuWrap = trigger.closest(".skill-card-menu-wrap");
+                    list.querySelectorAll(".skill-actions-dropdown").forEach((dropdown) => {
+                        if (dropdown !== trigger.nextElementSibling) {
+                            dropdown.classList.add("hidden");
+                        }
+                    });
+                    trigger.nextElementSibling?.classList.toggle("hidden");
+                    menuWrap?.classList.toggle("is-open", !trigger.nextElementSibling?.classList.contains("hidden"));
+                    return;
+                }
+                if (!actionButton) {
+                    return;
+                }
+                event.stopPropagation();
+                const skillId = actionButton.getAttribute("data-skill-id");
+                const skill = state.skillsCache.find((item) => String(item.id) === String(skillId));
+                if (!skill) {
+                    return;
+                }
+                const closeMenus = () => {
+                    list.querySelectorAll(".skill-actions-dropdown").forEach((dropdown) => dropdown.classList.add("hidden"));
+                    list.querySelectorAll(".skill-card-menu-wrap").forEach((menu) => menu.classList.remove("is-open"));
+                };
+                const action = actionButton.getAttribute("data-skill-action");
+                try {
+                    if (action === "edit") {
+                        state.editingSkillId = skill.id;
+                        openSkillEditor();
+                        fillForm(document.getElementById("skill-form"), skill);
+                        closeMenus();
+                        return;
+                    }
+                    if (action === "delete") {
+                        if (confirmDanger(`Delete skill "${skill.skillName}"? This cannot be undone.`)) {
+                            await skillsApi.remove(skill.id);
+                            await refreshSkillsView();
+                        }
+                        closeMenus();
+                        return;
+                    }
+                    if (action === "toggle-visibility") {
+                        await toggleSkillVisibility(skill);
+                        closeMenus();
+                        return;
+                    }
+                    if (action === "move-up") {
+                        await moveSkillByOffset(skill, -1);
+                        closeMenus();
+                        return;
+                    }
+                    if (action === "move-down") {
+                        await moveSkillByOffset(skill, 1);
+                        closeMenus();
+                        return;
+                    }
+                    if (action === "copy-name") {
+                        await copySkillName(skill);
+                        closeMenus();
+                    }
+                } catch (error) {
+                    alert("Skill action failed: " + error.message);
+                }
+            });
+        }
+    }
 }
 
 async function initSkills() {
@@ -3079,6 +3235,12 @@ async function initSkills() {
     document.addEventListener("keydown", (event) => {
         if (event.key === "Escape" && !modal.classList.contains("hidden")) {
             closeSkillEditor();
+        }
+    });
+    document.addEventListener("click", (event) => {
+        if (!event.target.closest(".skill-card-menu-wrap")) {
+            document.querySelectorAll(".skill-actions-dropdown").forEach((dropdown) => dropdown.classList.add("hidden"));
+            document.querySelectorAll(".skill-card-menu-wrap").forEach((menu) => menu.classList.remove("is-open"));
         }
     });
 

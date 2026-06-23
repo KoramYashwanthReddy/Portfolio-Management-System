@@ -380,11 +380,10 @@ function renderSkills(skills) {
                 <span class="skill-count">${items.length} skills</span>
             </div>
             <div class="skill-list-container">
-                ${items.sort((a, b) => a.displayOrder - b.displayOrder).map((skill, index) => `
+                ${items.sort((a, b) => a.displayOrder - b.displayOrder).map((skill) => `
                     <div class="masonry-skill-item">
                         <div class="masonry-skill-header">
                             <span class="masonry-skill-name">
-                                <span class="skill-order-chip">${String(index + 1).padStart(2, "0")}</span>
                                 ${skill.skillName}
                             </span>
                             <span class="masonry-skill-percent">${skill.proficiencyPercentage}%</span>
