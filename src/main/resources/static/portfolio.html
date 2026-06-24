@@ -231,14 +231,23 @@
                 <div class="explorer-controls skill-searchbar" style="margin-top: 24px; margin-bottom: 24px;">
                     <label class="skill-filter-field">
                         <i class="fa-solid fa-magnifying-glass"></i>
-                        <input id="skill-search" class="input" type="search" placeholder="Search tools...">
+                        <input id="skill-search" class="input" type="search" placeholder="Search tools, stacks, or frameworks...">
                     </label>
                     <label class="skill-filter-field">
-                        <i class="fa-solid fa-filter"></i>
+                        <i class="fa-solid fa-layer-group"></i>
                         <select id="skill-category" class="input">
                             <option value="">All Categories</option>
                         </select>
                     </label>
+                    <div class="skill-category-pills" aria-label="Quick categories">
+                        <button class="skill-pill" type="button" data-skill-pill="">All</button>
+                        <button class="skill-pill" type="button" data-skill-pill="LANGUAGE">Languages</button>
+                        <button class="skill-pill" type="button" data-skill-pill="FRAMEWORK">Frameworks</button>
+                        <button class="skill-pill" type="button" data-skill-pill="DATABASE">Databases</button>
+                        <button class="skill-pill" type="button" data-skill-pill="CLOUD">Cloud</button>
+                        <button class="skill-pill" type="button" data-skill-pill="DEVOPS">DevOps</button>
+                        <button class="skill-pill" type="button" data-skill-pill="TOOL">Tools</button>
+                    </div>
                 </div>
                 <div id="skill-clusters" class="masonry-skills-grid"></div>
             </div>

@@ -1826,8 +1826,209 @@ body[data-page="projects"] .project-card-delete-row .button-danger {
     gap: 6px;
 }
 
+.admin-skills-panel {
+    padding: 24px;
+    border-radius: 28px;
+    border: 1px solid rgba(var(--accent-rgb), 0.16);
+    background: linear-gradient(135deg, var(--surface) 0%, var(--surface-soft) 100%);
+    box-shadow: var(--shadow);
+}
+
+.admin-skill-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+    align-items: center;
+}
+
+.admin-skill-filter-field {
+    flex: 1 1 220px;
+    min-width: 220px;
+    border-radius: 999px;
+    background: var(--surface);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+body[data-theme="dark"] .admin-skill-filter-field,
+html[data-theme="dark"] .admin-skill-filter-field {
+    background: rgba(255, 255, 255, 0.03);
+}
+
 .admin-skill-grid .table-card {
+    position: relative;
     min-height: 260px;
+    overflow: visible;
+    border-radius: 24px;
+    border: 1px solid rgba(var(--accent-rgb), 0.14);
+    background: linear-gradient(180deg, rgba(var(--surface-rgb), 0.98), rgba(var(--surface-rgb), 0.94));
+    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.04);
+    padding: 20px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.admin-skill-grid .table-card:hover,
+.admin-skill-grid .table-card:focus-within {
+    transform: translateY(-3px);
+    border-color: rgba(var(--accent-rgb), 0.22);
+    box-shadow: 0 22px 44px rgba(99, 102, 241, 0.08);
+}
+
+.admin-skill-grid .table-card .skill-card-hover-actions {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-6px);
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+    z-index: 6;
+}
+
+.admin-skill-grid .table-card:hover .skill-card-hover-actions,
+.admin-skill-grid .table-card:focus-within .skill-card-hover-actions {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.admin-skill-grid .table-card .skill-card-action-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: rgba(var(--surface-rgb), 0.95);
+    color: var(--text);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+    backdrop-filter: blur(10px);
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.admin-skill-grid .table-card .skill-card-action-pill span {
+    display: inline-block;
+}
+
+.admin-skill-grid .table-card .skill-card-action-pill-primary {
+    color: var(--accent);
+}
+
+.admin-skill-grid .table-card .skill-card-action-pill-danger {
+    color: var(--danger);
+}
+
+.admin-skill-grid .table-card .skill-delete-popover-wrap {
+    position: relative;
+}
+
+.admin-skill-grid .table-card .skill-delete-popover {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 208px;
+    padding: 12px;
+    border-radius: 16px;
+    border: 1px solid rgba(var(--danger-rgb, 239, 68, 68), 0.2);
+    background: var(--surface);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
+    z-index: 12;
+}
+
+.admin-skill-grid .table-card .skill-delete-popover p {
+    margin: 0 0 10px;
+    color: var(--text);
+    font-size: 0.9rem;
+}
+
+.admin-skill-grid .table-card .skill-delete-popover-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.admin-skill-grid .table-card .skill-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 14px;
+    padding-right: 92px;
+}
+
+.admin-skill-grid .table-card .skill-card-copy {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+.admin-skill-grid .table-card .skill-card-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.admin-skill-grid .table-card .skill-card-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.admin-skill-grid .table-card .skill-card-name {
+    font-size: 1.02rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.admin-skill-grid .table-card .chip {
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    background: rgba(var(--accent-rgb), 0.08);
+    border: 1px solid rgba(var(--accent-rgb), 0.14);
+    color: var(--accent);
+}
+
+.admin-skill-grid .table-card .skill-card-proficiency-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: var(--muted);
+}
+
+.admin-skill-grid .table-card .skill-card-proficiency-row strong {
+    color: var(--text);
+    font-size: 1rem;
+}
+
+.admin-skill-grid .table-card .skill-bar-container {
+    margin: 10px 0 14px;
+}
+
+.admin-skill-grid .table-card .skill-progress-bg {
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(var(--accent-rgb), 0.12);
+    overflow: hidden;
+}
+
+.admin-skill-grid .table-card .skill-progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-alt));
+}
+
+.admin-skill-grid .table-card .table-actions {
+    margin-top: auto;
 }
 
 .admin-skill-metric {

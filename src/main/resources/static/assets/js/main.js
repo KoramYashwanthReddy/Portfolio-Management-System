@@ -399,32 +399,59 @@ function renderSkills(skills) {
         return accumulator;
     }, {});
 
-    setHtml("skill-clusters", Object.entries(byCategory).map(([category, items]) => {
-        const palette = getSkillCardPalette(category);
-        return `
-        <article class="masonry-skill-card" data-reveal style="--skill-accent:${palette.accent}; --skill-accent-soft:${palette.soft};">
-            <div class="skill-card-header">
-                <h3>${formatSkillCategory(category)}</h3>
-                <span class="skill-count">${items.length} skills</span>
-            </div>
-            <div class="skill-list-container">
-                ${items.sort((a, b) => a.displayOrder - b.displayOrder).map((skill) => `
-                    <div class="masonry-skill-item">
+    const categories = Object.entries(byCategory);
+    const hasSingleCategory = categories.length === 1;
+
+    const content = hasSingleCategory
+        ? categories.flatMap(([category, items]) => {
+            const palette = getSkillCardPalette(category);
+            return items
+                .slice()
+                .sort((a, b) => a.displayOrder - b.displayOrder)
+                .map((skill) => `
+                    <article class="masonry-skill-card masonry-skill-card--compact" data-reveal style="--skill-accent:${palette.accent}; --skill-accent-soft:${palette.soft};">
+                        <div class="skill-card-header skill-card-header--compact">
+                            <h3>${escapeHtml(skill.skillName)}</h3>
+                            <span class="skill-count">${skill.proficiencyPercentage}%</span>
+                        </div>
                         <div class="masonry-skill-header">
-                            <span class="masonry-skill-name">
-                                ${skill.skillName}
-                            </span>
+                            <span class="masonry-skill-name">${formatSkillCategory(category)}</span>
                             <span class="masonry-skill-percent">${skill.proficiencyPercentage}%</span>
                         </div>
                         <div class="masonry-progress-track">
                             <div class="masonry-progress-fill" style="width: ${skill.proficiencyPercentage}%;"></div>
                         </div>
-                    </div>
-                `).join("")}
-            </div>
-        </article>
-    `;
-    }).join("") || `<div class="empty-state">No skills published yet.</div>`);
+                    </article>
+                `);
+        })
+        : categories.map(([category, items]) => {
+            const palette = getSkillCardPalette(category);
+            return `
+            <article class="masonry-skill-card" data-reveal style="--skill-accent:${palette.accent}; --skill-accent-soft:${palette.soft};">
+                <div class="skill-card-header">
+                    <h3>${formatSkillCategory(category)}</h3>
+                    <span class="skill-count">${items.length} skills</span>
+                </div>
+                <div class="skill-list-container">
+                    ${items.sort((a, b) => a.displayOrder - b.displayOrder).map((skill) => `
+                        <div class="masonry-skill-item">
+                            <div class="masonry-skill-header">
+                                <span class="masonry-skill-name">
+                                    ${skill.skillName}
+                                </span>
+                                <span class="masonry-skill-percent">${skill.proficiencyPercentage}%</span>
+                            </div>
+                            <div class="masonry-progress-track">
+                                <div class="masonry-progress-fill" style="width: ${skill.proficiencyPercentage}%;"></div>
+                            </div>
+                        </div>
+                    `).join("")}
+                </div>
+            </article>
+        `;
+        });
+
+    setHtml("skill-clusters", content.join("") || `<div class="empty-state">No skills published yet.</div>`);
 }
 
 function mncProjectCard(project, index = 0) {
@@ -780,7 +807,7 @@ function updateMncProjectsDisplay(showShimmer = true) {
     const searchInput = element("projects-search-input");
     const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
     
-    const activePill = document.querySelector(".filter-pill.active");
+    const activePill = document.querySelector("#project-filter-pills .filter-pill.active");
     const filter = activePill ? activePill.dataset.filter : "all";
 
     const allProjects = uniqueById([...(state.featuredProjects || []), ...(state.projects || [])].filter(isDisplayedRecord));
@@ -1074,6 +1101,8 @@ async function loadProjects() {
 }
 
 function bindProjectControls() {
+    bindFilterPills();
+
     const searchInput = element("projects-search-input");
     if (searchInput) {
         let debounceTimer;
@@ -1112,33 +1141,86 @@ function bindContactForms() {
     });
 }
 
+function normalizeSkillCategoryValue(category = "OTHER") {
+    return String(category || "OTHER").trim().replace(/\s+/g, "_").toUpperCase();
+}
+
+function syncSkillFilterOptions() {
+    const categorySelect = element("skill-category");
+    const pillButtons = Array.from(document.querySelectorAll("[data-skill-pill]"));
+
+    if (!categorySelect) {
+        return;
+    }
+
+    const uniqueCategories = [...new Set(state.skills.map((skill) => normalizeSkillCategoryValue(skill.category)))]
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b));
+
+    const categoryOptions = uniqueCategories
+        .map((category) => `<option value="${category}">${formatSkillCategory(category)}</option>`)
+        .join("");
+
+    categorySelect.innerHTML = `<option value="">All Categories</option>${categoryOptions}`;
+
+    const activeSelection = categorySelect.value || "";
+    if (activeSelection && !uniqueCategories.includes(activeSelection)) {
+        categorySelect.value = "";
+    }
+
+    pillButtons.forEach((button) => {
+        const value = button.getAttribute("data-skill-pill") || "";
+        button.classList.toggle("is-active", value === (categorySelect.value || ""));
+    });
+}
+
 function bindSkillControls() {
     const searchInput = element("skill-search");
     const categorySelect = element("skill-category");
+    const pillButtons = Array.from(document.querySelectorAll("[data-skill-pill]"));
 
     if (!searchInput || !categorySelect) {
         return;
     }
 
-    const uniqueCategories = [...new Set(state.skills.map((skill) => skill.category || "OTHER"))];
-    const categoryOptions = uniqueCategories.map((category) => `<option value="${category}">${category.replaceAll("_", " ")}</option>`).join("");
-    categorySelect.innerHTML = `<option value="">All Categories</option>${categoryOptions}`;
+    function setActivePill(categoryValue = "") {
+        pillButtons.forEach((button) => {
+            const value = button.getAttribute("data-skill-pill") || "";
+            button.classList.toggle("is-active", value === categoryValue);
+        });
+    }
 
     function applyFilters() {
         const query = searchInput.value.toLowerCase().trim();
-        const category = categorySelect.value;
+        const category = categorySelect.value || "";
 
         const filtered = state.skills.filter((skill) => {
-            const matchesSearch = skill.skillName.toLowerCase().includes(query);
-            const matchesCategory = category === "" || (skill.category || "OTHER") === category;
+            const normalizedSkill = normalizeSkillCategoryValue(skill.category);
+            const matchesSearch = String(skill.skillName || "").toLowerCase().includes(query);
+            const matchesCategory = category === "" || normalizedSkill === category;
             return matchesSearch && matchesCategory;
         });
 
         renderSkills(filtered);
     }
 
+    syncSkillFilterOptions();
+    setActivePill(categorySelect.value || "");
+
     searchInput.addEventListener("input", applyFilters);
-    categorySelect.addEventListener("change", applyFilters);
+    categorySelect.addEventListener("change", () => {
+        setActivePill(categorySelect.value || "");
+        applyFilters();
+    });
+
+    pillButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+            const value = button.getAttribute("data-skill-pill") || "";
+            categorySelect.value = value;
+            setActivePill(value);
+            applyFilters();
+        });
+    });
 }
 
 function bindFeedbackModal() {
@@ -1229,9 +1311,11 @@ async function bootstrap() {
 
     if (skills.status === "fulfilled") {
         state.skills = (skills.value.data || []).filter(isDisplayedRecord);
+        syncSkillFilterOptions();
         renderSkills(state.skills);
     } else {
         state.skills = [];
+        syncSkillFilterOptions();
         renderSkills([]);
     }
 

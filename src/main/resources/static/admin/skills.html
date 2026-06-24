@@ -45,14 +45,20 @@
                 </div>
             </section>
             <section class="admin-grid form-layout admin-stack-layout" style="grid-template-columns: 1fr;">
-                <div class="panel">
-                    <div class="explorer-controls">
-                        <select id="admin-skill-category" class="input"></select>
-                        <select id="admin-skill-visibility" class="input">
-                            <option value="">All visibility</option>
-                            <option value="displayed">Displayed</option>
-                            <option value="hidden">Hidden</option>
-                        </select>
+                <div class="panel admin-skills-panel">
+                    <div class="explorer-controls admin-skill-controls">
+                        <label class="skill-filter-field admin-skill-filter-field">
+                            <i class="fa-solid fa-layer-group"></i>
+                            <select id="admin-skill-category" class="input"></select>
+                        </label>
+                        <label class="skill-filter-field admin-skill-filter-field">
+                            <i class="fa-solid fa-eye"></i>
+                            <select id="admin-skill-visibility" class="input">
+                                <option value="">All visibility</option>
+                                <option value="displayed">Displayed</option>
+                                <option value="hidden">Hidden</option>
+                            </select>
+                        </label>
                     </div>
                     <div id="admin-skill-list" class="table-list admin-card-grid admin-skill-grid"></div>
                 </div>

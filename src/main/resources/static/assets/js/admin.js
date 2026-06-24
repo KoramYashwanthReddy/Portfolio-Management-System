@@ -3096,7 +3096,26 @@ async function loadSkillsAdmin() {
             || (visibility === "hidden" && !isVisible);
     });
     document.getElementById("admin-skill-list").innerHTML = filtered.map((skill) => `
-        <article class="table-card admin-skill-card">
+        <article class="table-card admin-skill-card" data-skill-card="${skill.id}">
+            <div class="skill-card-hover-actions">
+                <button class="skill-card-action-pill skill-card-action-pill-primary" type="button" data-skill-action="edit" data-skill-id="${skill.id}">
+                    <i class="fa-solid fa-pen"></i>
+                    <span>Edit</span>
+                </button>
+                <div class="skill-delete-popover-wrap">
+                    <button class="skill-card-action-pill skill-card-action-pill-danger" type="button" data-skill-action="delete" data-skill-id="${skill.id}">
+                        <i class="fa-solid fa-trash"></i>
+                        <span>Delete</span>
+                    </button>
+                    <div class="skill-delete-popover hidden" data-skill-confirmation="${skill.id}">
+                        <p>Delete this skill?</p>
+                        <div class="skill-delete-popover-actions">
+                            <button class="button button-ghost" type="button" data-skill-confirm-cancel="${skill.id}">Cancel</button>
+                            <button class="button button-danger" type="button" data-skill-confirm-delete="${skill.id}">Confirm</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <header class="skill-card-top">
                 <div class="skill-card-copy">
                     <div class="skill-card-badges">
@@ -3104,29 +3123,6 @@ async function loadSkillsAdmin() {
                         <span class="chip">${skill.displayed === false ? "Hidden" : "Displayed"}</span>
                     </div>
                     <strong class="skill-card-name">${skill.skillName}</strong>
-                </div>
-                <div class="skill-card-menu-wrap">
-                    <button class="skill-actions-trigger" type="button" aria-label="Skill actions" data-skill-menu-trigger="${skill.id}">
-                        <i class="fa-solid fa-ellipsis-vertical"></i>
-                    </button>
-                    <div class="skill-actions-dropdown hidden">
-                        <button class="skill-action-btn" type="button" data-skill-action="toggle-visibility" data-skill-id="${skill.id}">
-                            <i class="fa-solid fa-eye${skill.displayed === false ? "" : "-slash"}"></i>
-                            ${skill.displayed === false ? "Show" : "Hide"}
-                        </button>
-                        <button class="skill-action-btn" type="button" data-skill-action="move-up" data-skill-id="${skill.id}">
-                            <i class="fa-solid fa-arrow-up"></i>
-                            Move up
-                        </button>
-                        <button class="skill-action-btn" type="button" data-skill-action="move-down" data-skill-id="${skill.id}">
-                            <i class="fa-solid fa-arrow-down"></i>
-                            Move down
-                        </button>
-                        <button class="skill-action-btn" type="button" data-skill-action="copy-name" data-skill-id="${skill.id}">
-                            <i class="fa-regular fa-copy"></i>
-                            Copy name
-                        </button>
-                    </div>
                 </div>
             </header>
             <div class="skill-card-proficiency-row">
@@ -3138,10 +3134,6 @@ async function loadSkillsAdmin() {
                     <div class="skill-progress-fill" style="width: ${skill.proficiencyPercentage}%;"></div>
                 </div>
             </div>
-            <div class="table-actions">
-                <button class="button button-ghost" data-skill-action="edit" data-skill-id="${skill.id}" type="button">Edit</button>
-                <button class="button button-danger" data-skill-action="delete" data-skill-id="${skill.id}" type="button">Delete</button>
-            </div>
         </article>
     `).join("") || emptyMarkup("No skills found.");
     if (!document.getElementById("admin-skill-list")?.dataset.menuBound) {
@@ -3149,20 +3141,37 @@ async function loadSkillsAdmin() {
         if (list) {
             list.dataset.menuBound = "true";
             list.addEventListener("click", async (event) => {
-                const trigger = event.target.closest("[data-skill-menu-trigger]");
                 const actionButton = event.target.closest("[data-skill-action]");
-                if (trigger) {
+                const cancelButton = event.target.closest("[data-skill-confirm-cancel]");
+                const confirmButton = event.target.closest("[data-skill-confirm-delete]");
+
+                const hideSkillConfirmations = () => {
+                    list.querySelectorAll(".skill-delete-popover").forEach((panel) => panel.classList.add("hidden"));
+                };
+
+                if (cancelButton) {
                     event.stopPropagation();
-                    const menuWrap = trigger.closest(".skill-card-menu-wrap");
-                    list.querySelectorAll(".skill-actions-dropdown").forEach((dropdown) => {
-                        if (dropdown !== trigger.nextElementSibling) {
-                            dropdown.classList.add("hidden");
-                        }
-                    });
-                    trigger.nextElementSibling?.classList.toggle("hidden");
-                    menuWrap?.classList.toggle("is-open", !trigger.nextElementSibling?.classList.contains("hidden"));
+                    hideSkillConfirmations();
                     return;
                 }
+
+                if (confirmButton) {
+                    event.stopPropagation();
+                    const skillId = confirmButton.getAttribute("data-skill-confirm-delete");
+                    const skill = state.skillsCache.find((item) => String(item.id) === String(skillId));
+                    if (!skill) {
+                        return;
+                    }
+                    try {
+                        await skillsApi.remove(skill.id);
+                        await refreshSkillsView();
+                    } catch (error) {
+                        alert("Skill action failed: " + error.message);
+                    }
+                    hideSkillConfirmations();
+                    return;
+                }
+
                 if (!actionButton) {
                     return;
                 }
@@ -3172,45 +3181,39 @@ async function loadSkillsAdmin() {
                 if (!skill) {
                     return;
                 }
-                const closeMenus = () => {
-                    list.querySelectorAll(".skill-actions-dropdown").forEach((dropdown) => dropdown.classList.add("hidden"));
-                    list.querySelectorAll(".skill-card-menu-wrap").forEach((menu) => menu.classList.remove("is-open"));
-                };
                 const action = actionButton.getAttribute("data-skill-action");
                 try {
                     if (action === "edit") {
                         state.editingSkillId = skill.id;
                         openSkillEditor();
                         fillForm(document.getElementById("skill-form"), skill);
-                        closeMenus();
+                        hideSkillConfirmations();
                         return;
                     }
                     if (action === "delete") {
-                        if (confirmDanger(`Delete skill "${skill.skillName}"? This cannot be undone.`)) {
-                            await skillsApi.remove(skill.id);
-                            await refreshSkillsView();
-                        }
-                        closeMenus();
+                        hideSkillConfirmations();
+                        const confirmationPanel = list.querySelector(`[data-skill-confirmation="${skill.id}"]`);
+                        confirmationPanel?.classList.remove("hidden");
                         return;
                     }
                     if (action === "toggle-visibility") {
                         await toggleSkillVisibility(skill);
-                        closeMenus();
+                        hideSkillConfirmations();
                         return;
                     }
                     if (action === "move-up") {
                         await moveSkillByOffset(skill, -1);
-                        closeMenus();
+                        hideSkillConfirmations();
                         return;
                     }
                     if (action === "move-down") {
                         await moveSkillByOffset(skill, 1);
-                        closeMenus();
+                        hideSkillConfirmations();
                         return;
                     }
                     if (action === "copy-name") {
                         await copySkillName(skill);
-                        closeMenus();
+                        hideSkillConfirmations();
                     }
                 } catch (error) {
                     alert("Skill action failed: " + error.message);
@@ -3238,9 +3241,8 @@ async function initSkills() {
         }
     });
     document.addEventListener("click", (event) => {
-        if (!event.target.closest(".skill-card-menu-wrap")) {
-            document.querySelectorAll(".skill-actions-dropdown").forEach((dropdown) => dropdown.classList.add("hidden"));
-            document.querySelectorAll(".skill-card-menu-wrap").forEach((menu) => menu.classList.remove("is-open"));
+        if (!event.target.closest(".skill-card-hover-actions")) {
+            document.querySelectorAll(".skill-delete-popover").forEach((panel) => panel.classList.add("hidden"));
         }
     });
 

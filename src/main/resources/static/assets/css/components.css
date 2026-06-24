@@ -889,8 +889,15 @@ html[data-theme="dark"] .project-card {
 .skill-searchbar {
     display: flex;
     flex-wrap: wrap;
-    gap: 16px;
+    align-items: center;
+    gap: 12px;
     margin: 24px 0 32px;
+    padding: 14px;
+    border-radius: 28px;
+    border: 1px solid rgba(var(--accent-rgb), 0.16);
+    background: linear-gradient(135deg, var(--surface) 0%, var(--surface-soft) 100%);
+    box-shadow: var(--shadow);
+    color: var(--text);
 }
 
 .skill-filter-field {
@@ -903,19 +910,19 @@ html[data-theme="dark"] .project-card {
     border-radius: 999px;
     border: 1px solid var(--border);
     background: var(--surface);
-    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
     color: var(--text);
     backdrop-filter: blur(10px);
 }
 
 body[data-theme="dark"] .skill-filter-field,
 html[data-theme="dark"] .skill-filter-field {
-    background: var(--surface-strong);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.24);
+    background: rgba(255, 255, 255, 0.03);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .skill-filter-field i {
-    color: var(--muted);
+    color: var(--accent);
     margin-right: 10px;
     font-size: 0.9rem;
 }
@@ -937,6 +944,59 @@ html[data-theme="dark"] .skill-filter-field {
 .skill-filter-field .input:focus {
     box-shadow: none;
     border-color: transparent;
+}
+
+.skill-category-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.skill-pill {
+    appearance: none;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 8px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+body[data-theme="dark"] .skill-pill,
+html[data-theme="dark"] .skill-pill {
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--muted);
+}
+
+.skill-pill:hover,
+.skill-pill.is-active {
+    color: var(--text);
+    border-color: rgba(var(--accent-rgb), 0.24);
+    background: rgba(var(--accent-rgb), 0.1);
+}
+
+.skill-pill.is-active {
+    color: #ffffff;
+    background: linear-gradient(135deg, var(--accent), var(--accent-alt));
+    box-shadow: 0 8px 18px rgba(99, 102, 241, 0.18);
+}
+
+@media (max-width: 768px) {
+    .skill-searchbar {
+        padding: 12px;
+        border-radius: 22px;
+    }
+
+    .skill-category-pills {
+        margin-left: 0;
+        width: 100%;
+    }
 }
 
 .masonry-skills-grid {
@@ -973,6 +1033,24 @@ html[data-theme="dark"] .masonry-skill-card {
     transform: translateY(-4px);
     box-shadow: 0 22px 52px rgba(14, 24, 40, 0.08);
     border-color: rgba(var(--accent-rgb), 0.24);
+}
+
+.masonry-skill-card--compact {
+    gap: 12px;
+    padding: 18px 18px 16px;
+}
+
+.masonry-skill-card--compact .skill-card-header--compact {
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.masonry-skill-card--compact .skill-card-header--compact h3 {
+    font-size: 0.96rem;
+}
+
+.masonry-skill-card--compact .masonry-skill-header {
+    margin-top: 2px;
 }
 
 .masonry-skill-card::before {
@@ -2640,6 +2718,49 @@ html[data-theme="dark"] body[data-page="project-notes"] .button.button-primary {
     align-items: center;
 }
 
+.projects-search-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.projects-search-wrapper .search-icon {
+    position: absolute;
+    left: 14px;
+    color: var(--muted);
+    font-size: 0.9rem;
+    pointer-events: none;
+}
+
+.projects-search-wrapper input {
+    padding: 10px 16px 10px 42px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 0.85rem;
+    width: 280px;
+    transition: all 0.2s ease;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+body[data-theme="dark"] .projects-search-wrapper input,
+html[data-theme="dark"] .projects-search-wrapper input {
+    background: rgba(255, 255, 255, 0.03);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.projects-search-wrapper input::placeholder {
+    color: var(--muted);
+}
+
+.projects-search-wrapper input:focus {
+    outline: none;
+    border-color: rgba(var(--accent-rgb), 0.28);
+    box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+}
+
 .filter-pill {
     appearance: none;
     border: 1px solid var(--border);
@@ -2656,16 +2777,16 @@ html[data-theme="dark"] body[data-page="project-notes"] .button.button-primary {
 }
 
 .filter-pill:hover {
-    border-color: var(--accent);
+    border-color: rgba(var(--accent-rgb), 0.24);
     color: var(--text);
     background: var(--surface-soft);
 }
 
 .filter-pill.active {
-    background: #5a30eb;
+    background: linear-gradient(135deg, var(--accent), var(--accent-alt));
     color: #ffffff;
-    border-color: #5a30eb;
-    box-shadow: 0 0 16px rgba(90, 48, 235, 0.4);
+    border-color: transparent;
+    box-shadow: 0 8px 18px rgba(var(--accent-rgb), 0.2);
 }
 
 /* 3-column card grid */
