@@ -364,6 +364,32 @@ function renderAboutMetrics(dashboard) {
     metrics.forEach((metric) => setText(metric.id, metric.value));
 }
 
+function formatSkillCategory(category = "OTHER") {
+    return String(category || "OTHER")
+        .replace(/_/g, " ")
+        .toLowerCase()
+        .split(" ")
+        .filter(Boolean)
+        .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+        .join(" ");
+}
+
+function getSkillCardPalette(category = "OTHER") {
+    const normalized = String(category || "OTHER").toUpperCase();
+    const palettes = {
+        LANGUAGE: { accent: "#4f46e5", soft: "rgba(79, 70, 229, 0.14)" },
+        FRAMEWORK: { accent: "#7c3aed", soft: "rgba(124, 58, 237, 0.14)" },
+        DATABASE: { accent: "#0f766e", soft: "rgba(15, 118, 110, 0.14)" },
+        CLOUD: { accent: "#0284c7", soft: "rgba(2, 132, 199, 0.14)" },
+        DEVOPS: { accent: "#059669", soft: "rgba(5, 150, 105, 0.14)" },
+        TOOL: { accent: "#d97706", soft: "rgba(217, 119, 6, 0.14)" },
+        SOFT_SKILL: { accent: "#db2777", soft: "rgba(219, 39, 119, 0.14)" },
+        OTHER: { accent: "#64748b", soft: "rgba(100, 116, 139, 0.14)" }
+    };
+
+    return palettes[normalized] || palettes.OTHER;
+}
+
 function renderSkills(skills) {
     const visibleSkills = (skills || []).filter(isDisplayedRecord);
     const byCategory = visibleSkills.reduce((accumulator, skill) => {
@@ -373,10 +399,12 @@ function renderSkills(skills) {
         return accumulator;
     }, {});
 
-    setHtml("skill-clusters", Object.entries(byCategory).map(([category, items]) => `
-        <article class="masonry-skill-card" data-reveal>
+    setHtml("skill-clusters", Object.entries(byCategory).map(([category, items]) => {
+        const palette = getSkillCardPalette(category);
+        return `
+        <article class="masonry-skill-card" data-reveal style="--skill-accent:${palette.accent}; --skill-accent-soft:${palette.soft};">
             <div class="skill-card-header">
-                <h3>${category.replaceAll("_", " ")}</h3>
+                <h3>${formatSkillCategory(category)}</h3>
                 <span class="skill-count">${items.length} skills</span>
             </div>
             <div class="skill-list-container">
@@ -395,7 +423,8 @@ function renderSkills(skills) {
                 `).join("")}
             </div>
         </article>
-    `).join("") || `<div class="empty-state">No skills published yet.</div>`);
+    `;
+    }).join("") || `<div class="empty-state">No skills published yet.</div>`);
 }
 
 function mncProjectCard(project, index = 0) {

@@ -32,7 +32,7 @@
 
 <body data-page="portfolio">
     <header class="site-header" role="banner">
-        <a class="brand" href="/api/v1/index.html" aria-label="Home">
+        <a class="brand" href="#command-center" aria-label="Go to home section">
             <span class="logo-circle" aria-hidden="true">KY</span>
             Yashwanth<span class="highlight-blue" aria-hidden="true">.</span>
         </a>
@@ -228,11 +228,17 @@
                     <p class="eyebrow" style="color: var(--accent-alt);">TECH STACK</p>
                     <h2 style="letter-spacing: -0.02em;">Tools I reach for to ship <span class="highlight-violet">production code.</span></h2>
                 </div>
-                <div class="explorer-controls" style="margin-top: 24px; margin-bottom: 24px;">
-                    <input id="skill-search" class="input" type="search" placeholder="Search tools...">
-                    <select id="skill-category" class="input">
-                        <option value="">All Categories</option>
-                    </select>
+                <div class="explorer-controls skill-searchbar" style="margin-top: 24px; margin-bottom: 24px;">
+                    <label class="skill-filter-field">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input id="skill-search" class="input" type="search" placeholder="Search tools...">
+                    </label>
+                    <label class="skill-filter-field">
+                        <i class="fa-solid fa-filter"></i>
+                        <select id="skill-category" class="input">
+                            <option value="">All Categories</option>
+                        </select>
+                    </label>
                 </div>
                 <div id="skill-clusters" class="masonry-skills-grid"></div>
             </div>

@@ -1,9 +1,18 @@
 export function initNavigation() {
     const nav = document.getElementById("site-nav") || document.querySelector(".site-nav");
     const toggle = document.getElementById("nav-toggle") || document.querySelector(".nav-toggle");
+    const header = document.querySelector(".site-header");
 
     if (!nav || !toggle) {
         return;
+    }
+
+    const indicator = document.createElement("div");
+    indicator.className = "section-indicator";
+    indicator.setAttribute("aria-live", "polite");
+    indicator.textContent = "Home";
+    if (header) {
+        header.insertBefore(indicator, header.querySelector(".header-actions") || header.children[header.children.length - 1]);
     }
 
     // ── Mobile drawer open/close ──────────────────────────────────────────
@@ -24,36 +33,52 @@ export function initNavigation() {
         isOpen ? closeNav() : openNav();
     });
 
-    // Close when clicking outside the nav (on the overlay)
     document.addEventListener("click", (event) => {
         if (!nav.classList.contains("open")) return;
         if (nav.contains(event.target) || toggle.contains(event.target)) return;
         closeNav();
     });
 
-    // Close when Escape is pressed
     document.addEventListener("keydown", (event) => {
         if (event.key === "Escape" && nav.classList.contains("open")) {
             closeNav();
         }
     });
 
-    // Close nav on any link click (including #-links)
     nav.querySelectorAll("a").forEach((link) => {
         link.addEventListener("click", () => closeNav());
     });
 
     // ── Active link tracking ──────────────────────────────────────────────
-    const hashLinks = Array.from(nav.querySelectorAll("a[href^='#']"));
+    const hashLinks = Array.from(nav.querySelectorAll("a[href^='#']")).filter((link) => link.getAttribute("href") !== "#");
+    const sectionIds = hashLinks.map((link) => new URL(link.href, window.location.href).hash.slice(1));
+    const sections = sectionIds.map((id) => document.getElementById(id)).filter(Boolean);
 
-    function setActiveLink(id) {
-        hashLinks.forEach((link) => {
-            const hash = new URL(link.href, window.location.href).hash;
-            link.classList.toggle("is-active", hash === id);
-        });
+    function labelForId(id) {
+        const mapping = {
+            "command-center": "Home",
+            overview: "About",
+            ecosystem: "Stack",
+            knowledge: "Resume",
+            collaboration: "Contact"
+        };
+        return mapping[id] || id.replace(/-/g, " ");
     }
 
-    // Set active on click
+    function setActiveLink(id) {
+        const normalized = id.startsWith("#") ? id : `#${id}`;
+        hashLinks.forEach((link) => {
+            const hash = new URL(link.href, window.location.href).hash;
+            const isActive = hash === normalized;
+            link.classList.toggle("is-active", isActive);
+            link.setAttribute("aria-current", isActive ? "page" : "false");
+        });
+        if (indicator) {
+            const activeId = normalized.slice(1);
+            indicator.textContent = labelForId(activeId);
+        }
+    }
+
     hashLinks.forEach((link) => {
         link.addEventListener("click", () => {
             const hash = new URL(link.href, window.location.href).hash;
@@ -61,30 +86,46 @@ export function initNavigation() {
         });
     });
 
-    // Update on hash change
+    let ticking = false;
+    function updateActiveSection() {
+        if (!sections.length) {
+            return;
+        }
+
+        let activeSection = sections[0];
+        let bestScore = -Infinity;
+
+        sections.forEach((section) => {
+            const rect = section.getBoundingClientRect();
+            const visibleHeight = Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0);
+            const ratio = rect.height ? visibleHeight / rect.height : 0;
+            const distance = Math.abs(rect.top - 140);
+            const score = ratio * 100 - distance / 10;
+            if (score > bestScore) {
+                bestScore = score;
+                activeSection = section;
+            }
+        });
+
+        setActiveLink(`#${activeSection.id}`);
+    }
+
+    function scheduleUpdate() {
+        if (!ticking) {
+            window.requestAnimationFrame(() => {
+                updateActiveSection();
+                ticking = false;
+            });
+            ticking = true;
+        }
+    }
+
+    window.addEventListener("scroll", scheduleUpdate, { passive: true });
+    window.addEventListener("resize", scheduleUpdate);
     window.addEventListener("hashchange", () => {
         setActiveLink(window.location.hash || "#command-center");
     });
 
-    // ── IntersectionObserver for scroll-based active state ────────────────
-    const sections = document.querySelectorAll("section[id], div[id]");
-    if (sections.length && "IntersectionObserver" in window) {
-        const observer = new IntersectionObserver(
-            (entries) => {
-                entries.forEach((entry) => {
-                    if (entry.isIntersecting) {
-                        setActiveLink(`#${entry.target.id}`);
-                    }
-                });
-            },
-            {
-                rootMargin: "-30% 0px -60% 0px",
-                threshold: 0
-            }
-        );
-        sections.forEach((section) => observer.observe(section));
-    }
-
-    // Initial active state
+    updateActiveSection();
     setActiveLink(window.location.hash || "#command-center");
 }
