@@ -1857,178 +1857,301 @@ html[data-theme="dark"] .admin-skill-filter-field {
 
 .admin-skill-grid .table-card {
     position: relative;
-    min-height: 260px;
+    z-index: 1;
+    min-height: 160px;
     overflow: visible;
-    border-radius: 24px;
-    border: 1px solid rgba(var(--accent-rgb), 0.14);
-    background: linear-gradient(180deg, rgba(var(--surface-rgb), 0.98), rgba(var(--surface-rgb), 0.94));
-    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.04);
-    padding: 20px;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    border-radius: 20px;
+    border: 1px solid rgba(var(--accent-rgb), 0.12);
+    background: linear-gradient(180deg, var(--surface) 0%, var(--surface-soft) 100%);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.02);
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s ease;
+}
+
+body[data-theme="dark"] .admin-skill-grid .table-card,
+html[data-theme="dark"] .admin-skill-grid .table-card {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
 
 .admin-skill-grid .table-card:hover,
 .admin-skill-grid .table-card:focus-within {
-    transform: translateY(-3px);
-    border-color: rgba(var(--accent-rgb), 0.22);
-    box-shadow: 0 22px 44px rgba(99, 102, 241, 0.08);
+    transform: translateY(-4px);
+    border-color: rgba(var(--accent-rgb), 0.3);
+    box-shadow: 0 16px 36px rgba(var(--accent-rgb), 0.08);
+    z-index: 10;
 }
 
-.admin-skill-grid .table-card .skill-card-hover-actions {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(-6px);
-    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
-    z-index: 6;
+.admin-skill-grid .table-card:has(.skill-card-menu-wrap.is-open) {
+    z-index: 30;
 }
 
-.admin-skill-grid .table-card:hover .skill-card-hover-actions,
-.admin-skill-grid .table-card:focus-within .skill-card-hover-actions {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
+/* Three dots menu styles */
+.admin-skill-grid .table-card .skill-card-menu-wrap {
+    position: relative;
 }
 
-.admin-skill-grid .table-card .skill-card-action-pill {
+.admin-skill-grid .table-card .skill-card-menu-button {
+    width: 32px;
+    height: 32px;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 10px;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    background: rgba(var(--surface-rgb), 0.95);
-    color: var(--text);
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
-    backdrop-filter: blur(10px);
-    font-size: 0.78rem;
-    font-weight: 700;
+    justify-content: center;
+    border-radius: 50%;
+    border: 1px solid rgba(var(--accent-rgb), 0.12);
+    background: var(--surface);
+    color: var(--muted);
     cursor: pointer;
+    transition: all 0.2s ease;
 }
 
-.admin-skill-grid .table-card .skill-card-action-pill span {
-    display: inline-block;
+body[data-theme="dark"] .admin-skill-grid .table-card .skill-card-menu-button,
+html[data-theme="dark"] .admin-skill-grid .table-card .skill-card-menu-button {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.6);
 }
 
-.admin-skill-grid .table-card .skill-card-action-pill-primary {
+.admin-skill-grid .table-card .skill-card-menu-button:hover,
+.admin-skill-grid .table-card .skill-card-menu-button[aria-expanded="true"] {
+    background: rgba(var(--accent-rgb), 0.08);
+    color: var(--accent);
+    border-color: rgba(var(--accent-rgb), 0.3);
+}
+
+.admin-skill-grid .table-card .skill-card-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 190px;
+    padding: 8px;
+    display: grid;
+    gap: 4px;
+    border-radius: 16px;
+    border: 1px solid rgba(var(--border-rgb, 226, 232, 240), 0.95);
+    background:
+        linear-gradient(180deg, var(--surface) 0%, var(--surface-soft) 100%);
+    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.12);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px) scale(0.95);
+    transform-origin: top right;
+    transition: opacity 0.18s cubic-bezier(0.4, 0, 0.2, 1), transform 0.18s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.18s ease;
+    z-index: 20;
+}
+
+body[data-theme="dark"] .admin-skill-grid .table-card .skill-card-menu,
+html[data-theme="dark"] .admin-skill-grid .table-card .skill-card-menu {
+    background: linear-gradient(180deg, #1e1e2e 0%, #151522 100%);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+}
+
+.admin-skill-grid .table-card .skill-card-menu-wrap.is-open .skill-card-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+}
+
+.admin-skill-grid .table-card .skill-card-menu-item {
+    width: 100%;
+    min-height: 36px;
+    padding: 0 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    border-radius: 10px;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.admin-skill-grid .table-card .skill-card-menu-item:hover {
+    background: rgba(var(--accent-rgb), 0.06);
     color: var(--accent);
 }
 
-.admin-skill-grid .table-card .skill-card-action-pill-danger {
+body[data-theme="dark"] .admin-skill-grid .table-card .skill-card-menu-item:hover,
+html[data-theme="dark"] .admin-skill-grid .table-card .skill-card-menu-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+}
+
+.admin-skill-grid .table-card .skill-card-menu-item.is-danger {
     color: var(--danger);
 }
 
+.admin-skill-grid .table-card .skill-card-menu-item.is-danger:hover {
+    background: rgba(239, 68, 68, 0.08);
+    color: var(--danger);
+}
+
+.admin-skill-grid .table-card .skill-card-menu-item i {
+    width: 16px;
+    text-align: center;
+    font-size: 0.85rem;
+}
+
+.admin-skill-grid .table-card .skill-card-menu-divider {
+    height: 1px;
+    margin: 4px 0;
+    background: rgba(var(--accent-rgb), 0.08);
+}
+
+body[data-theme="dark"] .admin-skill-grid .table-card .skill-card-menu-divider,
+html[data-theme="dark"] .admin-skill-grid .table-card .skill-card-menu-divider {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* Inline Delete Confirmation Popover */
 .admin-skill-grid .table-card .skill-delete-popover-wrap {
     position: relative;
 }
 
 .admin-skill-grid .table-card .skill-delete-popover {
     position: absolute;
-    top: calc(100% + 8px);
+    bottom: calc(100% + 12px);
     right: 0;
-    min-width: 208px;
-    padding: 12px;
-    border-radius: 16px;
-    border: 1px solid rgba(var(--danger-rgb, 239, 68, 68), 0.2);
+    min-width: 220px;
+    padding: 16px;
+    border-radius: 18px;
+    border: 1px solid rgba(239, 68, 68, 0.16);
     background: var(--surface);
-    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
-    z-index: 12;
+    box-shadow: 0 12px 36px rgba(15, 23, 42, 0.12);
+    z-index: 30;
+}
+
+.admin-skill-grid .table-card .skill-delete-popover.hidden {
+    display: none !important;
+}
+
+body[data-theme="dark"] .admin-skill-grid .table-card .skill-delete-popover,
+html[data-theme="dark"] .admin-skill-grid .table-card .skill-delete-popover {
+    background: #1e1e2e;
+    border-color: rgba(239, 68, 68, 0.3);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
 }
 
 .admin-skill-grid .table-card .skill-delete-popover p {
-    margin: 0 0 10px;
+    margin: 0 0 12px;
     color: var(--text);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
+    font-weight: 500;
 }
 
 .admin-skill-grid .table-card .skill-delete-popover-actions {
     display: flex;
     gap: 8px;
-    flex-wrap: wrap;
 }
 
 .admin-skill-grid .table-card .skill-card-top {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    gap: 14px;
-    margin-bottom: 14px;
-    padding-right: 92px;
-}
-
-.admin-skill-grid .table-card .skill-card-copy {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 14px;
-    margin-bottom: 14px;
+    gap: 12px;
+    margin-bottom: 12px;
 }
 
 .admin-skill-grid .table-card .skill-card-copy {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
 }
 
 .admin-skill-grid .table-card .skill-card-badges {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 6px;
 }
 
 .admin-skill-grid .table-card .skill-card-name {
-    font-size: 1.02rem;
+    font-size: 1.15rem;
     font-weight: 700;
     color: var(--text);
+    font-family: "Space Grotesk", sans-serif;
+    letter-spacing: -0.01em;
 }
 
 .admin-skill-grid .table-card .chip {
-    padding: 6px 10px;
+    padding: 4px 8px;
     border-radius: 999px;
-    font-size: 0.76rem;
-    background: rgba(var(--accent-rgb), 0.08);
-    border: 1px solid rgba(var(--accent-rgb), 0.14);
+    font-size: 0.72rem;
+    font-weight: 600;
+    background: rgba(var(--accent-rgb), 0.06);
+    border: 1px solid rgba(var(--accent-rgb), 0.1);
     color: var(--accent);
+    text-transform: capitalize;
+}
+
+body[data-theme="dark"] .admin-skill-grid .table-card .chip,
+html[data-theme="dark"] .admin-skill-grid .table-card .chip {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.admin-skill-grid .table-card .chip.visibility-badge {
+    background: rgba(16, 185, 129, 0.06);
+    border-color: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+}
+
+.admin-skill-grid .table-card .chip.visibility-badge.is-hidden {
+    background: rgba(239, 68, 68, 0.06);
+    border-color: rgba(239, 68, 68, 0.12);
+    color: var(--danger);
 }
 
 .admin-skill-grid .table-card .skill-card-proficiency-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 10px;
-    font-size: 0.9rem;
+    margin-top: auto;
+    font-size: 0.82rem;
+    font-weight: 500;
     color: var(--muted);
 }
 
 .admin-skill-grid .table-card .skill-card-proficiency-row strong {
     color: var(--text);
-    font-size: 1rem;
+    font-size: 0.95rem;
+    font-weight: 700;
 }
 
 .admin-skill-grid .table-card .skill-bar-container {
-    margin: 10px 0 14px;
+    margin: 8px 0 0;
 }
 
 .admin-skill-grid .table-card .skill-progress-bg {
-    height: 8px;
+    height: 6px;
     border-radius: 999px;
-    background: rgba(var(--accent-rgb), 0.12);
+    background: rgba(var(--accent-rgb), 0.08);
     overflow: hidden;
+}
+
+body[data-theme="dark"] .admin-skill-grid .table-card .skill-progress-bg,
+html[data-theme="dark"] .admin-skill-grid .table-card .skill-progress-bg {
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .admin-skill-grid .table-card .skill-progress-fill {
     height: 100%;
     border-radius: 999px;
     background: linear-gradient(90deg, var(--accent), var(--accent-alt));
+    box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.3);
 }
 
 .admin-skill-grid .table-card .table-actions {
-    margin-top: auto;
+    display: none;
 }
 
 .admin-skill-metric {

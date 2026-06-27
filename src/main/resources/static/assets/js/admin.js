@@ -1,4 +1,4 @@
-﻿import { ensureAuthenticated, redirectToLogin } from "./api/base-api.js";
+import { ensureAuthenticated, redirectToLogin } from "./api/base-api.js";
 import { authApi } from "./api/auth-api.js";
 import { dashboardApi } from "./api/dashboard-api.js";
 import { projectsApi } from "./api/projects-api.js";
@@ -3085,28 +3085,109 @@ async function copySkillName(skill) {
     }
 }
 
+function closeSkillMenus(exceptButton = null) {
+    document.querySelectorAll("[data-skill-menu-open]").forEach((button) => {
+        if (button !== exceptButton) {
+            button.closest(".skill-card-menu-wrap")?.classList.remove("is-open");
+            button.setAttribute("aria-expanded", "false");
+        }
+    });
+}
+
 async function loadSkillsAdmin() {
-    const response = await skillsApi.listAdmin(document.getElementById("admin-skill-category").value);
+    const category = document.getElementById("admin-skill-category").value;
+    const response = await skillsApi.listAdmin(category);
     const skills = response.data || [];
+    
+    const search = normalizeValue(document.getElementById("admin-skill-search")?.value).toLowerCase();
     const visibility = document.getElementById("admin-skill-visibility")?.value || "";
-    const filtered = skills.filter((skill) => {
+    const proficiency = document.getElementById("admin-skill-proficiency")?.value || "";
+    const sort = document.getElementById("admin-skill-sort")?.value || "order";
+
+    // 1. Apply Filtering
+    let filtered = skills.filter((skill) => {
+        const matchesSearch = !search || (skill.skillName || "").toLowerCase().includes(search);
+        
         const isVisible = skill.displayed !== false;
-        return !visibility
+        const matchesVisibility = !visibility
             || (visibility === "displayed" && isVisible)
             || (visibility === "hidden" && !isVisible);
+
+        const prof = Number(skill.proficiencyPercentage) || 0;
+        let matchesProficiency = true;
+        if (proficiency === "expert") {
+            matchesProficiency = prof >= 80;
+        } else if (proficiency === "intermediate") {
+            matchesProficiency = prof >= 50 && prof < 80;
+        } else if (proficiency === "beginner") {
+            matchesProficiency = prof < 50;
+        }
+
+        return matchesSearch && matchesVisibility && matchesProficiency;
     });
+
+    // 2. Apply Sorting
+    filtered.sort((left, right) => {
+        if (sort === "name_asc") {
+            return (left.skillName || "").localeCompare(right.skillName || "");
+        } else if (sort === "name_desc") {
+            return (right.skillName || "").localeCompare(left.skillName || "");
+        } else if (sort === "proficiency_desc") {
+            return (Number(right.proficiencyPercentage) || 0) - (Number(left.proficiencyPercentage) || 0);
+        } else if (sort === "proficiency_asc") {
+            return (Number(left.proficiencyPercentage) || 0) - (Number(right.proficiencyPercentage) || 0);
+        } else {
+            // Default Custom Order by displayOrder
+            const leftOrder = Number(left.displayOrder) || 0;
+            const rightOrder = Number(right.displayOrder) || 0;
+            if (leftOrder !== rightOrder) {
+                return leftOrder - rightOrder;
+            }
+            return (left.skillName || "").localeCompare(right.skillName || "");
+        }
+    });
+
+    // 3. Render HTML Markup
     document.getElementById("admin-skill-list").innerHTML = filtered.map((skill) => `
         <article class="table-card admin-skill-card" data-skill-card="${skill.id}">
-            <div class="skill-card-hover-actions">
-                <button class="skill-card-action-pill skill-card-action-pill-primary" type="button" data-skill-action="edit" data-skill-id="${skill.id}">
-                    <i class="fa-solid fa-pen"></i>
-                    <span>Edit</span>
-                </button>
-                <div class="skill-delete-popover-wrap">
-                    <button class="skill-card-action-pill skill-card-action-pill-danger" type="button" data-skill-action="delete" data-skill-id="${skill.id}">
-                        <i class="fa-solid fa-trash"></i>
-                        <span>Delete</span>
+            <header class="skill-card-top">
+                <div class="skill-card-badges">
+                    <span class="chip skill-card-category">${formatEnumLabel(skill.category || "OTHER")}</span>
+                    <span class="chip visibility-badge ${skill.displayed === false ? "is-hidden" : ""}">${skill.displayed === false ? "Hidden" : "Displayed"}</span>
+                </div>
+                
+                <div class="skill-card-menu-wrap">
+                    <button class="skill-card-menu-button" data-skill-menu-open="${skill.id}" type="button" aria-label="More options" aria-expanded="false">
+                        <i class="fa-solid fa-ellipsis-vertical"></i>
                     </button>
+                    <div class="skill-card-menu" data-skill-card-menu="${skill.id}" role="menu" aria-label="Skill actions">
+                        <button class="skill-card-menu-item" data-skill-action="edit" data-skill-id="${skill.id}" type="button" role="menuitem">
+                            <i class="fa-solid fa-pen"></i>
+                            <span>Edit</span>
+                        </button>
+                        <button class="skill-card-menu-item" data-skill-action="toggle-visibility" data-skill-id="${skill.id}" type="button" role="menuitem">
+                            <i class="fa-solid ${skill.displayed === false ? "fa-eye" : "fa-eye-slash"}"></i>
+                            <span>${skill.displayed === false ? "Show" : "Hide"}</span>
+                        </button>
+                        <button class="skill-card-menu-item" data-skill-action="move-up" data-skill-id="${skill.id}" type="button" role="menuitem">
+                            <i class="fa-solid fa-arrow-up"></i>
+                            <span>Move Up</span>
+                        </button>
+                        <button class="skill-card-menu-item" data-skill-action="move-down" data-skill-id="${skill.id}" type="button" role="menuitem">
+                            <i class="fa-solid fa-arrow-down"></i>
+                            <span>Move Down</span>
+                        </button>
+                        <button class="skill-card-menu-item" data-skill-action="copy-name" data-skill-id="${skill.id}" type="button" role="menuitem">
+                            <i class="fa-solid fa-copy"></i>
+                            <span>Copy Name</span>
+                        </button>
+                        <div class="skill-card-menu-divider" role="separator"></div>
+                        <button class="skill-card-menu-item is-danger" data-skill-action="delete" data-skill-id="${skill.id}" type="button" role="menuitem">
+                            <i class="fa-solid fa-trash"></i>
+                            <span>Delete</span>
+                        </button>
+                    </div>
+                    
                     <div class="skill-delete-popover hidden" data-skill-confirmation="${skill.id}">
                         <p>Delete this skill?</p>
                         <div class="skill-delete-popover-actions">
@@ -3115,16 +3196,12 @@ async function loadSkillsAdmin() {
                         </div>
                     </div>
                 </div>
-            </div>
-            <header class="skill-card-top">
-                <div class="skill-card-copy">
-                    <div class="skill-card-badges">
-                        <span class="chip skill-card-category">${formatEnumLabel(skill.category || "OTHER")}</span>
-                        <span class="chip">${skill.displayed === false ? "Hidden" : "Displayed"}</span>
-                    </div>
-                    <strong class="skill-card-name">${skill.skillName}</strong>
-                </div>
             </header>
+            
+            <div class="skill-card-copy">
+                <strong class="skill-card-name">${skill.skillName}</strong>
+            </div>
+            
             <div class="skill-card-proficiency-row">
                 <span>Proficiency</span>
                 <strong>${skill.proficiencyPercentage}%</strong>
@@ -3136,11 +3213,14 @@ async function loadSkillsAdmin() {
             </div>
         </article>
     `).join("") || emptyMarkup("No skills found.");
+
+    // 4. Bind Action Listeners
     if (!document.getElementById("admin-skill-list")?.dataset.menuBound) {
         const list = document.getElementById("admin-skill-list");
         if (list) {
             list.dataset.menuBound = "true";
             list.addEventListener("click", async (event) => {
+                const openButton = event.target.closest("[data-skill-menu-open]");
                 const actionButton = event.target.closest("[data-skill-action]");
                 const cancelButton = event.target.closest("[data-skill-confirm-cancel]");
                 const confirmButton = event.target.closest("[data-skill-confirm-delete]");
@@ -3148,6 +3228,17 @@ async function loadSkillsAdmin() {
                 const hideSkillConfirmations = () => {
                     list.querySelectorAll(".skill-delete-popover").forEach((panel) => panel.classList.add("hidden"));
                 };
+
+                if (openButton) {
+                    event.stopPropagation();
+                    const skillId = openButton.getAttribute("data-skill-menu-open");
+                    const menuWrap = openButton.closest(".skill-card-menu-wrap");
+                    const willOpen = !menuWrap?.classList.contains("is-open");
+                    closeSkillMenus(openButton);
+                    menuWrap?.classList.toggle("is-open", willOpen);
+                    openButton.setAttribute("aria-expanded", String(willOpen));
+                    return;
+                }
 
                 if (cancelButton) {
                     event.stopPropagation();
@@ -3183,6 +3274,7 @@ async function loadSkillsAdmin() {
                 }
                 const action = actionButton.getAttribute("data-skill-action");
                 try {
+                    closeSkillMenus();
                     if (action === "edit") {
                         state.editingSkillId = skill.id;
                         openSkillEditor();
@@ -3241,14 +3333,21 @@ async function initSkills() {
         }
     });
     document.addEventListener("click", (event) => {
-        if (!event.target.closest(".skill-card-hover-actions")) {
+        if (!event.target.closest(".skill-card-menu-wrap")) {
+            closeSkillMenus();
             document.querySelectorAll(".skill-delete-popover").forEach((panel) => panel.classList.add("hidden"));
         }
     });
 
     document.getElementById("admin-skill-category").innerHTML = markupOptions(SKILL_CATEGORIES, true);
+    
+    // Bind search and filter change listeners
+    document.getElementById("admin-skill-search")?.addEventListener("input", loadSkillsAdmin);
     document.getElementById("admin-skill-category").addEventListener("change", loadSkillsAdmin);
     document.getElementById("admin-skill-visibility")?.addEventListener("change", loadSkillsAdmin);
+    document.getElementById("admin-skill-proficiency")?.addEventListener("change", loadSkillsAdmin);
+    document.getElementById("admin-skill-sort")?.addEventListener("change", loadSkillsAdmin);
+
     await refreshSkillsCache();
     await loadSkillsAdmin();
 }

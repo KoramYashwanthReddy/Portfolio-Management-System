@@ -48,6 +48,10 @@
                 <div class="panel admin-skills-panel">
                     <div class="explorer-controls admin-skill-controls">
                         <label class="skill-filter-field admin-skill-filter-field">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input id="admin-skill-search" class="input" type="search" placeholder="Search skill name...">
+                        </label>
+                        <label class="skill-filter-field admin-skill-filter-field">
                             <i class="fa-solid fa-layer-group"></i>
                             <select id="admin-skill-category" class="input"></select>
                         </label>
@@ -57,6 +61,25 @@
                                 <option value="">All visibility</option>
                                 <option value="displayed">Displayed</option>
                                 <option value="hidden">Hidden</option>
+                            </select>
+                        </label>
+                        <label class="skill-filter-field admin-skill-filter-field">
+                            <i class="fa-solid fa-sliders"></i>
+                            <select id="admin-skill-proficiency" class="input">
+                                <option value="">All proficiency</option>
+                                <option value="expert">Expert (80%+)</option>
+                                <option value="intermediate">Intermediate (50% - 79%)</option>
+                                <option value="beginner">Beginner (< 50%)</option>
+                            </select>
+                        </label>
+                        <label class="skill-filter-field admin-skill-filter-field">
+                            <i class="fa-solid fa-sort"></i>
+                            <select id="admin-skill-sort" class="input">
+                                <option value="order">Custom Order</option>
+                                <option value="name_asc">Name (A - Z)</option>
+                                <option value="name_desc">Name (Z - A)</option>
+                                <option value="proficiency_desc">Proficiency (High - Low)</option>
+                                <option value="proficiency_asc">Proficiency (Low - High)</option>
                             </select>
                         </label>
                     </div>
