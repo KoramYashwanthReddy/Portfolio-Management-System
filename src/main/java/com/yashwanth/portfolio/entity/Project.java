@@ -35,6 +35,7 @@ public class Project extends AuditableEntity {
 
     private String liveUrl;
 
+    @Column(columnDefinition = "TEXT")
     private String imageUrl;
 
     @Enumerated(EnumType.STRING)

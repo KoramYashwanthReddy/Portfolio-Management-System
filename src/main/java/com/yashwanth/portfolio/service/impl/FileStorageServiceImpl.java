@@ -67,9 +67,13 @@ public class FileStorageServiceImpl implements FileStorageService {
 
     @Override
     public Resource loadAsResource(StoredFile storedFile) {
-        Resource resource = new PathResource(storedFile.getStoragePath());
+        Path filePath = uploadPath.resolve(storedFile.getStoredFileName());
+        Resource resource = new PathResource(filePath);
         if (!resource.exists()) {
-            throw new ResourceNotFoundException("Stored file not found on disk");
+            resource = new PathResource(storedFile.getStoragePath());
+            if (!resource.exists()) {
+                throw new ResourceNotFoundException("Stored file not found on disk");
+            }
         }
         return resource;
     }

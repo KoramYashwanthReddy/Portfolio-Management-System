@@ -1404,7 +1404,7 @@ html[data-theme="dark"] .masonry-skill-item {
 
 .modal-content {
     width: 100%;
-    max-width: 850px;
+    max-width: 1080px;
     margin: 0 auto;
     flex-shrink: 0;
 }

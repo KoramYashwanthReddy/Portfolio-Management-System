@@ -1222,72 +1222,280 @@ function filterCertifications(certifications) {
     });
 }
 
+function closeCertMenus(exceptButton = null) {
+    document.querySelectorAll("[data-cert-menu-open]").forEach((button) => {
+        if (button !== exceptButton) {
+            button.closest(".cert-card-menu-wrap")?.classList.remove("is-open");
+            button.setAttribute("aria-expanded", "false");
+        }
+    });
+}
+
+async function toggleCertificationVisibility(certification) {
+    const payload = {
+        title: certification.title,
+        issuer: certification.issuer,
+        issueDate: certification.issueDate,
+        expiryDate: certification.expiryDate || null,
+        credentialId: certification.credentialId || "",
+        credentialUrl: certification.credentialUrl || "",
+        certificateFileId: certification.certificateFile?.id || null,
+        displayed: !(certification.displayed !== false)
+    };
+    await certificationsApi.update(certification.id, payload);
+    await loadCertificationsAdmin();
+}
+
 function renderCertificationsAdmin(certifications) {
     const filtered = filterCertifications(certifications);
     document.getElementById("admin-certification-list").innerHTML = filtered.map((certification) => `
-        <article class="table-card admin-cert-card">
-            <header>
-                <div>
-                    <span class="card-number">Cert</span>
-                    <strong>${certification.title}</strong>
-                    <p class="section-copy">${certification.issuer}</p>
+        <article class="table-card admin-cert-card" data-cert-card="${certification.id}">
+            <header class="cert-card-top">
+                <div class="cert-badge-row">
+                    <span class="cert-icon-container"><i class="fa-solid fa-certificate"></i></span>
+                    <span class="chip visibility-badge ${certification.displayed === false ? "is-hidden" : ""}">${certification.displayed === false ? "Hidden" : "Displayed"}</span>
                 </div>
-                <span class="chip">${certification.displayed === false ? "Hidden" : "Displayed"}</span>
+                
+                <div class="cert-card-menu-wrap">
+                    <button class="cert-card-menu-button" data-cert-menu-open="${certification.id}" type="button" aria-label="More options" aria-expanded="false">
+                        <i class="fa-solid fa-ellipsis-vertical"></i>
+                    </button>
+                    <div class="cert-card-menu" data-cert-card-menu="${certification.id}" role="menu" aria-label="Certification actions">
+                        <button class="cert-card-menu-item" data-cert-action="edit" data-cert-id="${certification.id}" type="button" role="menuitem">
+                            <i class="fa-solid fa-pen"></i>
+                            <span>Edit</span>
+                        </button>
+                        <button class="cert-card-menu-item" data-cert-action="toggle-visibility" data-cert-id="${certification.id}" type="button" role="menuitem">
+                            <i class="fa-solid ${certification.displayed === false ? "fa-eye" : "fa-eye-slash"}"></i>
+                            <span>${certification.displayed === false ? "Show in Portfolio" : "Hide from Portfolio"}</span>
+                        </button>
+                        ${certification.certificateFile?.downloadUrl ? `
+                        <a class="cert-card-menu-item" href="${certification.certificateFile.downloadUrl}" target="_blank" rel="noreferrer" role="menuitem">
+                            <i class="fa-solid fa-file-pdf"></i>
+                            <span>Open Document</span>
+                        </a>` : ""}
+                        ${certification.credentialUrl ? `
+                        <a class="cert-card-menu-item" href="${certification.credentialUrl}" target="_blank" rel="noreferrer" role="menuitem">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                            <span>Verify Online</span>
+                        </a>` : ""}
+                        ${certification.credentialId ? `
+                        <button class="cert-card-menu-item" data-cert-action="copy-id" data-cert-id-val="${certification.credentialId}" type="button" role="menuitem">
+                            <i class="fa-solid fa-copy"></i>
+                            <span>Copy Credential ID</span>
+                        </button>` : ""}
+                        <div class="cert-card-menu-divider" role="separator"></div>
+                        <button class="cert-card-menu-item is-danger" data-cert-action="delete" data-cert-id="${certification.id}" type="button" role="menuitem">
+                            <i class="fa-solid fa-trash"></i>
+                            <span>Delete</span>
+                        </button>
+                    </div>
+                    
+                    <div class="cert-delete-popover hidden" data-cert-confirmation="${certification.id}">
+                        <p>Delete certification?</p>
+                        <div class="cert-delete-popover-actions">
+                            <button class="button button-ghost" type="button" data-cert-confirm-cancel="${certification.id}">Cancel</button>
+                            <button class="button button-danger" type="button" data-cert-confirm-delete="${certification.id}">Confirm</button>
+                        </div>
+                    </div>
+                </div>
             </header>
-            <div class="chip-row">
-                <span class="chip">${certification.expiryDate ? "Active" : "Open"}</span>
-                <span class="chip">Issued ${certification.issueDate}</span>
-                ${certification.expiryDate ? `<span class="chip">Expires ${certification.expiryDate}</span>` : ""}
-                ${certification.credentialId ? `<span class="chip">ID ${certification.credentialId}</span>` : ""}
+            
+            <div class="cert-card-body">
+                <h3 class="cert-card-title">${certification.title}</h3>
+                <p class="cert-card-issuer">${certification.issuer}</p>
             </div>
-            <div class="table-actions">
-                <button class="button button-ghost" data-cert-edit="${certification.id}" type="button">Edit</button>
-                <button class="button button-ghost" data-cert-delete="${certification.id}" type="button">Delete</button>
-                ${certification.certificateFile?.downloadUrl ? `<a class="button button-ghost" href="${certification.certificateFile.downloadUrl}" target="_blank" rel="noreferrer">Open file</a>` : ""}
+            
+            <div class="cert-card-meta-row">
+                <div class="cert-meta-item">
+                    <span>Issue Date</span>
+                    <strong>${certification.issueDate}</strong>
+                </div>
+                <div class="cert-meta-item">
+                    <span>Expiration</span>
+                    <strong>${certification.expiryDate || "Lifetime"}</strong>
+                </div>
             </div>
+            
+            ${certification.credentialId ? `
+            <div class="cert-card-id-block">
+                <span>Credential ID:</span>
+                <code>${certification.credentialId}</code>
+            </div>` : ""}
         </article>
     `).join("") || emptyMarkup(certifications.length ? "No certifications match the selected filters." : "No certifications found.");
-    filtered.forEach((certification) => {
-        document.querySelector(`[data-cert-edit="${certification.id}"]`)?.addEventListener("click", () => {
-            state.editingCertificationId = certification.id;
-            state.currentCertification = certification;
-            openCertificationEditor();
-            fillForm(document.getElementById("certification-form"), certification);
-        });
-        document.querySelector(`[data-cert-delete="${certification.id}"]`)?.addEventListener("click", async () => {
-            if (!confirmDanger(`Delete certification "${certification.title}"? This cannot be undone.`)) {
-                return;
-            }
-            await certificationsApi.remove(certification.id);
-            await loadCertificationsAdmin();
-        });
-    });
+
+    // Bind event list handlers
+    if (!document.getElementById("admin-certification-list")?.dataset.menuBound) {
+        const list = document.getElementById("admin-certification-list");
+        if (list) {
+            list.dataset.menuBound = "true";
+            list.addEventListener("click", async (event) => {
+                const openButton = event.target.closest("[data-cert-menu-open]");
+                const actionButton = event.target.closest("[data-cert-action]");
+                const cancelButton = event.target.closest("[data-cert-confirm-cancel]");
+                const confirmButton = event.target.closest("[data-cert-confirm-delete]");
+
+                const hideCertConfirmations = () => {
+                    list.querySelectorAll(".cert-delete-popover").forEach((panel) => panel.classList.add("hidden"));
+                };
+
+                if (openButton) {
+                    event.stopPropagation();
+                    const menuWrap = openButton.closest(".cert-card-menu-wrap");
+                    const willOpen = !menuWrap?.classList.contains("is-open");
+                    closeCertMenus(openButton);
+                    menuWrap?.classList.toggle("is-open", willOpen);
+                    openButton.setAttribute("aria-expanded", String(willOpen));
+                    return;
+                }
+
+                if (cancelButton) {
+                    event.stopPropagation();
+                    hideCertConfirmations();
+                    return;
+                }
+
+                if (confirmButton) {
+                    event.stopPropagation();
+                    const certId = confirmButton.getAttribute("data-cert-confirm-delete");
+                    try {
+                        await certificationsApi.remove(certId);
+                        await loadCertificationsAdmin();
+                    } catch (error) {
+                        alert("Certification delete failed: " + error.message);
+                    }
+                    hideCertConfirmations();
+                    return;
+                }
+
+                if (!actionButton) {
+                    return;
+                }
+                event.stopPropagation();
+                const certId = actionButton.getAttribute("data-cert-id");
+                const certification = state.certificationsCache.find((item) => String(item.id) === String(certId));
+                if (!certification && action !== "copy-id") {
+                    return;
+                }
+                const action = actionButton.getAttribute("data-cert-action");
+                try {
+                    closeCertMenus();
+                    if (action === "edit") {
+                        state.editingCertificationId = certification.id;
+                        state.currentCertification = certification;
+                        openCertificationEditor();
+                        fillForm(document.getElementById("certification-form"), certification);
+                        hideCertConfirmations();
+                        return;
+                    }
+                    if (action === "delete") {
+                        hideCertConfirmations();
+                        const confirmationPanel = list.querySelector(`[data-cert-confirmation="${certification.id}"]`);
+                        confirmationPanel?.classList.remove("hidden");
+                        return;
+                    }
+                    if (action === "toggle-visibility") {
+                        await toggleCertificationVisibility(certification);
+                        hideCertConfirmations();
+                        return;
+                    }
+                    if (action === "copy-id") {
+                        const val = actionButton.getAttribute("data-cert-id-val");
+                        await copyTextToClipboard(val);
+                        alert(`Copied Credential ID: "${val}"`);
+                        hideCertConfirmations();
+                    }
+                } catch (error) {
+                    alert("Certification action failed: " + error.message);
+                }
+            });
+        }
+    }
 }
 
 function renderProjectForm() {
     const form = document.getElementById("project-form");
     if (!form) return;
     form.innerHTML = `
-        <label><span>Title</span><input class="input" name="title" required maxlength="150" placeholder="Enter project title"></label>
-        <label><span>Short description</span><input class="input" name="shortDescription" required maxlength="250" placeholder="Brief summary of the project"></label>
-        <label><span>Detailed description</span><textarea class="input textarea" name="detailedDescription" required placeholder="Detailed info about the project..."></textarea></label>
-        <label><span>Technologies</span><input class="input" name="technologies" required maxlength="500" placeholder="e.g. Java, Spring Boot, React (comma separated)"></label>
-        <label><span>GitHub URL</span><input class="input" name="githubUrl" placeholder="https://github.com/..."></label>
-        <label><span>Live URL</span><input class="input" name="liveUrl" placeholder="https://..."></label>
-        <label><span>Image URL</span><input class="input" name="imageUrl" placeholder="https://..."></label>
-        <div class="field-grid">
-            <label><span>Category</span><select class="input" name="category">${markupOptions(PROJECT_CATEGORIES)}</select></label>
-            <label><span>Status</span><select class="input" name="status">${markupOptions(PROJECT_STATUSES)}</select></label>
+        <div class="form-hero">
+            <div>
+                <p class="eyebrow">Project Registry</p>
+                <h2 style="margin: 0;">Add or edit project details</h2>
+            </div>
+            <span class="chip">Database entry</span>
         </div>
-        <div class="field-grid">
-            <label><span>Completion Date</span><input class="input" type="date" name="completionDate"></label>
-            <label><span>Project Image Upload</span><input class="input" type="file" name="projectImage" accept=".png,.jpg,.jpeg,.webp"></label>
+
+        <!-- Wizard Navigation Stages -->
+        <div class="project-wizard-steps" style="display: flex; gap: 8px; justify-content: space-between; margin-bottom: 24px; border-bottom: 1px solid rgba(var(--accent-rgb), 0.08); padding-bottom: 16px;">
+            <div class="project-wizard-step active" data-step="1" style="flex: 1; text-align: center; font-weight: 700; cursor: pointer; color: var(--accent); font-size: 0.88rem; transition: all 0.2s ease;">1. Core Info</div>
+            <div class="project-wizard-step" data-step="2" style="flex: 1; text-align: center; font-weight: 500; cursor: pointer; color: var(--muted); font-size: 0.88rem; transition: all 0.2s ease;">2. Details</div>
+            <div class="project-wizard-step" data-step="3" style="flex: 1; text-align: center; font-weight: 500; cursor: pointer; color: var(--muted); font-size: 0.88rem; transition: all 0.2s ease;">3. Tech & Links</div>
+            <div class="project-wizard-step" data-step="4" style="flex: 1; text-align: center; font-weight: 500; cursor: pointer; color: var(--muted); font-size: 0.88rem; transition: all 0.2s ease;">4. Gallery</div>
         </div>
-        <label><span><input type="checkbox" name="displayed" checked> Display in portfolio</span></label>
-        <label><span><input type="checkbox" name="featured"> Featured project</span></label>
-        <div class="form-actions">
-            <button class="button button-primary" type="submit"><i class="fa-solid fa-check" style="margin-right:6px;"></i>${state.editingProjectId ? "Update" : "Create"}</button>
-            <button id="project-reset" class="button button-ghost" type="button">Cancel</button>
+
+        <!-- Step 1: Core Info -->
+        <div class="project-wizard-pane active" data-pane="1">
+            <label><span>Title</span><input class="input" name="title" required maxlength="150" placeholder="Enter project title"></label>
+            <label style="margin-top: 14px; display: block;"><span>Short description</span><input class="input" name="shortDescription" required maxlength="250" placeholder="Brief summary of the project"></label>
+            <div class="field-grid" style="margin-top: 14px;">
+                <label><span>Category</span><select class="input" name="category">${markupOptions(PROJECT_CATEGORIES)}</select></label>
+                <label><span>Status</span><select class="input" name="status">${markupOptions(PROJECT_STATUSES)}</select></label>
+            </div>
+            <div class="field-grid" style="margin-top: 14px;">
+                <label><span>Completion Date</span><input class="input" type="date" name="completionDate"></label>
+            </div>
+        </div>
+
+        <!-- Step 2: Details -->
+        <div class="project-wizard-pane" data-pane="2" style="display: none;">
+            <label><span>Detailed description</span><textarea class="input textarea" name="detailedDescription" style="height: 220px;" required placeholder="Detailed info about the project..."></textarea></label>
+        </div>
+
+        <!-- Step 3: Tech & Links -->
+        <div class="project-wizard-pane" data-pane="3" style="display: none;">
+            <label><span>Technologies</span><input class="input" name="technologies" required maxlength="500" placeholder="e.g. Java, Spring Boot, React (comma separated)"></label>
+            <div class="field-grid" style="margin-top: 14px;">
+                <label><span>GitHub URL</span><input class="input" name="githubUrl" placeholder="https://github.com/..."></label>
+                <label><span>Live URL</span><input class="input" name="liveUrl" placeholder="https://..."></label>
+            </div>
+            <div style="margin-top: 18px; display: flex; gap: 20px;">
+                <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" name="displayed" checked> <span>Display in portfolio</span>
+                </label>
+                <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" name="featured"> <span>Featured project</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Step 4: Gallery -->
+        <div class="project-wizard-pane" data-pane="4" style="display: none;">
+            <label><span>Image URL (comma separated)</span><input class="input" name="imageUrl" id="project-imageUrl-field" placeholder="https://..."></label>
+            
+            <div style="margin-top: 16px;">
+                <span class="muted-label" style="display: block; margin-bottom: 8px;">Upload Project Images</span>
+                <div class="drag-drop-zone" id="project-drag-drop" style="border: 2px dashed rgba(var(--accent-rgb), 0.25); border-radius: 16px; padding: 30px; text-align: center; cursor: pointer; transition: all 0.2s ease; background: rgba(var(--accent-rgb), 0.01);">
+                    <i class="fa-solid fa-images" style="font-size: 2.2rem; color: var(--accent); margin-bottom: 12px;"></i>
+                    <p style="margin: 0; font-weight: 600; font-size: 0.9rem;">Drag & drop project screenshots here</p>
+                    <p style="margin: 4px 0 0; font-size: 0.78rem; color: var(--muted);">or click to upload multiple images</p>
+                    <input type="file" id="project-files-input" accept="image/*" multiple style="display: none;">
+                </div>
+                
+                <div id="project-upload-status" style="margin-top: 10px; font-size: 0.82rem; font-weight: 500; display: none;"></div>
+                
+                <div id="project-images-preview-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-top: 18px;">
+                    <!-- Uploaded image previews will render here dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions" style="margin-top: 24px; display: flex; justify-content: space-between;">
+            <button class="button button-ghost" id="project-wizard-prev" type="button" style="visibility: hidden;"><i class="fa-solid fa-arrow-left" style="margin-right: 6px;"></i>Back</button>
+            <div>
+                <button class="button button-ghost" id="project-wizard-next" type="button">Next<i class="fa-solid fa-arrow-right" style="margin-left: 6px;"></i></button>
+                <button class="button button-primary" id="project-wizard-submit" type="submit" style="display: none;"><i class="fa-solid fa-check" style="margin-right:6px;"></i>${state.editingProjectId ? "Update" : "Create"}</button>
+            </div>
         </div>
     `;
 }
@@ -1300,7 +1508,6 @@ function openProjectEditor() {
     modal.classList.remove("hidden");
     modal.setAttribute("aria-hidden", "false");
     document.body.style.overflow = "hidden";
-    modal.querySelector(".input")?.focus();
 }
 
 function closeProjectEditor() {
@@ -1315,6 +1522,9 @@ function closeProjectEditor() {
 function buildProjectDetailMarkup(project) {
     const technologies = parseTags(project.technologies);
     const mediaUrl = project.imageFile?.downloadUrl || project.imageUrl || "";
+    const mediaUrls = mediaUrl.split(",").map(url => url.trim()).filter(Boolean);
+    const mainMedia = mediaUrls[0] || "";
+
     const rows = [
         { label: "Category", value: project.category || "Project" },
         { label: "Status", value: formatEnumLabel(project.status || "Unknown") },
@@ -1323,16 +1533,39 @@ function buildProjectDetailMarkup(project) {
         { label: "Completed", value: project.completionDate || "In progress" },
         { label: "Stack", value: `${technologies.length} tech${technologies.length === 1 ? "" : "s"}` }
     ];
+
+    let mediaHtml = "";
+    if (mediaUrls.length > 1) {
+        mediaHtml = `
+            <div class="project-detail-gallery" style="display: grid; gap: 12px; margin-bottom: 20px; width: 100%;">
+                <div class="project-detail-media has-image" id="project-detail-main-media-wrap" style="border-radius: 16px; overflow: hidden; border: 1px solid var(--border); padding-top: 56.25%; position: relative; width: 100%;">
+                    <img id="project-detail-main-media" src="${mainMedia}" style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover;" alt="${escapeHtml(project.title || "Project")} preview">
+                </div>
+                <div class="project-detail-thumbnails" style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; width: 100%;">
+                    ${mediaUrls.map((url, idx) => `
+                        <div class="project-detail-thumb ${idx === 0 ? "active" : ""}" data-url="${url}" style="width: 80px; height: 50px; border-radius: 8px; overflow: hidden; border: 2px solid ${idx === 0 ? "var(--accent)" : "var(--border)"}; cursor: pointer; flex-shrink: 0; position: relative; transition: border-color 0.2s ease;">
+                            <img src="${url}" style="width:100%; height:100%; object-fit: cover;" alt="Thumbnail ${idx + 1}">
+                        </div>
+                    `).join("")}
+                </div>
+            </div>
+        `;
+    } else {
+        mediaHtml = `
+            <div class="project-detail-media ${mainMedia ? "has-image" : ""}">
+                ${mainMedia ? `<img src="${mainMedia}" alt="${escapeHtml(project.title || "Project")} preview">` : `<span>${escapeHtml((project.title || "P").substring(0, 2).toUpperCase())}</span>`}
+            </div>
+        `;
+    }
+
     return `
         <div class="project-detail-shell">
             <div class="project-detail-hero">
-                <div class="project-detail-hero-main">
-                    <div class="project-detail-media ${mediaUrl ? "has-image" : ""}">
-                        ${mediaUrl ? `<img src="${mediaUrl}" alt="${escapeHtml(project.title || "Project")} preview">` : `<span>${escapeHtml((project.title || "P").substring(0, 2).toUpperCase())}</span>`}
-                    </div>
-                    <div class="project-detail-hero-copy">
+                <div class="project-detail-hero-main" style="flex-direction: column; align-items: flex-start; gap: 20px;">
+                    ${mediaHtml}
+                    <div class="project-detail-hero-copy" style="padding-left: 0;">
                         <p class="eyebrow" style="color: var(--accent-alt); margin-bottom: 6px;">PROJECT DETAILS</p>
-                        <h2>${escapeHtml(project.title || "Untitled project")}</h2>
+                        <h2 style="margin-top: 0;">${escapeHtml(project.title || "Untitled project")}</h2>
                         <p class="project-detail-subtitle">${escapeHtml(project.shortDescription || "No short description provided.")}</p>
                     </div>
                 </div>
@@ -1376,6 +1609,19 @@ function openProjectDetail(project) {
     }
     title.textContent = "Project overview";
     content.innerHTML = buildProjectDetailMarkup(project);
+
+    // Bind thumbnail click events if they exist
+    const mainImg = content.querySelector("#project-detail-main-media");
+    const thumbs = content.querySelectorAll(".project-detail-thumb");
+    thumbs.forEach((thumb) => {
+        thumb.addEventListener("click", () => {
+            const url = thumb.getAttribute("data-url");
+            if (mainImg) mainImg.src = url;
+            thumbs.forEach(t => t.style.borderColor = "var(--border)");
+            thumb.style.borderColor = "var(--accent)";
+        });
+    });
+
     modal.classList.remove("hidden");
     modal.setAttribute("aria-hidden", "false");
     document.body.style.overflow = "hidden";
@@ -2092,7 +2338,19 @@ function renderTabPanelContent(tabName) {
         if (container) {
             const imgUrl = project.imageFile?.downloadUrl || project.imageUrl;
             if (imgUrl) {
-                container.innerHTML = `<img src="${imgUrl}" alt="${escapeHtml(project.title)} Project Screenshot">`;
+                const urls = imgUrl.split(",").map(u => u.trim()).filter(Boolean);
+                if (urls.length > 1) {
+                    container.innerHTML = `
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px;">
+                            ${urls.map((url, idx) => `
+                                <div style="border-radius: 12px; overflow: hidden; border: 1px solid var(--border); padding-top: 56.25%; position: relative;">
+                                    <img src="${url}" style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover;" alt="${escapeHtml(project.title)} Screenshot ${idx + 1}">
+                                </div>
+                            `).join("")}
+                        </div>`;
+                } else {
+                    container.innerHTML = `<img src="${urls[0]}" alt="${escapeHtml(project.title)} Project Screenshot">`;
+                }
             } else {
                 container.innerHTML = `<div class="gallery-no-image"><i class="fa-regular fa-image fa-3x"></i><p>No project image uploaded yet.</p></div>`;
             }
@@ -2207,7 +2465,7 @@ async function initProjectNotesPage() {
     state.currentProject = projectResponse.data;
     const renderProjectNotesHero = (noteCount = state.currentProjectNotes.length) => {
         const project = state.currentProject || {};
-        const mediaUrl = project.imageFile?.downloadUrl || project.imageUrl || "";
+        const mediaUrl = (project.imageFile?.downloadUrl || project.imageUrl || "").split(",")[0].trim();
         const techCount = parseTags(project.technologies).length;
         const statusOptions = PROJECT_STATUSES.map((status) => {
             const selected = status === (project.status || PROJECT_STATUSES[0]) ? " selected" : "";
@@ -2541,12 +2799,15 @@ async function loadProjectsAdmin() {
             menuButton.setAttribute("aria-expanded", String(willOpen));
         });
 
+
         menuPanel?.querySelector(`[data-project-edit="${project.id}"]`)?.addEventListener("click", () => {
             state.editingProjectId = project.id;
             state.currentProject = project;
             openProjectEditor();
             fillForm(document.getElementById("project-form"), project);
+            document.getElementById("project-imageUrl-field")?.dispatchEvent(new Event("input"));
         });
+
         duplicateButton?.addEventListener("click", async () => {
             closeProjectMenus();
             await duplicateProject(project);
@@ -2590,22 +2851,179 @@ async function loadProjectsAdmin() {
 
 function bindProjectForm() {
     const form = document.getElementById("project-form");
+    if (!form) return;
+
+    // Wizard Navigation Logic
+    let currentStep = 1;
+    const steps = form.querySelectorAll(".project-wizard-step");
+    const panes = form.querySelectorAll(".project-wizard-pane");
+    const prevBtn = form.querySelector("#project-wizard-prev");
+    const nextBtn = form.querySelector("#project-wizard-next");
+    const submitBtn = form.querySelector("#project-wizard-submit");
+
+    function goToStep(stepNum) {
+        if (stepNum < 1 || stepNum > 4) return;
+        currentStep = stepNum;
+
+        steps.forEach((s) => {
+            const val = parseInt(s.dataset.step);
+            s.classList.toggle("active", val === currentStep);
+            s.style.color = val === currentStep ? "var(--accent)" : "var(--muted)";
+            s.style.fontWeight = val === currentStep ? "700" : "500";
+        });
+
+        panes.forEach((p) => {
+            p.style.display = parseInt(p.dataset.pane) === currentStep ? "block" : "none";
+        });
+
+        prevBtn.style.visibility = currentStep === 1 ? "hidden" : "visible";
+        if (currentStep === 4) {
+            nextBtn.style.display = "none";
+            submitBtn.style.display = "inline-flex";
+        } else {
+            nextBtn.style.display = "inline-flex";
+            submitBtn.style.display = "none";
+        }
+    }
+
+    nextBtn?.addEventListener("click", () => {
+        const activePane = form.querySelector(`.project-wizard-pane[data-pane="${currentStep}"]`);
+        const invalid = activePane.querySelector("input:invalid, textarea:invalid");
+        if (invalid) {
+            invalid.reportValidity();
+            return;
+        }
+        goToStep(currentStep + 1);
+    });
+
+    prevBtn?.addEventListener("click", () => {
+        goToStep(currentStep - 1);
+    });
+
+    steps.forEach((s) => {
+        s.addEventListener("click", () => {
+            const stepNum = parseInt(s.dataset.step);
+            if (stepNum < currentStep) {
+                goToStep(stepNum);
+            } else {
+                for (let i = currentStep; i < stepNum; i++) {
+                    const activePane = form.querySelector(`.project-wizard-pane[data-pane="${i}"]`);
+                    const invalid = activePane.querySelector("input:invalid, textarea:invalid");
+                    if (invalid) {
+                        goToStep(i);
+                        invalid.reportValidity();
+                        return;
+                    }
+                }
+                goToStep(stepNum);
+            }
+        });
+    });
+
+    // Multi-Image Upload & Preview Logic
+    const dragDrop = form.querySelector("#project-drag-drop");
+    const fileInput = form.querySelector("#project-files-input");
+    const uploadStatus = form.querySelector("#project-upload-status");
+    const imgField = form.querySelector("#project-imageUrl-field");
+    const previewGrid = form.querySelector("#project-images-preview-grid");
+    let projectImages = [];
+
+    function renderImagesPreview() {
+        if (!previewGrid) return;
+        projectImages = imgField.value.split(",").map(url => url.trim()).filter(Boolean);
+        previewGrid.innerHTML = projectImages.map((url, idx) => `
+            <div class="project-img-preview-card" style="position: relative; border-radius: 12px; border: 1px solid var(--border); overflow: hidden; background: var(--surface-soft); padding-top: 56.25%;">
+                <img src="${url}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;" alt="Project Image ${idx + 1}">
+                <button class="project-img-delete-btn" data-index="${idx}" type="button" style="position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%; border: none; background: rgba(239, 68, 68, 0.9); color: white; display: grid; place-items: center; cursor: pointer; transition: background 0.2s ease;" aria-label="Delete image">
+                    <i class="fa-solid fa-trash-can" style="font-size: 0.75rem;"></i>
+                </button>
+            </div>
+        `).join("");
+
+        previewGrid.querySelectorAll(".project-img-delete-btn").forEach((btn) => {
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const idx = parseInt(btn.dataset.index);
+                projectImages.splice(idx, 1);
+                imgField.value = projectImages.join(", ");
+                renderImagesPreview();
+            });
+        });
+    }
+
+    imgField?.addEventListener("input", renderImagesPreview);
+
+    dragDrop?.addEventListener("click", () => fileInput?.click());
+
+    dragDrop?.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dragDrop.style.borderColor = "var(--accent)";
+        dragDrop.style.background = "rgba(var(--accent-rgb), 0.04)";
+    });
+
+    ["dragleave", "drop"].forEach((type) => {
+        dragDrop?.addEventListener(type, () => {
+            if (dragDrop) {
+                dragDrop.style.borderColor = "rgba(var(--accent-rgb), 0.25)";
+                dragDrop.style.background = "rgba(var(--accent-rgb), 0.01)";
+            }
+        });
+    });
+
+    dragDrop?.addEventListener("drop", async (e) => {
+        e.preventDefault();
+        const files = e.dataTransfer.files;
+        if (files.length) {
+            await handleProjectImagesUpload(files);
+        }
+    });
+
+    fileInput?.addEventListener("change", async () => {
+        if (fileInput.files.length) {
+            await handleProjectImagesUpload(fileInput.files);
+        }
+    });
+
+    async function handleProjectImagesUpload(files) {
+        if (!uploadStatus) return;
+        uploadStatus.style.display = "block";
+        uploadStatus.style.color = "var(--accent)";
+        uploadStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin" style="margin-right:6px;"></i>Uploading image(s)... (0/${files.length})`;
+
+        let successCount = 0;
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            if (!file.type.startsWith("image/")) continue;
+            try {
+                const response = await filesApi.upload(file, "PROJECT_IMAGE");
+                projectImages.push(response.data.downloadUrl);
+                successCount++;
+                uploadStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin" style="margin-right:6px;"></i>Uploading image(s)... (${successCount}/${files.length})`;
+            } catch (err) {
+                console.error("Image upload failed:", err);
+            }
+        }
+
+        imgField.value = projectImages.join(", ");
+        renderImagesPreview();
+
+        uploadStatus.style.color = "#10b981";
+        uploadStatus.innerHTML = `<i class="fa-solid fa-circle-check" style="margin-right:6px;"></i>Uploaded ${successCount} image(s) successfully!`;
+        setTimeout(() => {
+            uploadStatus.style.display = "none";
+        }, 3000);
+    }
+
     form.addEventListener("submit", async (event) => {
         event.preventDefault();
         try {
             const fd = new FormData(form);
-            let imageFileId = state.currentProject?.imageFile?.id ?? null;
             const isEditing = Boolean(state.editingProjectId);
             const confirmLabel = isEditing
                 ? `Update "${normalizeValue(fd.get("title")) || state.currentProject?.title || "this project"}"?`
                 : `Create "${normalizeValue(fd.get("title")) || "this project"}"?`;
             if (!confirmDanger(confirmLabel)) {
                 return;
-            }
-            const upload = fd.get("projectImage");
-            if (upload && upload.size) {
-                const uploadResponse = await filesApi.upload(upload, "PROJECT_IMAGE");
-                imageFileId = uploadResponse.data.id;
             }
             const payload = {
                 title: fd.get("title"),
@@ -2619,8 +3037,7 @@ function bindProjectForm() {
                 status: fd.get("status"),
                 featured: fd.get("featured") === "on",
                 displayed: fd.get("displayed") === "on",
-                completionDate: fd.get("completionDate") || null,
-                imageFileId
+                completionDate: fd.get("completionDate") || null
             };
             if (isEditing) {
                 await projectsApi.update(state.editingProjectId, payload);
@@ -2633,9 +3050,9 @@ function bindProjectForm() {
             setFormStatus(form, error.message, "error");
         }
     });
-    document.getElementById("project-reset").addEventListener("click", () => {
-        closeProjectEditor();
-    });
+
+    // Wire cancel button
+    form.querySelector("#project-wizard-prev")?.addEventListener("click", () => {}); // handled above
 }
 
 async function initProjects() {
@@ -3484,6 +3901,12 @@ async function initCertifications() {
             closeCertificationEditor();
         }
     });
+    document.addEventListener("click", (event) => {
+        if (!event.target.closest(".cert-card-menu-wrap")) {
+            closeCertMenus();
+            document.querySelectorAll(".cert-delete-popover").forEach((panel) => panel.classList.add("hidden"));
+        }
+    });
 
     document.getElementById("certification-controls").addEventListener("input", () => {
         renderCertificationsAdmin(state.certificationsCache);
@@ -3507,17 +3930,17 @@ function renderMessageControls() {
     container.innerHTML = `
         <div class="admin-message-toolbar">
             <div class="admin-message-queues" role="tablist" aria-label="Message queues">
-                <button class="message-queue-btn ${state.messageQueue === "inbox" ? "active" : ""}" type="button" data-message-queue="inbox">
-                    Inbox <span>${inboxCount}</span>
+                <button class="message-queue-btn queue-inbox ${state.messageQueue === "inbox" ? "active" : ""}" type="button" data-message-queue="inbox">
+                    <i class="fa-solid fa-inbox"></i> Inbox <span>${inboxCount}</span>
                 </button>
-                <button class="message-queue-btn ${state.messageQueue === "starred" ? "active" : ""}" type="button" data-message-queue="starred">
-                    Starred <span>${starredCount}</span>
+                <button class="message-queue-btn queue-starred ${state.messageQueue === "starred" ? "active" : ""}" type="button" data-message-queue="starred">
+                    <i class="fa-solid fa-star"></i> Starred <span>${starredCount}</span>
                 </button>
-                <button class="message-queue-btn ${state.messageQueue === "archived" ? "active" : ""}" type="button" data-message-queue="archived">
-                    Archived <span>${archivedCount}</span>
+                <button class="message-queue-btn queue-archived ${state.messageQueue === "archived" ? "active" : ""}" type="button" data-message-queue="archived">
+                    <i class="fa-solid fa-box-archive"></i> Archived <span>${archivedCount}</span>
                 </button>
-                <button class="message-queue-btn ${state.messageQueue === "deleted" ? "active" : ""}" type="button" data-message-queue="deleted">
-                    Deleted <span>${deletedCount}</span>
+                <button class="message-queue-btn queue-deleted ${state.messageQueue === "deleted" ? "active" : ""}" type="button" data-message-queue="deleted">
+                    <i class="fa-solid fa-trash"></i> Deleted <span>${deletedCount}</span>
                 </button>
             </div>
             <div class="admin-message-filters">
@@ -3555,7 +3978,6 @@ function getMessageSource(queue = state.messageQueue) {
 
 function renderMessageActionMarkup(message, queue = state.messageQueue, context = "card") {
     const isDeletedQueue = queue === "deleted";
-    const isArchivedQueue = queue === "archived";
     const readLabel = message.readStatus ? "Mark unread" : "Mark read";
     const readAction = message.readStatus ? "unread" : "read";
     const starLabel = message.starred ? "Unstar" : "Star";
@@ -3696,87 +4118,234 @@ function filterMessages(messages) {
     });
 }
 
+function closeMsgMenus(exceptButton = null) {
+    document.querySelectorAll("[data-msg-menu-open]").forEach((button) => {
+        if (button !== exceptButton) {
+            button.closest(".msg-card-menu-wrap")?.classList.remove("is-open");
+            button.setAttribute("aria-expanded", "false");
+        }
+    });
+}
+
 function renderMessagesAdmin(messages) {
     const filtered = filterMessages(getMessageSource());
-    document.getElementById("message-list").innerHTML = filtered.map((message, index) => `
-        <article class="admin-message-thread ${message.readStatus ? "" : "is-unread"} ${message.starred ? "is-starred" : ""} ${message.archived ? "is-archived" : ""}">
-            <div class="admin-message-avatar">${escapeHtml((message.name || "A").trim().charAt(0).toUpperCase())}</div>
-            <div class="admin-message-content">
-                <header class="admin-message-header">
-                    <div class="admin-message-title-block">
-                        <span class="card-number">No ${String(index + 1).padStart(2, "0")}</span>
-                        <strong>${escapeHtml(message.subject || "No subject")}</strong>
-                        <p class="section-copy admin-message-meta">${escapeHtml(message.name || "Anonymous")} | ${escapeHtml(message.email || "Email not provided")}</p>
-                    </div>
-                    <div class="admin-message-flags">
-                        ${message.starred ? '<span class="chip chip-starred"><i class="fa-solid fa-star"></i> Starred</span>' : ""}
-                        ${message.archived ? '<span class="chip chip-archive"><i class="fa-solid fa-box-archive"></i> Archived</span>' : ""}
-                        <span class="chip">${message.deleted ? "Deleted" : (message.readStatus ? "Read" : "Unread")}</span>
-                    </div>
-                </header>
-                <div class="admin-message-summary">
-                    <p class="section-copy admin-message-preview">${escapeHtml(message.message || "No message content provided.")}</p>
-                    <div class="chip-row admin-message-chip-row">
-                        <span class="chip">${formatMessageDate(message.createdAt)}</span>
-                        <span class="chip">${escapeHtml(message.email || "No email")}</span>
-                    </div>
-                </div>
-                <div class="table-actions admin-message-actions">
-                    <button class="button button-primary" data-message-view="${message.id}" type="button">View</button>
-                    ${renderMessageActionMarkup(message, state.messageQueue, "card")}
-                </div>
+    const queue = state.messageQueue;
+    const isDeletedQueue = queue === "deleted";
+
+    document.getElementById("message-list").innerHTML = filtered.map((message) => {
+        const readLabel = message.readStatus ? "Mark Unread" : "Mark Read";
+        const readIcon = message.readStatus ? "fa-envelope" : "fa-envelope-open";
+        const readAction = message.readStatus ? "unread" : "read";
+        const starLabel = message.starred ? "Unstar" : "Star";
+        const starIcon = message.starred ? "fa-star" : "fa-regular fa-star";
+        const starAction = message.starred ? "unstar" : "star";
+        const archiveLabel = message.archived ? "Unarchive" : "Archive";
+        const archiveIcon = message.archived ? "fa-box-open" : "fa-box-archive";
+        const archiveAction = message.archived ? "unarchive" : "archive";
+        const statusText = message.deleted ? "Deleted" : (message.archived ? "Archived" : (message.readStatus ? "Read" : "Unread"));
+        const statusClass = message.readStatus ? "" : "is-unread";
+
+        return `
+        <article class="admin-message-thread ${message.readStatus ? "" : "is-unread"} ${message.starred ? "is-starred" : ""} ${message.archived ? "is-archived" : ""}" data-msg-card="${message.id}">
+            <div class="msg-avatar-col">
+                <div class="admin-message-avatar">${escapeHtml((message.name || "A").trim().charAt(0).toUpperCase())}</div>
             </div>
-            <div class="admin-message-aside">
-                <span class="muted-label">Message state</span>
-                <strong>${message.deleted ? "Deleted" : (message.archived ? "Archived" : (message.readStatus ? "Read" : "Unread"))}</strong>
-                <p class="section-copy">${formatMessageDate(message.createdAt)}</p>
+            <div class="msg-body-col">
+                <div class="msg-card-top">
+                    <div class="msg-card-header">
+                        <h3 class="msg-card-subject" style="font-size: 1.05rem; font-weight: 700; color: var(--text); font-family: 'Space Grotesk', sans-serif; margin: 0;">
+                            <i class="fa-regular fa-envelope" style="margin-right: 8px; color: var(--accent); font-size: 0.95rem;"></i>${escapeHtml(message.email || "No email provided")}
+                        </h3>
+                        <p class="msg-card-sender" style="margin-top: 6px; font-size: 0.8rem; color: var(--muted); font-weight: 500; margin-bottom: 0;">
+                            <i class="fa-regular fa-clock" style="margin-right: 6px;"></i>Received: ${formatMessageDate(message.createdAt)}
+                        </p>
+                    </div>
+                    <div class="msg-card-badges">
+                        ${message.starred ? '<span class="chip chip-starred"><i class="fa-solid fa-star"></i></span>' : ""}
+                        <span class="chip msg-status-badge ${statusClass}">${statusText}</span>
+                    </div>
+                </div>
+                <div class="msg-card-footer" style="margin-top: 6px; padding-top: 10px; display: flex; justify-content: flex-end; align-items: center; border-top: 1px solid rgba(var(--accent-rgb), 0.05);">
+                    <div class="msg-card-menu-wrap">
+                        <button class="msg-card-menu-button" data-msg-menu-open="${message.id}" type="button" aria-label="More options" aria-expanded="false">
+                            <i class="fa-solid fa-ellipsis-vertical"></i>
+                        </button>
+                        <div class="msg-card-menu" role="menu" aria-label="Message actions">
+                            <button class="msg-card-menu-item" data-msg-action="view" data-msg-id="${message.id}" type="button" role="menuitem">
+                                <i class="fa-solid fa-expand"></i>
+                                <span>View Details & Message</span>
+                            </button>
+                            ${isDeletedQueue ? `
+                            <button class="msg-card-menu-item" data-msg-action="restore" data-msg-id="${message.id}" type="button" role="menuitem">
+                                <i class="fa-solid fa-rotate-left"></i>
+                                <span>Restore</span>
+                            </button>
+                            <div class="msg-card-menu-divider" role="separator"></div>
+                            <button class="msg-card-menu-item is-danger" data-msg-action="purge" data-msg-id="${message.id}" type="button" role="menuitem">
+                                <i class="fa-solid fa-fire"></i>
+                                <span>Delete Forever</span>
+                            </button>
+                            ` : `
+                            <button class="msg-card-menu-item" data-msg-action="toggle-read" data-msg-id="${message.id}" data-action="${readAction}" type="button" role="menuitem">
+                                <i class="fa-solid ${readIcon}"></i>
+                                <span>${readLabel}</span>
+                            </button>
+                            <button class="msg-card-menu-item" data-msg-action="toggle-star" data-msg-id="${message.id}" data-action="${starAction}" type="button" role="menuitem">
+                                <i class="${message.starred ? "fa-solid" : "fa-regular"} fa-star"></i>
+                                <span>${starLabel}</span>
+                            </button>
+                            <button class="msg-card-menu-item" data-msg-action="copy-email" data-msg-email="${escapeHtml(message.email || "")}" type="button" role="menuitem">
+                                <i class="fa-solid fa-copy"></i>
+                                <span>Copy Email</span>
+                            </button>
+                            ${message.email ? `
+                            <a class="msg-card-menu-item" href="mailto:${escapeHtml(message.email)}?subject=Re: ${encodeURIComponent(message.subject || "")}" role="menuitem">
+                                <i class="fa-solid fa-reply"></i>
+                                <span>Reply via Email</span>
+                            </a>` : ""}
+                            <button class="msg-card-menu-item" data-msg-action="toggle-archive" data-msg-id="${message.id}" data-action="${archiveAction}" type="button" role="menuitem">
+                                <i class="fa-solid ${archiveIcon}"></i>
+                                <span>${archiveLabel}</span>
+                            </button>
+                            <div class="msg-card-menu-divider" role="separator"></div>
+                            <button class="msg-card-menu-item is-danger" data-msg-action="delete" data-msg-id="${message.id}" type="button" role="menuitem">
+                                <i class="fa-solid fa-trash"></i>
+                                <span>Delete</span>
+                            </button>
+                            `}
+                        </div>
+                        <div class="msg-delete-popover hidden" data-msg-confirmation="${message.id}">
+                            <p>${isDeletedQueue ? "Permanently delete this message?" : "Move this message to trash?"}</p>
+                            <div class="msg-delete-popover-actions">
+                                <button class="button button-ghost" type="button" data-msg-confirm-cancel="${message.id}">Cancel</button>
+                                <button class="button button-danger" type="button" data-msg-confirm-delete="${message.id}" data-purge="${isDeletedQueue}">Confirm</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </article>
-    `).join("") || emptyMarkup(getMessageSource().length ? "No messages match the selected filters." : "No messages found.");
-    filtered.forEach((message) => {
-        document.querySelector(`[data-message-view="${message.id}"]`)?.addEventListener("click", () => {
-            openMessageDetail(message);
-        });
-        document.querySelector(`[data-message-toggle-read="${message.id}"]`)?.addEventListener("click", async (event) => {
-            const action = event.currentTarget.dataset.action;
-            if (action === "read") {
-                await contactApi.markRead(message.id);
-            } else {
-                await contactApi.markUnread(message.id);
-            }
-            await refreshMessagesData();
-        });
-        document.querySelector(`[data-message-toggle-star="${message.id}"]`)?.addEventListener("click", async (event) => {
-            const action = event.currentTarget.dataset.action;
-            if (action === "star") {
-                await contactApi.star(message.id);
-            } else {
-                await contactApi.unstar(message.id);
-            }
-            await refreshMessagesData();
-        });
-        document.querySelector(`[data-message-toggle-archive="${message.id}"]`)?.addEventListener("click", async (event) => {
-            const action = event.currentTarget.dataset.action;
-            if (action === "archive") {
-                await contactApi.archive(message.id);
-            } else {
-                await contactApi.unarchive(message.id);
-            }
-            await refreshMessagesData();
-        });
-        document.querySelector(`[data-message-delete="${message.id}"]`)?.addEventListener("click", async () => {
-            await contactApi.remove(message.id);
-            await refreshMessagesData();
-        });
-        document.querySelector(`[data-message-restore="${message.id}"]`)?.addEventListener("click", async () => {
-            await contactApi.restore(message.id);
-            await refreshMessagesData();
-        });
-        document.querySelector(`[data-message-purge="${message.id}"]`)?.addEventListener("click", async () => {
-            await contactApi.purge(message.id);
-            await refreshMessagesData();
-        });
-    });
+    `;
+    }).join("") || emptyMarkup(getMessageSource().length ? "No messages match the selected filters." : "No messages found.");
+
+    // Bind event delegation once
+    if (!document.getElementById("message-list")?.dataset.menuBound) {
+        const list = document.getElementById("message-list");
+        if (list) {
+            list.dataset.menuBound = "true";
+            list.addEventListener("click", async (event) => {
+                const openButton = event.target.closest("[data-msg-menu-open]");
+                const actionButton = event.target.closest("[data-msg-action]");
+                const cancelButton = event.target.closest("[data-msg-confirm-cancel]");
+                const confirmButton = event.target.closest("[data-msg-confirm-delete]");
+
+                const hideMsgConfirmations = () => {
+                    list.querySelectorAll(".msg-delete-popover").forEach((panel) => panel.classList.add("hidden"));
+                };
+
+                if (openButton) {
+                    event.stopPropagation();
+                    const menuWrap = openButton.closest(".msg-card-menu-wrap");
+                    const willOpen = !menuWrap?.classList.contains("is-open");
+                    closeMsgMenus(openButton);
+                    menuWrap?.classList.toggle("is-open", willOpen);
+                    openButton.setAttribute("aria-expanded", String(willOpen));
+                    return;
+                }
+
+                if (cancelButton) {
+                    event.stopPropagation();
+                    hideMsgConfirmations();
+                    return;
+                }
+
+                if (confirmButton) {
+                    event.stopPropagation();
+                    const msgId = confirmButton.getAttribute("data-msg-confirm-delete");
+                    const isPurge = confirmButton.getAttribute("data-purge") === "true";
+                    try {
+                        if (isPurge) {
+                            await contactApi.purge(msgId);
+                        } else {
+                            await contactApi.remove(msgId);
+                        }
+                        await refreshMessagesData();
+                    } catch (error) {
+                        alert("Message action failed: " + error.message);
+                    }
+                    hideMsgConfirmations();
+                    return;
+                }
+
+                if (!actionButton) {
+                    return;
+                }
+                event.stopPropagation();
+                const action = actionButton.getAttribute("data-msg-action");
+                const msgId = actionButton.getAttribute("data-msg-id");
+                const message = [...state.messagesCache, ...state.archivedMessagesCache, ...state.deletedMessagesCache]
+                    .find((item) => String(item.id) === String(msgId));
+
+                try {
+                    closeMsgMenus();
+                    if (action === "view") {
+                        if (message) openMessageDetail(message);
+                        return;
+                    }
+                    if (action === "toggle-read") {
+                        const readAction = actionButton.getAttribute("data-action");
+                        if (readAction === "read") {
+                            await contactApi.markRead(msgId);
+                        } else {
+                            await contactApi.markUnread(msgId);
+                        }
+                        await refreshMessagesData();
+                        return;
+                    }
+                    if (action === "toggle-star") {
+                        const starAction = actionButton.getAttribute("data-action");
+                        if (starAction === "star") {
+                            await contactApi.star(msgId);
+                        } else {
+                            await contactApi.unstar(msgId);
+                        }
+                        await refreshMessagesData();
+                        return;
+                    }
+                    if (action === "toggle-archive") {
+                        const archiveAction = actionButton.getAttribute("data-action");
+                        if (archiveAction === "archive") {
+                            await contactApi.archive(msgId);
+                        } else {
+                            await contactApi.unarchive(msgId);
+                        }
+                        await refreshMessagesData();
+                        return;
+                    }
+                    if (action === "copy-email") {
+                        const email = actionButton.getAttribute("data-msg-email");
+                        if (email) {
+                            await copyTextToClipboard(email);
+                        }
+                        return;
+                    }
+                    if (action === "restore") {
+                        await contactApi.restore(msgId);
+                        await refreshMessagesData();
+                        return;
+                    }
+                    if (action === "delete" || action === "purge") {
+                        hideMsgConfirmations();
+                        const confirmationPanel = list.querySelector(`[data-msg-confirmation="${msgId}"]`);
+                        confirmationPanel?.classList.remove("hidden");
+                        return;
+                    }
+                } catch (error) {
+                    alert("Message action failed: " + error.message);
+                }
+            });
+        }
+    }
 }
 
 async function refreshMessagesData() {
@@ -3885,6 +4454,9 @@ async function initProfile() {
         profileModal.classList.remove("hidden");
         profileModal.setAttribute("aria-hidden", "false");
         document.body.style.overflow = "hidden";
+        if (section === "about") {
+            goToStep(1);
+        }
         (section === "about" ? aboutForm : passwordForm).querySelector(".input")?.focus();
     }
 
@@ -3933,34 +4505,212 @@ async function initProfile() {
             <div>
                 <p class="eyebrow">About API</p>
                 <h2>Professional identity</h2>
-                <p class="form-help">Structure the profile like a corporate portfolio: clear identity, contact details, and link hygiene.</p>
+                <p class="form-help">Structure your public portfolio profile through our interactive staged wizard.</p>
             </div>
             <span class="chip">Public profile source</span>
         </div>
-        <div class="field-grid">
-            <label><span>Name</span><input class="input" name="name" required></label>
-            <label><span>Designation</span><input class="input" name="designation" required></label>
+
+        <!-- Wizard Navigation Stages -->
+        <div class="profile-wizard-steps" style="display: flex; gap: 8px; justify-content: space-between; margin-bottom: 24px; border-bottom: 1px solid rgba(var(--accent-rgb), 0.08); padding-bottom: 16px;">
+            <div class="wizard-step active" data-step="1" style="flex: 1; text-align: center; font-weight: 700; cursor: pointer; color: var(--accent); font-size: 0.88rem; transition: all 0.2s ease;">1. Identity</div>
+            <div class="wizard-step" data-step="2" style="flex: 1; text-align: center; font-weight: 500; cursor: pointer; color: var(--muted); font-size: 0.88rem; transition: all 0.2s ease;">2. Biography</div>
+            <div class="wizard-step" data-step="3" style="flex: 1; text-align: center; font-weight: 500; cursor: pointer; color: var(--muted); font-size: 0.88rem; transition: all 0.2s ease;">3. Socials</div>
+            <div class="wizard-step" data-step="4" style="flex: 1; text-align: center; font-weight: 500; cursor: pointer; color: var(--muted); font-size: 0.88rem; transition: all 0.2s ease;">4. Portrait</div>
         </div>
-        <label><span>Biography</span><textarea class="input textarea" name="biography" required></textarea></label>
-        <div class="field-grid">
-            <label><span>Experience Years</span><input class="input" type="number" name="experienceYears" min="0" required></label>
-            <label><span>Current Location</span><input class="input" name="currentLocation" required></label>
+
+        <!-- Step 1: Basic Identity -->
+        <div class="wizard-pane active" data-pane="1">
+            <div class="field-grid">
+                <label><span>Name</span><input class="input" name="name" required></label>
+                <label><span>Designation</span><input class="input" name="designation" required></label>
+            </div>
+            <div class="field-grid" style="margin-top: 14px;">
+                <label><span>Experience Years</span><input class="input" type="number" name="experienceYears" min="0" required></label>
+                <label><span>Current Location</span><input class="input" name="currentLocation" required></label>
+            </div>
         </div>
-        <div class="field-grid">
-            <label><span>Email</span><input class="input" type="email" name="email" required></label>
-            <label><span>Phone</span><input class="input" name="phone"></label>
+
+        <!-- Step 2: Biography & Ticker -->
+        <div class="wizard-pane" data-pane="2" style="display: none;">
+            <label><span>Biography</span><textarea class="input textarea" name="biography" style="height: 120px;" required></textarea></label>
+            <label style="margin-top: 14px; display: block;"><span>Headline ticker items</span><textarea class="input textarea" name="headlineTicker" style="height: 80px;" placeholder="System Architecture, Backend Engineering, REST APIs, JWT Security, Microservices"></textarea></label>
         </div>
-        <div class="field-grid">
-            <label><span>LinkedIn URL</span><input class="input" name="linkedinUrl"></label>
-            <label><span>GitHub URL</span><input class="input" name="githubUrl"></label>
+
+        <!-- Step 3: Social Contacts -->
+        <div class="wizard-pane" data-pane="3" style="display: none;">
+            <div class="field-grid">
+                <label><span>Email</span><input class="input" type="email" name="email" required></label>
+                <label><span>Phone</span><input class="input" name="phone"></label>
+            </div>
+            <div class="field-grid" style="margin-top: 14px;">
+                <label><span>LinkedIn URL</span><input class="input" name="linkedinUrl"></label>
+                <label><span>GitHub URL</span><input class="input" name="githubUrl"></label>
+            </div>
+            <label style="margin-top: 14px; display: block;"><span>Portfolio URL</span><input class="input" name="portfolioUrl"></label>
         </div>
-        <label><span>Portfolio URL</span><input class="input" name="portfolioUrl"></label>
-        <label><span>Profile Image URL</span><input class="input" name="profileImageUrl" placeholder="/api/v1/assets/images/profile-placeholder.jpg"></label>
-        <label><span>Headline ticker items</span><textarea class="input textarea" name="headlineTicker" placeholder="System Architecture, Backend Engineering, REST APIs, JWT Security, Microservices"></textarea></label>
-        <div class="form-actions">
-            <button class="button button-primary" type="submit"><i class="fa-solid fa-check" style="margin-right:6px;"></i>Save profile</button>
+
+        <!-- Step 4: Photo Dropzone -->
+        <div class="wizard-pane" data-pane="4" style="display: none;">
+            <label><span>Profile Image URL</span><input class="input" name="profileImageUrl" id="profile-image-url-field" placeholder="/api/v1/assets/images/profile-placeholder.jpg"></label>
+            
+            <div style="margin-top: 16px;">
+                <span class="muted-label" style="display: block; margin-bottom: 8px;">Upload Image</span>
+                <div class="drag-drop-zone" id="profile-drag-drop" style="border: 2px dashed rgba(var(--accent-rgb), 0.25); border-radius: 16px; padding: 30px; text-align: center; cursor: pointer; transition: all 0.2s ease; background: rgba(var(--accent-rgb), 0.01);">
+                    <i class="fa-solid fa-cloud-arrow-up" style="font-size: 2.2rem; color: var(--accent); margin-bottom: 12px;"></i>
+                    <p style="margin: 0; font-weight: 600; font-size: 0.9rem;">Drag & drop your profile image here</p>
+                    <p style="margin: 4px 0 0; font-size: 0.78rem; color: var(--muted);">or click to browse from device</p>
+                    <input type="file" id="profile-file-input" accept="image/*" style="display: none;">
+                </div>
+                <div id="profile-upload-status" style="margin-top: 10px; font-size: 0.82rem; font-weight: 500; display: none;"></div>
+            </div>
+        </div>
+
+        <div class="form-actions" style="margin-top: 24px; display: flex; justify-content: space-between;">
+            <button class="button button-ghost" id="wizard-prev" type="button" style="visibility: hidden;"><i class="fa-solid fa-arrow-left" style="margin-right: 6px;"></i>Back</button>
+            <div>
+                <button class="button button-ghost" id="wizard-next" type="button">Next<i class="fa-solid fa-arrow-right" style="margin-left: 6px;"></i></button>
+                <button class="button button-primary" id="wizard-submit" type="submit" style="display: none;"><i class="fa-solid fa-check" style="margin-right:6px;"></i>Save profile</button>
+            </div>
         </div>
     `;
+
+    // Wizard Navigation Logic
+    let currentStep = 1;
+    const steps = aboutForm.querySelectorAll(".wizard-step");
+    const panes = aboutForm.querySelectorAll(".wizard-pane");
+    const prevBtn = aboutForm.querySelector("#wizard-prev");
+    const nextBtn = aboutForm.querySelector("#wizard-next");
+    const submitBtn = aboutForm.querySelector("#wizard-submit");
+
+    function goToStep(stepNum) {
+        if (stepNum < 1 || stepNum > 4) return;
+        currentStep = stepNum;
+
+        // Toggle active classes on steps
+        steps.forEach((s) => {
+            const val = parseInt(s.dataset.step);
+            s.classList.toggle("active", val === currentStep);
+            s.style.color = val === currentStep ? "var(--accent)" : "var(--muted)";
+            s.style.fontWeight = val === currentStep ? "700" : "500";
+        });
+
+        // Toggle active panes
+        panes.forEach((p) => {
+            p.style.display = parseInt(p.dataset.pane) === currentStep ? "block" : "none";
+        });
+
+        // Toggle control buttons visibility
+        prevBtn.style.visibility = currentStep === 1 ? "hidden" : "visible";
+        
+        if (currentStep === 4) {
+            nextBtn.style.display = "none";
+            submitBtn.style.display = "inline-flex";
+        } else {
+            nextBtn.style.display = "inline-flex";
+            submitBtn.style.display = "none";
+        }
+    }
+
+    nextBtn.addEventListener("click", () => {
+        // Simple input validation before going to next step
+        const activePane = aboutForm.querySelector(`.wizard-pane[data-pane="${currentStep}"]`);
+        const invalid = activePane.querySelector("input:invalid, textarea:invalid");
+        if (invalid) {
+            invalid.reportValidity();
+            return;
+        }
+        goToStep(currentStep + 1);
+    });
+
+    prevBtn.addEventListener("click", () => {
+        goToStep(currentStep - 1);
+    });
+
+    steps.forEach((s) => {
+        s.addEventListener("click", () => {
+            const stepNum = parseInt(s.dataset.step);
+            // Allow stepping backward or jumping forward if the current pane is valid
+            if (stepNum < currentStep) {
+                goToStep(stepNum);
+            } else {
+                // Validate intermediate stages
+                for (let i = currentStep; i < stepNum; i++) {
+                    const activePane = aboutForm.querySelector(`.wizard-pane[data-pane="${i}"]`);
+                    const invalid = activePane.querySelector("input:invalid, textarea:invalid");
+                    if (invalid) {
+                        goToStep(i);
+                        invalid.reportValidity();
+                        return;
+                    }
+                }
+                goToStep(stepNum);
+            }
+        });
+    });
+
+    // Drag and Drop File Upload Logic
+    const dragDrop = aboutForm.querySelector("#profile-drag-drop");
+    const fileInput = aboutForm.querySelector("#profile-file-input");
+    const uploadStatus = aboutForm.querySelector("#profile-upload-status");
+    const imgField = aboutForm.querySelector("#profile-image-url-field");
+
+    dragDrop.addEventListener("click", () => fileInput.click());
+
+    dragDrop.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dragDrop.style.borderColor = "var(--accent)";
+        dragDrop.style.background = "rgba(var(--accent-rgb), 0.04)";
+    });
+
+    ["dragleave", "drop"].forEach((type) => {
+        dragDrop.addEventListener(type, () => {
+            dragDrop.style.borderColor = "rgba(var(--accent-rgb), 0.25)";
+            dragDrop.style.background = "rgba(var(--accent-rgb), 0.01)";
+        });
+    });
+
+    dragDrop.addEventListener("drop", async (e) => {
+        e.preventDefault();
+        const files = e.dataTransfer.files;
+        if (files.length) {
+            await handleProfileImageUpload(files[0]);
+        }
+    });
+
+    fileInput.addEventListener("change", async () => {
+        if (fileInput.files.length) {
+            await handleProfileImageUpload(fileInput.files[0]);
+        }
+    });
+
+    async function handleProfileImageUpload(file) {
+        if (!file.type.startsWith("image/")) {
+            alert("Please upload a valid image file.");
+            return;
+        }
+        uploadStatus.style.display = "block";
+        uploadStatus.style.color = "var(--accent)";
+        uploadStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin" style="margin-right:6px;"></i>Uploading image...`;
+
+        try {
+            const response = await filesApi.upload(file, "PROJECT_IMAGE");
+            const downloadUrl = response.data.downloadUrl;
+            imgField.value = downloadUrl;
+
+            uploadStatus.style.color = "#10b981";
+            uploadStatus.innerHTML = `<i class="fa-solid fa-circle-check" style="margin-right:6px;"></i>Image uploaded successfully!`;
+
+            // Preview instantly in wizard card if elements exist
+            const summaryPreview = document.querySelector(".summary-portrait img");
+            if (summaryPreview) {
+                summaryPreview.src = downloadUrl;
+            }
+        } catch (error) {
+            uploadStatus.style.color = "var(--danger)";
+            uploadStatus.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>Upload failed: ${error.message}`;
+        }
+    }
+
     passwordForm.innerHTML = `
         <div class="form-hero">
             <div>
@@ -4032,24 +4782,52 @@ async function initProfile() {
     });
 }
 
+function closeResumeMenus(exceptButton = null) {
+    document.querySelectorAll("[data-resume-menu-open]").forEach((button) => {
+        if (button !== exceptButton) {
+            button.closest(".resume-card-menu-wrap")?.classList.remove("is-open");
+            button.setAttribute("aria-expanded", "false");
+        }
+    });
+}
+
 async function initResume() {
     const form = document.getElementById("resume-form");
+    const modal = document.getElementById("resume-editor-modal");
+    const openBtn = document.getElementById("add-resume-btn");
+    const closeBtn = document.getElementById("resume-modal-close");
+
+    const closeResumeEditor = () => {
+        modal?.classList.add("hidden");
+        modal?.setAttribute("aria-hidden", "true");
+        document.body.style.overflow = "";
+    };
+
+    openBtn?.addEventListener("click", () => {
+        modal?.classList.remove("hidden");
+        modal?.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+        form.querySelector(".input")?.focus();
+    });
+
+    closeBtn?.addEventListener("click", closeResumeEditor);
+    modal?.addEventListener("click", (event) => {
+        if (event.target === modal) {
+            closeResumeEditor();
+        }
+    });
+
     form.innerHTML = `
-        <div class="form-hero">
-            <div>
-                <p class="eyebrow">Upload Resume</p>
-                <h2>Replace current resume</h2>
-                <p class="form-help">Upload PDF, DOC, DOCX, TXT, or RTF files. The latest upload becomes the active resume automatically.</p>
-            </div>
-            <span class="chip">Document vault</span>
-        </div>
-        <label><span>Version Label</span><input class="input" name="versionLabel" value="latest" maxlength="80"></label>
+        <label><span>Version Label</span><input class="input" name="versionLabel" value="latest" maxlength="80" required></label>
         <label><span>Resume file</span><input class="input" type="file" name="file" accept=".pdf,.doc,.docx,.txt,.rtf" required></label>
         <p class="form-help">Accepted file types: PDF, DOC, DOCX, TXT, and RTF.</p>
         <div class="form-actions">
-            <button class="button button-primary" type="submit">Upload resume</button>
+            <button class="button button-primary" type="submit"><i class="fa-solid fa-cloud-arrow-up" style="margin-right:6px;"></i>Upload resume</button>
+            <button class="button button-ghost" id="resume-reset" type="button">Cancel</button>
         </div>
     `;
+
+    document.getElementById("resume-reset")?.addEventListener("click", closeResumeEditor);
 
     async function loadMetadata() {
         try {
@@ -4061,88 +4839,160 @@ async function initResume() {
             const resumes = allResponse.data || [];
             state.resumeSnapshot = data;
             const activeResume = resumes.find((resume) => resume.active) || data;
-            document.getElementById("resume-metadata").innerHTML = data ? `
-                <div class="summary-stack">
-                    <div class="form-hero" style="padding-bottom: 0; border-bottom: 0;">
+
+            let currentResumeHtml = "";
+            if (data) {
+                currentResumeHtml = `
+                    <div class="resume-featured-header">
                         <div>
-                            <p class="eyebrow">Current Resume</p>
-                            <h2>${activeResume?.versionLabel || data.versionLabel}</h2>
-                            <p class="form-help">One resume is always marked as the live display version for the public site.</p>
+                            <span class="eyebrow">Active Resume</span>
+                            <h2 class="resume-featured-title">${escapeHtml(activeResume?.versionLabel || data.versionLabel)}</h2>
+                            <p class="section-copy">This version is currently displayed on the public site.</p>
                         </div>
-                        <span class="chip">${activeResume?.active ? "Displayed" : "Available"}</span>
+                        <span class="chip visibility-badge">Active Display</span>
                     </div>
-                    <div class="summary-card">
-                        <span class="muted-label">Active File</span>
-                        <strong>${activeResume?.file?.originalFileName || data.file?.originalFileName || "Resume file"}</strong>
-                        <p class="section-copy">${activeResume?.file?.contentType || data.file?.contentType || "Document"}${(activeResume?.file?.size || data.file?.size) ? ` | ${formatBytes(activeResume?.file?.size || data.file?.size)}` : ""}</p>
-                        <p class="section-copy">Uploaded ${new Date(activeResume?.uploadedAt || data.uploadedAt).toLocaleString()}</p>
+                    <div class="resume-featured-card">
+                        <div class="resume-featured-icon">
+                            <i class="fa-solid fa-file-pdf"></i>
+                        </div>
+                        <div class="resume-featured-details">
+                            <h3>${escapeHtml(activeResume?.file?.originalFileName || data.file?.originalFileName || "Resume file")}</h3>
+                            <p>${activeResume?.file?.contentType || data.file?.contentType || "Document"}${(activeResume?.file?.size || data.file?.size) ? ` &middot; ${formatBytes(activeResume?.file?.size || data.file?.size)}` : ""}</p>
+                            <span class="resume-upload-time">Uploaded ${new Date(activeResume?.uploadedAt || data.uploadedAt).toLocaleString()}</span>
+                        </div>
+                        <div class="resume-featured-actions">
+                            <a class="button button-primary" href="${activeResume?.file?.downloadUrl || data.file?.downloadUrl || resumeApi.downloadUrl()}" target="_blank" rel="noreferrer">
+                                <i class="fa-solid fa-expand" style="margin-right:6px;"></i>Open Resume
+                            </a>
+                            <button class="button button-ghost" id="copy-resume-link" type="button">
+                                <i class="fa-solid fa-link" style="margin-right:6px;"></i>Copy Link
+                            </button>
+                        </div>
                     </div>
-                    <div class="chip-row">
-                        <span class="chip">Stored in backend</span>
-                        <span class="chip">${resumes.length} version${resumes.length === 1 ? "" : "s"}</span>
+                `;
+            } else {
+                currentResumeHtml = emptyMarkup("No active resume set.");
+            }
+
+            const listMarkup = resumes.map((resume) => `
+                <article class="table-card resume-version-card ${resume.active ? "is-active" : ""}">
+                    <header class="resume-card-top">
+                        <div class="resume-badge-row">
+                            <span class="resume-icon-container"><i class="fa-solid fa-file-invoice"></i></span>
+                            <span class="chip visibility-badge ${resume.active ? "" : "is-stored"}">${resume.active ? "Active" : "Stored"}</span>
+                        </div>
+                        
+                        <div class="resume-card-menu-wrap">
+                            <button class="resume-card-menu-button" data-resume-menu-open="${resume.id}" type="button" aria-label="More options" aria-expanded="false">
+                                <i class="fa-solid fa-ellipsis-vertical"></i>
+                            </button>
+                            <div class="resume-card-menu" role="menu" aria-label="Resume actions">
+                                ${resume.active ? "" : `
+                                <button class="resume-card-menu-item" data-resume-action="display" data-resume-id="${resume.id}" type="button" role="menuitem">
+                                    <i class="fa-solid fa-circle-check"></i>
+                                    <span>Display on Site</span>
+                                </button>
+                                `}
+                                <a class="resume-card-menu-item" href="${resume.file?.downloadUrl || resumeApi.downloadUrl()}" target="_blank" rel="noreferrer" role="menuitem">
+                                    <i class="fa-solid fa-file-pdf"></i>
+                                    <span>Open Document</span>
+                                </a>
+                                <a class="resume-card-menu-item" href="${resume.file?.downloadUrl || resumeApi.downloadUrl()}" download role="menuitem">
+                                    <i class="fa-solid fa-download"></i>
+                                    <span>Download File</span>
+                                </a>
+                                <button class="resume-card-menu-item" data-resume-action="copy-link" data-resume-link-val="${resume.file?.downloadUrl || resumeApi.downloadUrl()}" type="button" role="menuitem">
+                                    <i class="fa-solid fa-link"></i>
+                                    <span>Copy URL</span>
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+                    
+                    <div class="resume-card-body">
+                        <h3 class="resume-card-title">${escapeHtml(resume.versionLabel)}</h3>
+                        <p class="resume-card-filename">${escapeHtml(resume.file?.originalFileName || "Resume file")}</p>
                     </div>
-                    <div class="table-actions">
-                        <a class="button button-primary" href="${activeResume?.file?.downloadUrl || data.file?.downloadUrl || resumeApi.downloadUrl()}" target="_blank" rel="noreferrer">Open resume</a>
-                        <a class="button button-ghost" href="${activeResume?.file?.downloadUrl || data.file?.downloadUrl || resumeApi.downloadUrl()}" download>Download</a>
-                        <button class="button button-ghost" id="copy-resume-link" type="button">Copy link</button>
+                    
+                    <div class="resume-card-meta">
+                        <span>Uploaded</span>
+                        <strong>${new Date(resume.uploadedAt).toLocaleDateString()}</strong>
+                        ${resume.file?.size ? `<span>&middot;</span> <strong>${formatBytes(resume.file.size)}</strong>` : ""}
+                    </div>
+                </article>
+            `).join("") || emptyMarkup("No version history available.");
+
+            document.getElementById("resume-metadata").innerHTML = `
+                <div class="resume-grid-layout">
+                    <div class="resume-featured-section">${currentResumeHtml}</div>
+                    <div class="resume-history-section">
+                        <div class="resume-history-header">
+                            <div>
+                                <span class="eyebrow">Version History</span>
+                                <h2>Display Selection</h2>
+                                <p class="section-copy">Switch between uploaded versions to update your public profile.</p>
+                            </div>
+                        </div>
+                        <div class="resume-version-grid">${listMarkup}</div>
                     </div>
                 </div>
-            ` : emptyMarkup("No resume uploaded.");
+            `;
+
             document.getElementById("copy-resume-link")?.addEventListener("click", async () => {
                 const link = activeResume?.file?.downloadUrl || data?.file?.downloadUrl || resumeApi.downloadUrl();
                 try {
                     await navigator.clipboard.writeText(`${window.location.origin}${link}`);
-                    setFormStatus(form, "Resume link copied to clipboard.", "success");
+                    alert("Resume link copied to clipboard.");
                 } catch {
-                    setFormStatus(form, "Could not copy the resume link.", "error");
+                    alert("Could not copy the resume link.");
                 }
             });
 
-            const listMarkup = resumes.map((resume) => `
-                <article class="table-card ${resume.active ? "active-resume" : ""}">
-                    <header>
-                        <div>
-                            <strong>${resume.versionLabel}</strong>
-                            <p class="section-copy">${resume.file?.originalFileName || "Resume file"}</p>
-                        </div>
-                        <span class="chip">${resume.active ? "Displayed" : "Stored"}</span>
-                    </header>
-                    <div class="chip-row">
-                        <span class="chip">${new Date(resume.uploadedAt).toLocaleDateString()}</span>
-                        ${resume.file?.size ? `<span class="chip">${formatBytes(resume.file.size)}</span>` : ""}
-                        ${resume.file?.contentType ? `<span class="chip">${resume.file.contentType}</span>` : ""}
-                    </div>
-                    <div class="table-actions">
-                        ${resume.active
-                            ? `<button class="button button-primary" type="button" disabled>Displayed</button>`
-                            : `<button class="button button-primary" data-resume-display="${resume.id}" type="button">Display</button>`}
-                        <a class="button button-ghost" href="${resume.file?.downloadUrl || resumeApi.downloadUrl()}" target="_blank" rel="noreferrer">Open</a>
-                    </div>
-                </article>
-            `).join("") || emptyMarkup("No resume uploaded.");
-            const listContainer = document.createElement("div");
-            listContainer.className = "stack";
-            listContainer.innerHTML = `
-                <div class="form-hero" style="padding-bottom: 0; border-bottom: 0;">
-                    <div>
-                        <p class="eyebrow">Resume Versions</p>
-                        <h2>Display selection</h2>
-                        <p class="form-help">Choose which uploaded resume should appear on the public site.</p>
-                    </div>
-                    <span class="chip">Version history</span>
-                </div>
-                <div class="resume-version-list">${listMarkup}</div>
-            `;
-            document.getElementById("resume-metadata").append(listContainer);
-            resumes.forEach((resume) => {
-                document.querySelector(`[data-resume-display="${resume.id}"]`)?.addEventListener("click", async () => {
-                    if (!confirmDanger(`Display "${resume.versionLabel}" on the public site?`)) {
-                        return;
+            // Bind menu events
+            const metadataContainer = document.getElementById("resume-metadata");
+            metadataContainer.querySelectorAll("[data-resume-menu-open]").forEach((btn) => {
+                btn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    const wrap = btn.closest(".resume-card-menu-wrap");
+                    const isOpen = wrap?.classList.contains("is-open");
+                    closeResumeMenus();
+                    if (!isOpen) {
+                        wrap?.classList.add("is-open");
+                        btn.setAttribute("aria-expanded", "true");
                     }
-                    await resumeApi.display(resume.id);
-                    await loadMetadata();
                 });
             });
+
+            // Bind menu actions
+            metadataContainer.querySelectorAll("[data-resume-action]").forEach((btn) => {
+                btn.addEventListener("click", async (e) => {
+                    e.stopPropagation();
+                    closeResumeMenus();
+                    const action = btn.getAttribute("data-resume-action");
+                    if (action === "display") {
+                        const id = btn.getAttribute("data-resume-id");
+                        const targetResume = resumes.find((r) => String(r.id) === String(id));
+                        if (!confirmDanger(`Display "${targetResume?.versionLabel}" on the public site?`)) {
+                            return;
+                        }
+                        try {
+                            await resumeApi.display(id);
+                            await loadMetadata();
+                        } catch (err) {
+                            alert("Action failed: " + err.message);
+                        }
+                    } else if (action === "copy-link") {
+                        const linkVal = btn.getAttribute("data-resume-link-val");
+                        try {
+                            await navigator.clipboard.writeText(`${window.location.origin}${linkVal}`);
+                            alert("Resume version link copied to clipboard.");
+                        } catch {
+                            alert("Could not copy the resume link.");
+                        }
+                    }
+                });
+            });
+
         } catch (error) {
             const message = error?.status === 404
                 ? "No resume uploaded."
@@ -4152,13 +5002,20 @@ async function initResume() {
                     <strong>${message}</strong>
                     <span class="section-copy">
                         ${error?.status === 404
-                            ? "Upload a file above and it will appear here with open and download actions."
+                            ? "Click 'Add Resume' above to upload a file."
                             : "Check the API response or refresh after confirming the backend is running."}
                     </span>
                 </div>
             `;
         }
     }
+
+    // Document click-away listener for resume dropdown menus
+    document.addEventListener("click", (e) => {
+        if (!e.target.closest(".resume-card-menu-wrap")) {
+            closeResumeMenus();
+        }
+    });
 
     form.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -4169,9 +5026,9 @@ async function initResume() {
                 throw new Error("Please upload a PDF, DOC, DOCX, TXT, or RTF file.");
             }
             await resumeApi.upload(file, fd.get("versionLabel"));
-            setFormStatus(form, "Resume uploaded successfully.", "success");
             form.reset();
             form.elements.versionLabel.value = "latest";
+            closeResumeEditor();
             await loadMetadata();
         } catch (error) {
             setFormStatus(form, error.message, "error");
