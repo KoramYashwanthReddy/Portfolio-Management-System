@@ -484,9 +484,24 @@ function mncProjectCard(project, index = 0) {
                     </button>
                 </div>
             </div>
-            <div class="project-card-title-block">
+            <div class="project-card-title-block" style="position: relative;">
                 <h3 class="mnc-card-title">${escapeHtml(project.title || "Untitled project")}</h3>
-                <p class="section-copy">${escapeHtml(project.shortDescription || "No short description provided.")}</p>
+                <p class="section-copy" style="font-size: 0.85rem; line-height: 1.5; margin: 8px 0 0;">
+                    ${escapeHtml(project.shortDescription && project.shortDescription.length > 90 ? project.shortDescription.substring(0, 85) + "..." : (project.shortDescription || "No description."))}
+                    ${project.shortDescription && project.shortDescription.length > 90 ? `<button class="desc-more-btn" type="button" style="background:none; border:none; color:var(--accent); font-weight:700; cursor:pointer; padding:0; font-size:0.8rem; margin-left:4px; text-decoration:underline;">more</button>` : ""}
+                </p>
+                ${project.shortDescription && project.shortDescription.length > 90 ? `
+                <div class="description-popup-overlay">
+                    <div class="description-popup-content">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span class="eyebrow" style="color:var(--accent); margin:0;">PROJECT DETAILS</span>
+                            <button class="close-popup-btn" type="button" style="background:none; border:none; color:var(--muted); font-size:1.2rem; cursor:pointer; padding:0 4px;">&times;</button>
+                        </div>
+                        <h4 style="margin: 4px 0 8px; font-size:1.05rem; color:var(--foreground);">${escapeHtml(project.title)}</h4>
+                        <p style="font-size:0.85rem; line-height:1.6; color:var(--muted); margin:0; overflow-y:auto; max-height:140px;">${escapeHtml(project.shortDescription)}</p>
+                    </div>
+                </div>
+                ` : ""}
             </div>
             <div class="project-stack-block">
                 <div class="project-stack-header">
@@ -920,12 +935,33 @@ function bindProjectInteractions() {
         }
     });
 
+    // Description overlays bindings
+    document.querySelectorAll(".desc-more-btn").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const card = btn.closest(".project-card-shell");
+            const overlay = card?.querySelector(".description-popup-overlay");
+            if (overlay) overlay.classList.add("is-visible");
+        });
+    });
+
+    document.querySelectorAll(".close-popup-btn").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const overlay = btn.closest(".description-popup-overlay");
+            if (overlay) overlay.classList.remove("is-visible");
+        });
+    });
+
     if (!state.projectEscapeBound) {
         document.addEventListener("keydown", (event) => {
             if (event.key !== "Escape") return;
             if (!detailModal?.classList.contains("hidden")) {
                 closeDetailModal();
             }
+            document.querySelectorAll(".description-popup-overlay.is-visible").forEach((overlay) => {
+                overlay.classList.remove("is-visible");
+            });
         });
         state.projectEscapeBound = true;
     }

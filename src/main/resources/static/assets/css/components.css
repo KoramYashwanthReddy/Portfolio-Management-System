@@ -620,13 +620,12 @@ html[data-theme="dark"] .project-card {
 
 .profile-card-glow {
     position: absolute;
-    inset: 4px;
-    background: radial-gradient(circle at 50% 20%, rgba(99,102,241,0.42), transparent 42%),
-                radial-gradient(circle at 80% 80%, rgba(139,92,246,0.28), transparent 36%);
-    filter: blur(42px);
-    opacity: 0.8;
+    inset: 24px;
+    background: transparent;
+    border-radius: 32px;
+    box-shadow: 0 0 60px 20px rgba(139, 92, 246, 0.45), 
+                0 0 80px 30px rgba(99, 102, 241, 0.25);
     z-index: 0;
-    border-radius: 44px;
     pointer-events: none;
 }
 
@@ -649,11 +648,12 @@ html[data-theme="dark"] .project-card {
 
 .profile-image-container img {
     width: 100%;
-    min-width: 300px;
+    max-width: 250px;
     aspect-ratio: 4 / 5;
     object-fit: cover;
     display: block;
     border-radius: 26px;
+    margin: 0 auto;
 }
 
 .image-overlay-pill {
@@ -3641,7 +3641,7 @@ html[data-theme="dark"] .projects-mnc-grid .project-card-tech-list .mnc-tech-tag
     display: block;
     white-space: nowrap;
     line-height: 0.96;
-    font-size: clamp(3rem, 7vw, 5.6rem);
+    font-size: clamp(2.4rem, 5vw, 3.8rem);
 }
 
 .hero-title-subline {
@@ -3682,10 +3682,12 @@ html[data-theme="dark"] .projects-mnc-grid .project-card-tech-list .mnc-tech-tag
 }
 
 .hero-typewriter-text {
-    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-alt) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    font-family: "Space Mono", monospace;
+    font-size: 1.05rem;
+    color: var(--text);
+    background: none;
+    -webkit-text-fill-color: initial;
+    background-clip: initial;
 }
 
 .typewriter-cursor {
@@ -4950,3 +4952,44 @@ html[data-theme="dark"] .certification-card {
 [data-theme="light"] .timeline-desc {
     color: #4b5563;
 }
+
+/* Description Hover Popup Overlay */
+.description-popup-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(var(--surface-rgb), 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 20;
+    border-radius: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.96);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.description-popup-overlay.is-visible {
+    opacity: 1;
+    pointer-events: all;
+    transform: scale(1);
+}
+
+.description-popup-content {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: var(--shadow-lg);
+    width: 100%;
+    max-height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-align: left;
+}
+
