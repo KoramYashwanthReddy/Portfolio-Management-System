@@ -2970,7 +2970,7 @@ html[data-theme="dark"] .projects-search-wrapper input {
 .projects-mnc-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
+    gap: 18px;
     align-items: start;
 }
 
@@ -2978,11 +2978,11 @@ html[data-theme="dark"] .projects-search-wrapper input {
 .mnc-card {
     background: linear-gradient(180deg, rgba(var(--surface-rgb), 0.98), rgba(var(--surface-rgb), 0.92));
     border: 1px solid rgba(var(--accent-rgb), 0.16);
-    border-radius: 24px;
-    padding: 24px;
+    border-radius: 20px;
+    padding: 18px;
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 12px;
     position: relative;
     overflow: hidden;
     isolation: isolate;
@@ -3338,9 +3338,9 @@ html[data-theme="dark"] .projects-search-wrapper input {
     position: relative;
     isolation: isolate;
     display: grid;
-    gap: 18px;
-    padding: 24px;
-    border-radius: 28px;
+    gap: 12px;
+    padding: 18px;
+    border-radius: 20px;
     overflow: hidden;
     background: linear-gradient(180deg, rgba(var(--surface-rgb, 255, 255, 255), 0.98), rgba(var(--surface-rgb, 255, 255, 255), 0.94));
     border: 1px solid rgba(var(--accent-rgb, 109, 94, 252), 0.1);
@@ -3398,12 +3398,13 @@ html[data-theme="dark"] .projects-search-wrapper input {
 .projects-mnc-grid .project-number,
 .projects-mnc-grid .project-year,
 .projects-mnc-grid .project-status-pill {
-    min-height: 30px;
-    padding: 0 8px;
+    min-height: 24px;
+    padding: 0 7px;
     border-radius: 999px;
     display: inline-flex;
     align-items: center;
     white-space: nowrap;
+    font-size: 0.72rem;
 }
 
 .projects-mnc-grid .project-number {
@@ -3487,7 +3488,7 @@ html[data-theme="dark"] .projects-mnc-grid .project-year {
 
 .projects-mnc-grid .mnc-card-title {
     margin: 0;
-    font-size: clamp(1.05rem, 1.55vw, 1.3rem);
+    font-size: clamp(0.95rem, 1.35vw, 1.15rem);
     line-height: 1.2;
     color: var(--text);
 }
@@ -3532,13 +3533,30 @@ html[data-theme="dark"] .projects-mnc-grid .project-year {
 }
 
 .projects-mnc-grid .project-card-tech-list .mnc-tech-tag {
-    min-height: 34px;
-    padding: 7px 12px;
+    min-height: 26px;
+    padding: 3px 10px;
     border-radius: 999px;
     border: 1px solid var(--border);
     background: var(--surface-soft);
     color: var(--text);
+    font-size: 0.7rem;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+/* Overflow "+N more" badge */
+.projects-mnc-grid .project-card-tech-list .mnc-tech-overflow {
+    background: linear-gradient(135deg, rgba(var(--accent-rgb, 109, 94, 252), 0.1), rgba(var(--accent-alt-rgb, 139, 92, 246), 0.1));
+    border-color: rgba(var(--accent-rgb, 109, 94, 252), 0.25);
+    color: var(--accent);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: help;
+    transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.projects-mnc-grid .project-card-tech-list .mnc-tech-overflow:hover {
+    background: linear-gradient(135deg, rgba(var(--accent-rgb, 109, 94, 252), 0.18), rgba(var(--accent-alt-rgb, 139, 92, 246), 0.18));
+    border-color: rgba(var(--accent-rgb, 109, 94, 252), 0.4);
 }
 
 body[data-theme="dark"] .projects-mnc-grid .project-card-tech-list .mnc-tech-tag,
@@ -3554,7 +3572,7 @@ html[data-theme="dark"] .projects-mnc-grid .project-card-tech-list .mnc-tech-tag
     justify-content: space-between;
     gap: 12px;
     margin-top: auto;
-    padding-top: 14px;
+    padding-top: 10px;
     border-top: 1px solid rgba(var(--border-rgb, 226, 232, 240), 0.8);
 }
 
@@ -4204,38 +4222,241 @@ body[data-page="feedback"] .welcome-preview-card {
     font-size: 0.72rem;
 }
 
-.certification-card {
+/* ─── Certification Section Header ──────────────────────────────── */
+.cert-section-header {
+    margin-bottom: 8px;
+}
+
+.cert-section-heading h2 {
+    font-family: "Space Grotesk", sans-serif;
+    font-size: clamp(1.8rem, 3vw, 2.6rem);
+    font-weight: 700;
+    color: var(--text);
+    margin: 0;
+}
+
+/* ─── Certification Grid ─────────────────────────────────────────── */
+.cert-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 18px;
+    align-items: stretch;
+}
+
+@media (max-width: 640px) {
+    .cert-grid { grid-template-columns: 1fr; }
+}
+
+/* ─── Certification Card ─────────────────────────────────────────── */
+.cert-card {
+    position: relative;
+    isolation: isolate;
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    min-height: 100%;
-    padding: 22px;
-    border-radius: 24px;
-    background: linear-gradient(180deg, rgba(var(--surface-rgb), 0.96), rgba(var(--surface-rgb), 0.9));
-    border: 1px solid rgba(var(--accent-rgb), 0.16);
-    box-shadow: 0 18px 44px rgba(15, 23, 42, 0.06);
-    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    gap: 12px;
+    padding: 18px;
+    border-radius: 20px;
+    overflow: hidden;
+    background: linear-gradient(180deg, rgba(var(--surface-rgb, 255, 255, 255), 0.98), rgba(var(--surface-rgb, 255, 255, 255), 0.94));
+    border: 1px solid rgba(var(--accent-rgb, 109, 94, 252), 0.1);
+    box-shadow: 0 18px 44px rgba(15, 23, 42, 0.05);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-.certification-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 22px 54px rgba(15, 23, 42, 0.08);
-    border-color: rgba(var(--accent-rgb), 0.24);
+.cert-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 4px;
+    background: linear-gradient(90deg, #f59e0b, #fbbf24);
 }
 
-.certification-card .chip-row {
-    margin-top: 0;
+.cert-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(245, 158, 11, 0.22);
+    box-shadow: 0 24px 56px rgba(245, 158, 11, 0.1);
 }
 
-.certification-card .button {
-    width: fit-content;
+/* Header row */
+.cert-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
 }
 
-body[data-theme="dark"] .certification-card,
-html[data-theme="dark"] .certification-card {
+.cert-card-header-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.cert-card-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 24px;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.24);
+    color: #d97706;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+}
+
+.cert-issuer-badge {
+    display: inline-flex;
+    align-items: center;
+    height: 24px;
+    padding: 0 9px;
+    border-radius: 999px;
+    background: rgba(var(--accent-rgb, 109, 94, 252), 0.06);
+    border: 1px solid rgba(var(--accent-rgb, 109, 94, 252), 0.16);
+    color: var(--accent);
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cert-card-year {
+    display: inline-flex;
+    align-items: center;
+    height: 24px;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 0.68rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.cert-card-header-right {
+    flex-shrink: 0;
+}
+
+.cert-card-icon {
+    color: #f59e0b;
+    font-size: 1.1rem;
+    opacity: 0.7;
+}
+
+/* Body */
+.cert-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.cert-card-title {
+    font-family: "Space Grotesk", sans-serif;
+    font-size: clamp(0.92rem, 1.2vw, 1.08rem);
+    font-weight: 700;
+    color: var(--text);
+    margin: 0;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+}
+
+.cert-card-date {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* Tags row */
+.cert-card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+/* Footer */
+.cert-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px solid rgba(var(--border-rgb, 226, 232, 240), 0.8);
+}
+
+.cert-footer-links {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.cert-footer-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text);
+    text-decoration: none;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.18s ease, transform 0.18s ease;
+}
+
+.cert-footer-link:hover {
+    color: var(--accent);
+    transform: translateY(-1px);
+}
+
+.cert-footer-link.is-disabled {
+    opacity: 0.38;
+    pointer-events: none;
+}
+
+.cert-footer-arrow {
+    color: #f59e0b;
+    font-size: 0.95rem;
+    opacity: 0.75;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.cert-card:hover .cert-footer-arrow {
+    transform: scale(1.15);
+    opacity: 1;
+}
+
+/* Dark mode */
+body[data-theme="dark"] .cert-card,
+html[data-theme="dark"] .cert-card {
     background: linear-gradient(180deg, rgba(var(--surface-rgb), 0.98), rgba(var(--surface-rgb), 0.9));
-    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
-    border-color: rgba(var(--accent-rgb), 0.24);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.3);
+    border-color: rgba(245, 158, 11, 0.14);
+}
+
+body[data-theme="dark"] .cert-card:hover,
+html[data-theme="dark"] .cert-card:hover {
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+body[data-theme="dark"] .cert-card-year,
+html[data-theme="dark"] .cert-card-year {
+    background: var(--surface-strong);
+    border-color: var(--border);
 }
 
 .knowledge-toolbar {

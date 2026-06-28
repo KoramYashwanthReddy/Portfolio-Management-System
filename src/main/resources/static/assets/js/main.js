@@ -594,10 +594,11 @@ function mncProjectCard(project, index = 0) {
             <div class="project-stack-block">
                 <div class="project-stack-header">
                     <span class="project-stack-label">Stacks</span>
-                    <span class="project-stack-hint">${technologies.length} technologies</span>
+                    <span class="project-stack-hint">${technologies.length} ${technologies.length === 1 ? "technology" : "technologies"}</span>
                 </div>
                 <div class="project-card-tech-list">
-                    ${technologies.map((tech) => `<span class="mnc-tech-tag">${escapeHtml(tech)}</span>`).join("")}
+                    ${technologies.slice(0, 5).map((tech) => `<span class="mnc-tech-tag">${escapeHtml(tech)}</span>`).join("")}
+                    ${technologies.length > 5 ? `<span class="mnc-tech-tag mnc-tech-overflow" title="${escapeHtml(technologies.slice(5).join(", "))}">+${technologies.length - 5} more</span>` : ""}
                 </div>
             </div>
             <div class="project-card-footer">
@@ -933,18 +934,46 @@ function renderKnowledge(resume, certifications, resumeError = "") {
 
     setHref("resume-download-link-hero", resumeUrl);
 
-    setHtml("certification-grid", certifications.map((certification) => `
-        <article class="project-card certification-card">
-            <p class="eyebrow">${certification.issuer}</p>
-            <h3>${certification.title}</h3>
-            <p class="section-copy">Issued ${certification.issueDate || "n/a"}${certification.expiryDate ? ` | Expires ${certification.expiryDate}` : ""}</p>
-            <div class="chip-row">
-                ${certification.credentialUrl ? `<a class="chip" href="${certification.credentialUrl}" target="_blank" rel="noreferrer">Verify credential</a>` : ""}
-                ${certification.credentialId ? `<span class="chip">${certification.credentialId}</span>` : ""}
-                ${certification.certificateFile?.downloadUrl ? `<a class="button button-ghost" href="${certification.certificateFile.downloadUrl}" target="_blank" rel="noreferrer">Open PDF</a>` : ""}
+    setHtml("certification-grid", certifications.map((certification, index) => {
+        const num = String(index + 1).padStart(2, "0");
+        const issueYear = certification.issueDate ? certification.issueDate.substring(0, 4) : "";
+        const dateLabel = certification.issueDate
+            ? `Issued ${certification.issueDate}${certification.expiryDate ? ` · Expires ${certification.expiryDate}` : ""}`
+            : "Date unavailable";
+        return `
+        <article class="cert-card" data-reveal>
+            <div class="cert-card-header">
+                <div class="cert-card-header-left">
+                    <span class="cert-card-num">${num}</span>
+                    <span class="cert-issuer-badge">${escapeHtml(certification.issuer || "Unknown issuer")}</span>
+                    ${issueYear ? `<span class="cert-card-year">${issueYear}</span>` : ""}
+                </div>
+                <div class="cert-card-header-right">
+                    <i class="fa-solid fa-certificate cert-card-icon" aria-hidden="true"></i>
+                </div>
+            </div>
+            <div class="cert-card-body">
+                <h3 class="cert-card-title">${escapeHtml(certification.title || "Untitled")}</h3>
+                <p class="cert-card-date">${escapeHtml(dateLabel)}</p>
+            </div>
+            ${certification.credentialId ? `
+            <div class="cert-card-tags">
+                <span class="mnc-tech-tag"><i class="fa-solid fa-fingerprint" style="font-size:0.65rem;"></i> ${escapeHtml(certification.credentialId)}</span>
+            </div>` : ""}
+            <div class="cert-card-footer">
+                <div class="cert-footer-links">
+                    ${certification.credentialUrl
+                        ? `<a class="cert-footer-link" href="${certification.credentialUrl}" target="_blank" rel="noreferrer"><i class="fa-solid fa-shield-halved"></i> Verify</a>`
+                        : `<span class="cert-footer-link is-disabled"><i class="fa-solid fa-shield-halved"></i> Verify</span>`}
+                    ${certification.certificateFile?.downloadUrl
+                        ? `<a class="cert-footer-link" href="${certification.certificateFile.downloadUrl}" target="_blank" rel="noreferrer"><i class="fa-regular fa-file-pdf"></i> Open PDF</a>`
+                        : ""}
+                </div>
+                <span class="cert-footer-arrow"><i class="fa-solid fa-award"></i></span>
             </div>
         </article>
-    `).join("") || `<div class="empty-state">No certifications published yet.</div>`);
+        `;
+    }).join("") || `<div class="empty-state">No certifications published yet.</div>`);
 }
 
 function renderAllProjectsMnc() {
