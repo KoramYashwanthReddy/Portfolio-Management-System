@@ -15,11 +15,13 @@ public record ProjectRequest(
         String githubUrl,
         String liveUrl,
         String imageUrl,
+        String videoUrl,
         @NotNull ProjectCategory category,
         @NotNull ProjectStatus status,
         boolean featured,
         Boolean displayed,
         LocalDate completionDate,
-        Long imageFileId
+        Long imageFileId,
+        Long videoFileId
 ) {
 }

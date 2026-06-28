@@ -61,12 +61,14 @@
 
     <main>
         <section id="command-center" class="hero section">
+            <div class="hero-glow hero-glow-1"></div>
+            <div class="hero-glow hero-glow-2"></div>
             <div class="section-shell hero-grid">
                 <div class="hero-copy" data-reveal>
                     <div class="availability-pill">
                         <span class="status-dot"></span> Available for full-time roles
-                        <span class="separator">-</span>
-                        <i class="fa-solid fa-location-dot"></i> <span id="hero-location-pill">Loading location...</span>
+                        <span class="separator">|</span>
+                        <span id="hero-location-pill">Hyderabad, India</span>
                     </div>
                     <h1 id="hero-name-header" class="hero-title-stack">
                         <span class="hero-title-kicker">Hi, I'm</span>
@@ -74,22 +76,46 @@
                         <span class="hero-title-subline">I architect <span class="highlight-violet">backends</span> that scale.</span>
                     </h1>
 
-                    <div class="hero-ticker">
-                        <span class="hero-ticker-label">Systems stream</span>
-                        <div class="hero-typewriter-container">
-                            <span class="typewriter-prompt" style="color: var(--accent); margin-right: 8px; font-weight: bold;">&gt;</span>
-                            <span id="hero-typewriter-text" class="hero-typewriter-text"></span><span class="typewriter-cursor">|</span>
+                    <div class="hero-ticker-clean">
+                        <span class="typewriter-prompt">&gt;</span>
+                        <span id="hero-typewriter-text" class="hero-typewriter-text"></span><span class="typewriter-cursor">|</span>
+                    </div>
+
+                    <div class="hero-bio-block" id="hero-bio-block">
+                        <p id="hero-biography" class="hero-text hero-bio-clamp">Java + Spring Boot engineer specializing in REST APIs, JWT security, and production-grade architecture. Two end-to-end systems shipped, three more in flight.</p>
+                        <button id="hero-biography-more" class="hero-bio-more" type="button" hidden aria-expanded="false">More</button>
+                        <div id="hero-biography-popup" class="hero-bio-popup hero-bio-popup-overlay" aria-hidden="true">
+                            <div class="hero-bio-popup-content">
+                                <div class="hero-bio-popup-header">
+                                    <span class="eyebrow" style="color: var(--accent); margin: 0;">ABOUT ME</span>
+                                    <button id="hero-biography-close" class="close-popup-btn" type="button" aria-label="Close biography popup">&times;</button>
+                                </div>
+                                <p id="hero-biography-full" class="hero-bio-popup-text">Java + Spring Boot engineer specializing in REST APIs, JWT security, and production-grade architecture. Two end-to-end systems shipped, three more in flight.</p>
+                            </div>
                         </div>
                     </div>
 
-                    <p id="hero-biography" class="hero-text" style="font-size: 1.05rem; line-height: 1.6; color: var(--muted); margin-bottom: 32px; max-width: 480px;">Loading about information from the backend...</p>
-
-                    <div class="hero-actions" style="margin-bottom: 48px;">
-                        <a class="button button-primary" href="#systems" style="background: var(--accent-alt); border-color: var(--accent-alt); border-radius: 99px;">Explore my work &rarr;</a>
-                        <a id="resume-download-link-hero" class="button button-secondary" href="#knowledge" style="border-radius: 99px;"><i class="fa-solid fa-file-pdf" style="color: var(--accent-alt);"></i> View resume</a>
+                    <div class="hero-actions">
+                        <a class="button button-primary" href="#systems" style="border-radius: 99px;">Explore my work &rarr;</a>
+                        <a id="resume-download-link-hero" class="button button-secondary" href="#knowledge" style="border-radius: 99px;"><i class="fa-solid fa-compass" style="color: var(--accent-alt);"></i> View resume</a>
                     </div>
 
-                    <div id="hero-metrics" class="hero-metrics"></div>
+                    <div class="hero-metrics-row">
+                        <div class="hero-metric-item">
+                            <div class="hero-metric-value">5+</div>
+                            <div class="hero-metric-label">Projects</div>
+                        </div>
+                        <div class="hero-metric-divider"></div>
+                        <div class="hero-metric-item">
+                            <div class="hero-metric-value">3y</div>
+                            <div class="hero-metric-label">Coding</div>
+                        </div>
+                        <div class="hero-metric-divider"></div>
+                        <div class="hero-metric-item">
+                            <div class="hero-metric-value">8.5</div>
+                            <div class="hero-metric-label">CGPA</div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="hero-image-pane" data-reveal>

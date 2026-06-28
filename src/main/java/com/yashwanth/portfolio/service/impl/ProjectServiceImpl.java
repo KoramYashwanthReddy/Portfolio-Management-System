@@ -126,13 +126,17 @@ public class ProjectServiceImpl implements ProjectService {
         project.setTechnologies(request.technologies());
         project.setGithubUrl(request.githubUrl());
         project.setLiveUrl(request.liveUrl());
+        project.setVideoUrl(request.videoUrl());
         project.setCategory(request.category());
         project.setStatus(request.status());
         project.setFeatured(request.featured());
         project.setDisplayed(request.displayed() == null ? Boolean.TRUE : request.displayed());
         project.setCompletionDate(request.completionDate());
         StoredFile imageFile = request.imageFileId() != null ? fileStorageService.getById(request.imageFileId()) : null;
+        StoredFile videoFile = request.videoFileId() != null ? fileStorageService.getById(request.videoFileId()) : null;
         project.setImageFile(imageFile);
         project.setImageUrl(imageFile != null ? "/api/v1/public/files/" + imageFile.getId() + "/download" : request.imageUrl());
+        project.setVideoFile(videoFile);
+        project.setVideoUrl(videoFile != null ? "/api/v1/public/files/" + videoFile.getId() + "/download" : request.videoUrl());
     }
 }

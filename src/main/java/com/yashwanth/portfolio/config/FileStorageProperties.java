@@ -8,6 +8,7 @@ public record FileStorageProperties(
         String uploadDir,
         long maxFileSize,
         List<String> allowedImageTypes,
+        List<String> allowedVideoTypes,
         List<String> allowedDocumentTypes
 ) {
 }

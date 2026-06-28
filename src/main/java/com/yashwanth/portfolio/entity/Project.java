@@ -38,6 +38,9 @@ public class Project extends AuditableEntity {
     @Column(columnDefinition = "TEXT")
     private String imageUrl;
 
+    @Column(columnDefinition = "TEXT")
+    private String videoUrl;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private ProjectCategory category;
@@ -56,4 +59,8 @@ public class Project extends AuditableEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "image_file_id")
     private StoredFile imageFile;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "video_file_id")
+    private StoredFile videoFile;
 }

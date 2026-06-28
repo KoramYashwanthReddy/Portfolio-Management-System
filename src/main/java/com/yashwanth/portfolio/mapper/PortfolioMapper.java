@@ -54,6 +54,7 @@ public final class PortfolioMapper {
                 project.getGithubUrl(),
                 project.getLiveUrl(),
                 project.getImageUrl(),
+                project.getVideoUrl(),
                 project.getCategory(),
                 project.getStatus(),
                 project.isFeatured(),
@@ -61,7 +62,8 @@ public final class PortfolioMapper {
                 project.getCompletionDate(),
                 project.getCreatedAt(),
                 project.getUpdatedAt(),
-                toStoredFile(project.getImageFile())
+                toStoredFile(project.getImageFile()),
+                toStoredFile(project.getVideoFile())
         );
     }
 

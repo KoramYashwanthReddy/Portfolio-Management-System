@@ -1488,6 +1488,24 @@ function renderProjectForm() {
                     <!-- Uploaded image previews will render here dynamically -->
                 </div>
             </div>
+
+            <div style="margin-top: 26px; padding-top: 20px; border-top: 1px solid rgba(var(--accent-rgb), 0.08);">
+                <label><span>Video URL</span><input class="input" name="videoUrl" id="project-videoUrl-field" placeholder="https://..."></label>
+
+                <div style="margin-top: 16px;">
+                    <span class="muted-label" style="display: block; margin-bottom: 8px;">Upload Project Video</span>
+                    <div class="drag-drop-zone" id="project-video-drop" style="border: 2px dashed rgba(var(--accent-rgb), 0.25); border-radius: 16px; padding: 28px; text-align: center; cursor: pointer; transition: all 0.2s ease; background: rgba(var(--accent-rgb), 0.01);">
+                        <i class="fa-solid fa-video" style="font-size: 2.2rem; color: var(--accent); margin-bottom: 12px;"></i>
+                        <p style="margin: 0; font-weight: 600; font-size: 0.9rem;">Drag & drop project video here</p>
+                        <p style="margin: 4px 0 0; font-size: 0.78rem; color: var(--muted);">or click to upload one video</p>
+                        <input type="file" id="project-video-input" accept="video/*" style="display: none;">
+                    </div>
+
+                    <div id="project-video-upload-status" style="margin-top: 10px; font-size: 0.82rem; font-weight: 500; display: none;"></div>
+
+                    <div id="project-video-preview" style="margin-top: 18px;"></div>
+                </div>
+            </div>
         </div>
 
         <div class="form-actions" style="margin-top: 24px; display: flex; justify-content: space-between;">
@@ -1522,6 +1540,7 @@ function closeProjectEditor() {
 function buildProjectDetailMarkup(project) {
     const technologies = parseTags(project.technologies);
     const mediaUrl = project.imageFile?.downloadUrl || project.imageUrl || "";
+    const videoUrl = project.videoFile?.downloadUrl || project.videoUrl || "";
     const mediaUrls = mediaUrl.split(",").map(url => url.trim()).filter(Boolean);
     const mainMedia = mediaUrls[0] || "";
 
@@ -1553,7 +1572,11 @@ function buildProjectDetailMarkup(project) {
     } else {
         mediaHtml = `
             <div class="project-detail-media ${mainMedia ? "has-image" : ""}">
-                ${mainMedia ? `<img src="${mainMedia}" alt="${escapeHtml(project.title || "Project")} preview">` : `<span>${escapeHtml((project.title || "P").substring(0, 2).toUpperCase())}</span>`}
+                ${mainMedia
+                    ? `<img src="${mainMedia}" alt="${escapeHtml(project.title || "Project")} preview">`
+                    : (videoUrl
+                        ? `<video src="${videoUrl}" controls preload="metadata" style="width:100%;height:100%;object-fit:cover;display:block;background:#000;" aria-label="${escapeHtml(project.title || "Project")} video preview"></video>`
+                        : `<span>${escapeHtml((project.title || "P").substring(0, 2).toUpperCase())}</span>`)}
             </div>
         `;
     }
@@ -1584,6 +1607,14 @@ function buildProjectDetailMarkup(project) {
             </div>
             <div class="project-detail-body">
                 <p>${escapeHtml(project.detailedDescription || "No detailed description provided.")}</p>
+                ${videoUrl ? `
+                <div class="project-detail-gallery">
+                    <span class="project-detail-section-label">Video Preview</span>
+                    <div class="project-detail-gallery-frame has-image" style="background:#000;">
+                        <video src="${videoUrl}" controls preload="metadata" style="width:100%;height:100%;min-height:240px;object-fit:cover;display:block;background:#000;" aria-label="${escapeHtml(project.title || "Project")} video preview"></video>
+                    </div>
+                </div>
+                ` : ""}
                 <div class="chip-row" style="margin-top: 4px;">
                     ${technologies.map((tech) => `<span class="chip">${escapeHtml(tech)}</span>`).join("") || '<span class="chip">Stack unavailable</span>'}
                 </div>
@@ -2806,6 +2837,7 @@ async function loadProjectsAdmin() {
             openProjectEditor();
             fillForm(document.getElementById("project-form"), project);
             document.getElementById("project-imageUrl-field")?.dispatchEvent(new Event("input"));
+            document.getElementById("project-videoUrl-field")?.dispatchEvent(new Event("input"));
         });
 
         duplicateButton?.addEventListener("click", async () => {
@@ -2926,6 +2958,11 @@ function bindProjectForm() {
     const uploadStatus = form.querySelector("#project-upload-status");
     const imgField = form.querySelector("#project-imageUrl-field");
     const previewGrid = form.querySelector("#project-images-preview-grid");
+    const videoDrop = form.querySelector("#project-video-drop");
+    const videoInput = form.querySelector("#project-video-input");
+    const videoStatus = form.querySelector("#project-video-upload-status");
+    const videoField = form.querySelector("#project-videoUrl-field");
+    const videoPreview = form.querySelector("#project-video-preview");
     let projectImages = [];
 
     function renderImagesPreview() {
@@ -2951,7 +2988,34 @@ function bindProjectForm() {
         });
     }
 
+    function renderVideoPreview() {
+        if (!videoPreview || !videoField) return;
+        const videoUrls = videoField.value.split(",").map((url) => url.trim()).filter(Boolean);
+        const videoUrl = videoUrls[0] || "";
+        if (!videoUrl) {
+            videoPreview.innerHTML = "";
+            return;
+        }
+        videoPreview.innerHTML = `
+            <div class="project-video-preview-card" style="border-radius: 16px; overflow: hidden; border: 1px solid var(--border); background: var(--surface-soft); box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);">
+                <video src="${videoUrl}" controls preload="metadata" style="width: 100%; max-height: 280px; display: block; background: #000;"></video>
+                <div style="padding: 12px 14px; display: flex; justify-content: space-between; gap: 12px; align-items: center;">
+                    <div style="min-width: 0;">
+                        <div style="font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);">Uploaded video</div>
+                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--text); word-break: break-all;">${escapeHtml(videoUrl)}</div>
+                    </div>
+                    <button class="button button-ghost" type="button" id="project-video-clear-btn" style="border-radius: 99px; padding: 8px 14px; font-size: 0.82rem;">Remove</button>
+                </div>
+            </div>
+        `;
+        document.getElementById("project-video-clear-btn")?.addEventListener("click", () => {
+            videoField.value = "";
+            renderVideoPreview();
+        });
+    }
+
     imgField?.addEventListener("input", renderImagesPreview);
+    videoField?.addEventListener("input", renderVideoPreview);
 
     dragDrop?.addEventListener("click", () => fileInput?.click());
 
@@ -2981,6 +3045,37 @@ function bindProjectForm() {
     fileInput?.addEventListener("change", async () => {
         if (fileInput.files.length) {
             await handleProjectImagesUpload(fileInput.files);
+        }
+    });
+
+    videoDrop?.addEventListener("click", () => videoInput?.click());
+
+    videoDrop?.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        videoDrop.style.borderColor = "var(--accent)";
+        videoDrop.style.background = "rgba(var(--accent-rgb), 0.04)";
+    });
+
+    ["dragleave", "drop"].forEach((type) => {
+        videoDrop?.addEventListener(type, () => {
+            if (videoDrop) {
+                videoDrop.style.borderColor = "rgba(var(--accent-rgb), 0.25)";
+                videoDrop.style.background = "rgba(var(--accent-rgb), 0.01)";
+            }
+        });
+    });
+
+    videoDrop?.addEventListener("drop", async (e) => {
+        e.preventDefault();
+        const files = e.dataTransfer.files;
+        if (files.length) {
+            await handleProjectVideoUpload(files[0]);
+        }
+    });
+
+    videoInput?.addEventListener("change", async () => {
+        if (videoInput.files.length) {
+            await handleProjectVideoUpload(videoInput.files[0]);
         }
     });
 
@@ -3014,6 +3109,32 @@ function bindProjectForm() {
         }, 3000);
     }
 
+    async function handleProjectVideoUpload(file) {
+        if (!file || !videoStatus || !videoField) return;
+        if (!file.type.startsWith("video/")) {
+            videoStatus.style.display = "block";
+            videoStatus.style.color = "#ef4444";
+            videoStatus.textContent = "Please upload a valid video file.";
+            return;
+        }
+        videoStatus.style.display = "block";
+        videoStatus.style.color = "var(--accent)";
+        videoStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin" style="margin-right:6px;"></i>Uploading video...`;
+        try {
+            const response = await filesApi.upload(file, "PROJECT_VIDEO");
+            videoField.value = response.data.downloadUrl;
+            renderVideoPreview();
+            videoStatus.style.color = "#10b981";
+            videoStatus.innerHTML = `<i class="fa-solid fa-circle-check" style="margin-right:6px;"></i>Video uploaded successfully!`;
+            setTimeout(() => {
+                videoStatus.style.display = "none";
+            }, 3000);
+        } catch (error) {
+            videoStatus.style.color = "#ef4444";
+            videoStatus.textContent = `Video upload failed: ${error.message}`;
+        }
+    }
+
     form.addEventListener("submit", async (event) => {
         event.preventDefault();
         try {
@@ -3033,6 +3154,7 @@ function bindProjectForm() {
                 githubUrl: fd.get("githubUrl"),
                 liveUrl: fd.get("liveUrl"),
                 imageUrl: fd.get("imageUrl"),
+                videoUrl: fd.get("videoUrl"),
                 category: fd.get("category"),
                 status: fd.get("status"),
                 featured: fd.get("featured") === "on",

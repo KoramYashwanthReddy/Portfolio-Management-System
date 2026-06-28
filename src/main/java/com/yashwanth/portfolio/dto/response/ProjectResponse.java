@@ -14,6 +14,7 @@ public record ProjectResponse(
         String githubUrl,
         String liveUrl,
         String imageUrl,
+        String videoUrl,
         ProjectCategory category,
         ProjectStatus status,
         boolean featured,
@@ -21,6 +22,7 @@ public record ProjectResponse(
         LocalDate completionDate,
         Instant createdAt,
         Instant updatedAt,
-        StoredFileResponse imageFile
+        StoredFileResponse imageFile,
+        StoredFileResponse videoFile
 ) {
 }

@@ -10,6 +10,20 @@
         grid-template-columns: 1fr;
     }
 
+    .project-detail-hero {
+        grid-template-columns: 1fr;
+    }
+
+    .project-detail-hero-main {
+        grid-template-columns: 1fr;
+    }
+
+    .project-detail-hero-aside {
+        align-items: flex-start;
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
     .admin-sidebar {
         width: calc(100vw - 24px);
         margin: 14px auto 0;
@@ -105,6 +119,10 @@
         border-color: transparent;
     }
 
+    .project-detail-media--hero {
+        min-height: 200px;
+    }
+
     .nav-toggle {
         display: flex;
         z-index: 999;
@@ -191,6 +209,13 @@
         font-size: clamp(2.5rem, 10vw, 4rem) !important;
     }
 
+    .hero-title-subline,
+    .hero-title-line.subtitle {
+        max-width: 100%;
+        white-space: normal;
+        font-size: clamp(1.15rem, 4.5vw, 1.55rem);
+    }
+
     .section {
         padding: 64px 0;
     }
@@ -203,6 +228,62 @@
     .hero-actions {
         flex-direction: column;
         align-items: flex-start;
+    }
+
+    .hero-bio-block {
+        width: 100%;
+    }
+
+    .hero-bio-popup {
+        padding: 16px;
+    }
+
+    body[data-page="portfolio"] .hero-bio-popup-overlay {
+        padding: 16px;
+    }
+
+    body[data-page="portfolio"] .hero-bio-popup-overlay .hero-bio-popup-content {
+        width: min(100%, 560px);
+        max-height: 82vh;
+        padding: 18px 18px 16px;
+    }
+
+    .profile-card-container {
+        width: min(100%, 340px);
+        padding: 18px 12px 12px;
+    }
+
+    .profile-image-container {
+        min-height: 288px;
+    }
+
+    .profile-card-footer {
+        padding-inline: 4px;
+    }
+
+    .project-detail-content {
+        padding: 18px;
+    }
+
+    .project-detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .project-detail-media--hero {
+        min-height: 180px;
+    }
+
+    .project-detail-gallery-frame,
+    .project-detail-gallery-empty {
+        min-height: 200px;
+    }
+
+    .project-detail-gallery-frame img {
+        min-height: 200px;
+    }
+
+    .project-detail-gallery-frame video {
+        min-height: 200px;
     }
 
     .cta-actions {
@@ -244,6 +325,16 @@
         scrollbar-width: none;
         padding-bottom: 4px;
         gap: 6px;
+    }
+
+    .floating-badge.top-left {
+        top: 14px;
+        left: 10px;
+    }
+
+    .floating-badge.bottom-right {
+        bottom: 14px;
+        right: 10px;
     }
 }
 

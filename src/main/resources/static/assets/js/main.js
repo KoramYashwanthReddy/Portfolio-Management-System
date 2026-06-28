@@ -44,6 +44,8 @@ const state = {
     resume: null,
     projectFeaturedFilter: "",
     projectEscapeBound: false,
+    heroBiographyEscapeBound: false,
+    heroBiographyPopupBound: false,
     projectDetail: null,
     starredProjects: readStoredArray("starred_projects"),
     comparedProjects: readStoredArray("compared_projects")
@@ -82,6 +84,92 @@ function setSrc(id, value, fallback = "") {
     if (node) {
         node.src = value || fallback;
     }
+}
+
+function syncHeroBiographyPopup(rawBiography) {
+    const biography = element("hero-biography");
+    const popup = element("hero-biography-popup");
+    const popupText = element("hero-biography-full");
+    const moreButton = element("hero-biography-more");
+
+    if (!biography || !popup || !popupText || !moreButton) {
+        return;
+    }
+
+    const text = String(rawBiography || biography.textContent || "").trim() || "No biography available.";
+    setText("hero-biography", text);
+    setText("hero-biography-full", text);
+
+    popup.classList.remove("is-visible");
+    popup.setAttribute("aria-hidden", "true");
+    moreButton.hidden = true;
+    moreButton.setAttribute("aria-expanded", "false");
+
+    requestAnimationFrame(() => {
+        const isOverflowing = biography.scrollHeight > biography.clientHeight + 1;
+        moreButton.hidden = !isOverflowing;
+    });
+}
+
+function bindHeroBiographyPopup() {
+    if (state.heroBiographyPopupBound) {
+        return;
+    }
+
+    const moreButton = element("hero-biography-more");
+    const popup = element("hero-biography-popup");
+    const closeButton = element("hero-biography-close");
+
+    if (!moreButton || !popup || !closeButton) {
+        return;
+    }
+
+    if (popup.parentElement !== document.body) {
+        document.body.appendChild(popup);
+    }
+
+    const setOpen = (isOpen) => {
+        popup.classList.toggle("is-visible", isOpen);
+        popup.setAttribute("aria-hidden", String(!isOpen));
+        moreButton.setAttribute("aria-expanded", String(isOpen));
+        document.body.style.overflow = isOpen ? "hidden" : "";
+        if (isOpen) {
+            closeButton.focus({ preventScroll: true });
+        }
+    };
+
+    moreButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        setOpen(!popup.classList.contains("is-visible"));
+    });
+
+    closeButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        setOpen(false);
+    });
+
+    popup.addEventListener("click", (event) => {
+        if (event.target === popup) {
+            setOpen(false);
+        }
+    });
+
+    window.addEventListener("resize", () => {
+        if (state.about?.biography) {
+            syncHeroBiographyPopup(state.about.biography);
+        }
+    });
+
+    if (!state.heroBiographyEscapeBound) {
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape") {
+                setOpen(false);
+            }
+        });
+        state.heroBiographyEscapeBound = true;
+    }
+
+    state.heroBiographyPopupBound = true;
 }
 
 function escapeHtml(value) {
@@ -271,7 +359,7 @@ function renderMetrics(metrics) {
 function renderAbout(about) {
     state.about = about;
     setText("hero-name", about?.name || "Portfolio System");
-    setText("hero-biography", about?.biography || "No biography available.");
+    syncHeroBiographyPopup(about?.biography || "No biography available.");
     setText("overview-copy", about?.biography || "Awaiting about information.");
     setText("experience-years", `${about?.experienceYears || 0} years`);
     setText("hero-location", about?.currentLocation || "Unavailable");
@@ -530,14 +618,52 @@ function mncProjectCard(project, index = 0) {
 
 function buildProjectDetailMarkup(project) {
     const technologies = splitTechnologies(project);
+    const imageUrl = project?.imageFile?.downloadUrl || project?.imageUrl || "";
+    const videoUrl = project?.videoFile?.downloadUrl || project?.videoUrl || "";
+    const imageFallback = "/api/v1/assets/images/profile-placeholder.jpg";
+    const highlights = projectHighlights(project);
+    const mediaPreviews = [
+        imageUrl ? `
+        <div class="project-detail-gallery">
+            <span class="project-detail-section-label">Preview</span>
+            <div class="project-detail-gallery-frame has-image">
+                <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(project.title)} preview image" onerror="this.onerror=null;this.src='${imageFallback}';">
+            </div>
+        </div>
+        ` : "",
+        videoUrl ? `
+        <div class="project-detail-gallery">
+            <span class="project-detail-section-label">Video Preview</span>
+            <div class="project-detail-gallery-frame has-image" style="background:#000;">
+                <video src="${escapeHtml(videoUrl)}" controls preload="metadata" aria-label="${escapeHtml(project.title)} video preview" style="width:100%;height:100%;min-height:240px;object-fit:cover;display:block;background:#000;"></video>
+            </div>
+        </div>
+        ` : ""
+    ].filter(Boolean).join("");
+    const paragraphs = [project.shortDescription, project.detailedDescription]
+        .filter(Boolean)
+        .map((item) => String(item).trim())
+        .filter(Boolean);
     return `
         <div class="project-detail-shell">
-            <div class="project-detail-header">
-                <div>
-                    <p class="eyebrow" style="color: var(--accent-alt); margin-bottom: 8px;">PROJECT DETAILS</p>
-                    <h2 style="margin: 0;">${project.title}</h2>
+            <div class="project-detail-hero">
+                <div class="project-detail-hero-main">
+                    <div class="project-detail-media project-detail-media--hero ${imageUrl ? "has-image" : ""}">
+                        ${imageUrl
+                            ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(project.title)} preview" onerror="this.onerror=null;this.src='${imageFallback}';">`
+                            : `<img src="${imageFallback}" alt="${escapeHtml(project.title)} preview">`}
+                    </div>
+                    <div class="project-detail-hero-copy">
+                        <p class="eyebrow" style="color: var(--accent-alt); margin-bottom: 2px;">PROJECT DETAILS</p>
+                        <h2 style="margin: 0;">${escapeHtml(project.title || "Untitled project")}</h2>
+                        <p class="project-detail-subtitle">${escapeHtml(project.shortDescription || "No short description available.")}</p>
+                    </div>
                 </div>
-                <span class="chip">${project.featured ? "Featured" : "Selected work"}</span>
+                <div class="project-detail-hero-aside">
+                    <span class="chip">${project.featured ? "Featured" : "Selected work"}</span>
+                    <span class="chip">${project.status || "Unknown status"}</span>
+                    <span class="chip">${project.category || "Uncategorized"}</span>
+                </div>
             </div>
             <div class="project-detail-grid">
                 ${projectInsightRows(project).map((row) => `
@@ -548,10 +674,20 @@ function buildProjectDetailMarkup(project) {
                 `).join("")}
             </div>
             <div class="project-detail-body">
-                <p>${project.shortDescription || ""}</p>
-                <p>${project.detailedDescription || ""}</p>
-                <div class="mnc-card-tags" style="margin-top: 12px;">
-                    ${technologies.map((tech) => `<span class="mnc-tech-tag">${tech}</span>`).join("")}
+                <div class="project-detail-copy">
+                    ${paragraphs.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}
+                </div>
+                ${highlights.length ? `
+                <div class="project-detail-highlights">
+                    <span class="project-detail-section-label">Highlights</span>
+                    <ul class="project-detail-highlight-list">
+                        ${highlights.map((highlight) => `<li>${escapeHtml(highlight)}</li>`).join("")}
+                    </ul>
+                </div>
+                ` : ""}
+                ${mediaPreviews ? `<div class="project-detail-media-grid">${mediaPreviews}</div>` : ""}
+                <div class="mnc-card-tags">
+                    ${technologies.map((tech) => `<span class="mnc-tech-tag">${escapeHtml(tech)}</span>`).join("")}
                 </div>
             </div>
             <div class="project-detail-actions">
@@ -1299,6 +1435,7 @@ async function bootstrap() {
 
     bindContactForms();
     bindFeedbackModal();
+    bindHeroBiographyPopup();
     updateCompareBanner();
 
     if (document.body.dataset.page === "welcome") {

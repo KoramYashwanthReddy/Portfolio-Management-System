@@ -92,9 +92,16 @@ public class FileStorageServiceImpl implements FileStorageService {
             throw new FileStorageException("File exceeds the maximum allowed size");
         }
         String contentType = file.getContentType();
-        List<String> allowedTypes = fileType == FileType.PROJECT_IMAGE ? properties.allowedImageTypes() : properties.allowedDocumentTypes();
+        List<String> allowedTypes = switch (fileType) {
+            case PROJECT_IMAGE -> properties.allowedImageTypes();
+            case PROJECT_VIDEO -> properties.allowedVideoTypes();
+            default -> properties.allowedDocumentTypes();
+        };
         boolean allowedByType = contentType != null && allowedTypes.contains(contentType);
-        boolean allowedByExtension = fileType != FileType.PROJECT_IMAGE && hasAllowedDocumentExtension(file.getOriginalFilename());
+        boolean allowedByExtension = switch (fileType) {
+            case PROJECT_IMAGE, PROJECT_VIDEO -> false;
+            default -> hasAllowedDocumentExtension(file.getOriginalFilename());
+        };
         if (!allowedByType && !allowedByExtension) {
             throw new FileStorageException("Invalid file type: " + contentType);
         }
