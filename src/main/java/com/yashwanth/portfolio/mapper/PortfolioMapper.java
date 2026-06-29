@@ -6,6 +6,7 @@ import com.yashwanth.portfolio.dto.response.CertificationResponse;
 import com.yashwanth.portfolio.dto.response.ContactMessageResponse;
 import com.yashwanth.portfolio.dto.response.ProjectNoteResponse;
 import com.yashwanth.portfolio.dto.response.ProjectResponse;
+import com.yashwanth.portfolio.dto.response.ProjectVideoResponse;
 import com.yashwanth.portfolio.dto.response.ResumeResponse;
 import com.yashwanth.portfolio.dto.response.SkillResponse;
 import com.yashwanth.portfolio.dto.response.StoredFileResponse;
@@ -15,6 +16,7 @@ import com.yashwanth.portfolio.entity.Certification;
 import com.yashwanth.portfolio.entity.ContactMessage;
 import com.yashwanth.portfolio.entity.Project;
 import com.yashwanth.portfolio.entity.ProjectNote;
+import com.yashwanth.portfolio.entity.ProjectVideo;
 import com.yashwanth.portfolio.entity.Resume;
 import com.yashwanth.portfolio.entity.Skill;
 import com.yashwanth.portfolio.entity.StoredFile;
@@ -45,6 +47,16 @@ public final class PortfolioMapper {
     }
 
     public static ProjectResponse toProject(Project project) {
+        List<ProjectVideoResponse> videoFiles = project.getVideoFiles() != null
+                ? project.getVideoFiles().stream()
+                .sorted((left, right) -> {
+                    int leftOrder = left.getSortOrder() == null ? 0 : left.getSortOrder();
+                    int rightOrder = right.getSortOrder() == null ? 0 : right.getSortOrder();
+                    return Integer.compare(leftOrder, rightOrder);
+                })
+                .map(PortfolioMapper::toProjectVideo)
+                .toList()
+                : List.of();
         return new ProjectResponse(
                 project.getId(),
                 project.getTitle(),
@@ -53,8 +65,6 @@ public final class PortfolioMapper {
                 project.getTechnologies(),
                 project.getGithubUrl(),
                 project.getLiveUrl(),
-                project.getImageUrl(),
-                project.getVideoUrl(),
                 project.getCategory(),
                 project.getStatus(),
                 project.isFeatured(),
@@ -62,8 +72,21 @@ public final class PortfolioMapper {
                 project.getCompletionDate(),
                 project.getCreatedAt(),
                 project.getUpdatedAt(),
-                toStoredFile(project.getImageFile()),
-                toStoredFile(project.getVideoFile())
+                project.getImageFiles() != null ? project.getImageFiles().stream().map(PortfolioMapper::toStoredFile).toList() : List.of(),
+                videoFiles,
+                videoFiles.isEmpty() ? null : videoFiles.get(0).videoFile()
+        );
+    }
+
+    public static ProjectVideoResponse toProjectVideo(ProjectVideo video) {
+        if (video == null) {
+            return null;
+        }
+        return new ProjectVideoResponse(
+                video.getId(),
+                video.getTitle(),
+                video.getSortOrder(),
+                toStoredFile(video.getVideoFile())
         );
     }
 

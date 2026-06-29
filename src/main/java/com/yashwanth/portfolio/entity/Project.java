@@ -7,9 +7,14 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.OrderBy;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -35,12 +40,6 @@ public class Project extends AuditableEntity {
 
     private String liveUrl;
 
-    @Column(columnDefinition = "TEXT")
-    private String imageUrl;
-
-    @Column(columnDefinition = "TEXT")
-    private String videoUrl;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private ProjectCategory category;
@@ -56,11 +55,15 @@ public class Project extends AuditableEntity {
 
     private LocalDate completionDate;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "image_file_id")
-    private StoredFile imageFile;
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "project_image_files",
+            joinColumns = @JoinColumn(name = "project_id"),
+            inverseJoinColumns = @JoinColumn(name = "file_id")
+    )
+    private List<StoredFile> imageFiles = new ArrayList<>();
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "video_file_id")
-    private StoredFile videoFile;
+    @OneToMany(mappedBy = "project", fetch = FetchType.LAZY, cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("sortOrder ASC")
+    private List<ProjectVideo> videoFiles = new ArrayList<>();
 }

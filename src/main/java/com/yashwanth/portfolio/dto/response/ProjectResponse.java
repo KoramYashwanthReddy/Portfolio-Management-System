@@ -4,6 +4,7 @@ import com.yashwanth.portfolio.entity.ProjectCategory;
 import com.yashwanth.portfolio.entity.ProjectStatus;
 import java.time.LocalDate;
 import java.time.Instant;
+import java.util.List;
 
 public record ProjectResponse(
         Long id,
@@ -13,8 +14,6 @@ public record ProjectResponse(
         String technologies,
         String githubUrl,
         String liveUrl,
-        String imageUrl,
-        String videoUrl,
         ProjectCategory category,
         ProjectStatus status,
         boolean featured,
@@ -22,7 +21,8 @@ public record ProjectResponse(
         LocalDate completionDate,
         Instant createdAt,
         Instant updatedAt,
-        StoredFileResponse imageFile,
+        List<StoredFileResponse> imageFiles,
+        List<ProjectVideoResponse> videoFiles,
         StoredFileResponse videoFile
 ) {
 }

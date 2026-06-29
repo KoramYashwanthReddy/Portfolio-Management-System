@@ -29,6 +29,7 @@ const state = {
     editingCertificationId: null,
     currentProject: null,
     currentProjectNotes: [],
+    projectEditorMedia: { imageFiles: [], videoFiles: [] },
     projectDeleteTarget: null,
     currentCertification: null,
     skillsCache: [],
@@ -216,7 +217,95 @@ function confirmDanger(message) {
     return window.confirm(message);
 }
 
+function getProjectImageFiles(project) {
+    if (!project) {
+        return [];
+    }
+    if (Array.isArray(project.imageFiles) && project.imageFiles.length) {
+        return project.imageFiles.filter(Boolean);
+    }
+    if (project.imageFile) {
+        return [project.imageFile];
+    }
+    if (typeof project.imageUrl === "string" && project.imageUrl.includes(",")) {
+        return project.imageUrl.split(",").map((url, index) => ({
+            id: null,
+            originalFileName: `Image ${index + 1}`,
+            downloadUrl: url.trim(),
+            contentType: "image/*",
+            size: 0,
+            fileType: "PROJECT_IMAGE"
+        })).filter((item) => item.downloadUrl);
+    }
+    if (project.imageUrl) {
+        return [{
+            id: null,
+            originalFileName: "Project image",
+            downloadUrl: project.imageUrl,
+            contentType: "image/*",
+            size: 0,
+            fileType: "PROJECT_IMAGE"
+        }];
+    }
+    return [];
+}
+
+function getProjectVideoFiles(project) {
+    if (!project) {
+        return [];
+    }
+    if (Array.isArray(project.videoFiles) && project.videoFiles.length) {
+        return project.videoFiles.filter(Boolean);
+    }
+    if (project.videoFile) {
+        return [{
+            id: null,
+            title: project.videoFile.originalFileName || "Video",
+            sortOrder: 0,
+            videoFile: project.videoFile
+        }];
+    }
+    return [];
+}
+
+function getProjectPrimaryImageUrl(project) {
+    return getProjectImageFiles(project)[0]?.downloadUrl || "";
+}
+
+function getProjectPrimaryVideoUrl(project) {
+    return getProjectVideoFiles(project)[0]?.videoFile?.downloadUrl || "";
+}
+
+function getProjectMediaPayload(projectMedia = {}) {
+    const imageSource = Array.isArray(projectMedia.imageFiles) && projectMedia.imageFiles.length
+        ? projectMedia.imageFiles
+        : projectMedia.imageFile
+            ? [projectMedia.imageFile]
+            : [];
+    const imageFileIds = imageSource.map((item) => item?.id).filter(Boolean);
+    const videoSource = Array.isArray(projectMedia.videoFiles) && projectMedia.videoFiles.length
+        ? projectMedia.videoFiles
+        : projectMedia.videoFile
+            ? [{ videoFileId: projectMedia.videoFile?.id ?? null, title: projectMedia.videoFile?.originalFileName || "Video" }]
+            : [];
+    const videoFiles = Array.isArray(projectMedia.videoFiles)
+        ? projectMedia.videoFiles.map((item, index) => ({
+            title: normalizeValue(item?.title) || `Video ${index + 1}`,
+            videoFileId: item?.videoFileId ?? item?.videoFile?.id ?? null
+        })).filter((item) => item.videoFileId)
+        : videoSource.map((item, index) => ({
+            title: normalizeValue(item?.title) || `Video ${index + 1}`,
+            videoFileId: item?.videoFileId ?? item?.videoFile?.id ?? null
+        })).filter((item) => item.videoFileId);
+    return {
+        imageFileIds,
+        videoFiles,
+        videoFileId: videoFiles[0]?.videoFileId ?? null
+    };
+}
+
 function buildProjectPayload(project, overrides = {}) {
+    const mediaPayload = getProjectMediaPayload(project);
     return {
         title: project?.title ?? "",
         shortDescription: project?.shortDescription ?? "",
@@ -224,14 +313,31 @@ function buildProjectPayload(project, overrides = {}) {
         technologies: project?.technologies ?? "",
         githubUrl: project?.githubUrl ?? "",
         liveUrl: project?.liveUrl ?? "",
-        imageUrl: project?.imageUrl ?? "",
         category: project?.category ?? "OTHER",
         status: project?.status ?? "PLANNED",
         featured: Boolean(project?.featured),
         displayed: project?.displayed !== false,
         completionDate: project?.completionDate || null,
-        imageFileId: project?.imageFile?.id ?? null,
+        imageFileIds: mediaPayload.imageFileIds,
+        videoFiles: mediaPayload.videoFiles,
+        videoFileId: mediaPayload.videoFileId,
         ...overrides
+    };
+}
+
+function hydrateProjectEditorMedia(project) {
+    state.projectEditorMedia = {
+        imageFiles: getProjectImageFiles(project).map((image, index) => ({
+            id: image.id ?? null,
+            url: image.downloadUrl || "",
+            originalFileName: image.originalFileName || `Image ${index + 1}`
+        })),
+        videoFiles: getProjectVideoFiles(project).map((video, index) => ({
+            id: video.videoFile?.id ?? null,
+            title: video.title || `Video ${index + 1}`,
+            url: video.videoFile?.downloadUrl || "",
+            videoFileId: video.videoFile?.id ?? null
+        }))
     };
 }
 
@@ -1471,8 +1577,6 @@ function renderProjectForm() {
 
         <!-- Step 4: Gallery -->
         <div class="project-wizard-pane" data-pane="4" style="display: none;">
-            <label><span>Image URL (comma separated)</span><input class="input" name="imageUrl" id="project-imageUrl-field" placeholder="https://..."></label>
-            
             <div style="margin-top: 16px;">
                 <span class="muted-label" style="display: block; margin-bottom: 8px;">Upload Project Images</span>
                 <div class="drag-drop-zone" id="project-drag-drop" style="border: 2px dashed rgba(var(--accent-rgb), 0.25); border-radius: 16px; padding: 30px; text-align: center; cursor: pointer; transition: all 0.2s ease; background: rgba(var(--accent-rgb), 0.01);">
@@ -1490,20 +1594,14 @@ function renderProjectForm() {
             </div>
 
             <div style="margin-top: 26px; padding-top: 20px; border-top: 1px solid rgba(var(--accent-rgb), 0.08);">
-                <label><span>Video URL</span><input class="input" name="videoUrl" id="project-videoUrl-field" placeholder="https://..."></label>
-
                 <div style="margin-top: 16px;">
-                    <span class="muted-label" style="display: block; margin-bottom: 8px;">Upload Project Video</span>
-                    <div class="drag-drop-zone" id="project-video-drop" style="border: 2px dashed rgba(var(--accent-rgb), 0.25); border-radius: 16px; padding: 28px; text-align: center; cursor: pointer; transition: all 0.2s ease; background: rgba(var(--accent-rgb), 0.01);">
-                        <i class="fa-solid fa-video" style="font-size: 2.2rem; color: var(--accent); margin-bottom: 12px;"></i>
-                        <p style="margin: 0; font-weight: 600; font-size: 0.9rem;">Drag & drop project video here</p>
-                        <p style="margin: 4px 0 0; font-size: 0.78rem; color: var(--muted);">or click to upload one video</p>
-                        <input type="file" id="project-video-input" accept="video/*" style="display: none;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap: 12px; margin-bottom: 8px;">
+                        <span class="muted-label" style="display: block;">Project Videos</span>
+                        <button type="button" class="button button-ghost" id="project-add-video-btn" style="border-radius: 99px; padding: 8px 14px; font-size: 0.82rem;">Add video</button>
                     </div>
-
+                    <div id="project-video-list" style="display: grid; gap: 14px;"></div>
+                    <input type="file" id="project-video-input" accept="video/*" style="display: none;">
                     <div id="project-video-upload-status" style="margin-top: 10px; font-size: 0.82rem; font-weight: 500; display: none;"></div>
-
-                    <div id="project-video-preview" style="margin-top: 18px;"></div>
                 </div>
             </div>
         </div>
@@ -1519,6 +1617,9 @@ function renderProjectForm() {
 }
 
 function openProjectEditor() {
+    if (!state.editingProjectId) {
+        state.projectEditorMedia = { imageFiles: [], videoFiles: [] };
+    }
     renderProjectForm();
     bindProjectForm();
     const modal = document.getElementById("project-editor-modal");
@@ -1535,14 +1636,18 @@ function closeProjectEditor() {
     document.body.style.overflow = "";
     state.editingProjectId = null;
     state.currentProject = null;
+    state.projectEditorMedia = { imageFiles: [], videoFiles: [] };
 }
 
 function buildProjectDetailMarkup(project) {
     const technologies = parseTags(project.technologies);
-    const mediaUrl = project.imageFile?.downloadUrl || project.imageUrl || "";
-    const videoUrl = project.videoFile?.downloadUrl || project.videoUrl || "";
-    const mediaUrls = mediaUrl.split(",").map(url => url.trim()).filter(Boolean);
-    const mainMedia = mediaUrls[0] || "";
+    const imageFiles = getProjectImageFiles(project);
+    const videoFiles = getProjectVideoFiles(project);
+    const mainMedia = imageFiles[0]?.downloadUrl || "";
+    const primaryVideoUrl = videoFiles[0]?.videoFile?.downloadUrl || "";
+    const mainImageMarkup = imageFiles.length
+        ? `<img id="project-detail-main-media" src="${mainMedia}" alt="${escapeHtml(project.title || "Project")} preview">`
+        : "";
 
     const rows = [
         { label: "Category", value: project.category || "Project" },
@@ -1553,39 +1658,77 @@ function buildProjectDetailMarkup(project) {
         { label: "Stack", value: `${technologies.length} tech${technologies.length === 1 ? "" : "s"}` }
     ];
 
-    let mediaHtml = "";
-    if (mediaUrls.length > 1) {
-        mediaHtml = `
-            <div class="project-detail-gallery" style="display: grid; gap: 12px; margin-bottom: 20px; width: 100%;">
-                <div class="project-detail-media has-image" id="project-detail-main-media-wrap" style="border-radius: 16px; overflow: hidden; border: 1px solid var(--border); padding-top: 56.25%; position: relative; width: 100%;">
-                    <img id="project-detail-main-media" src="${mainMedia}" style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover;" alt="${escapeHtml(project.title || "Project")} preview">
-                </div>
-                <div class="project-detail-thumbnails" style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; width: 100%;">
-                    ${mediaUrls.map((url, idx) => `
-                        <div class="project-detail-thumb ${idx === 0 ? "active" : ""}" data-url="${url}" style="width: 80px; height: 50px; border-radius: 8px; overflow: hidden; border: 2px solid ${idx === 0 ? "var(--accent)" : "var(--border)"}; cursor: pointer; flex-shrink: 0; position: relative; transition: border-color 0.2s ease;">
-                            <img src="${url}" style="width:100%; height:100%; object-fit: cover;" alt="Thumbnail ${idx + 1}">
-                        </div>
+    const heroMedia = mainMedia
+        ? mainImageMarkup
+        : primaryVideoUrl
+            ? `<video src="${primaryVideoUrl}" controls preload="metadata" style="width:100%;height:100%;object-fit:cover;display:block;background:#000;" aria-label="${escapeHtml(project.title || "Project")} video preview"></video>`
+            : `<span>${escapeHtml((project.title || "P").substring(0, 2).toUpperCase())}</span>`;
+
+    const imageTabContent = imageFiles.length
+        ? `
+            <div class="project-detail-gallery">
+                <div class="project-detail-gallery-grid project-detail-gallery-grid--full">
+                    ${imageFiles.map((image, idx) => `
+                        <figure class="project-detail-media-card">
+                            <div class="project-detail-media-frame">
+                                <img src="${image.downloadUrl}" alt="${escapeHtml(project.title || "Project")} screenshot ${idx + 1}">
+                            </div>
+                            <figcaption>
+                                <strong>Image ${idx + 1}</strong>
+                                <span>${escapeHtml(image.originalFileName || `Image ${idx + 1}`)}</span>
+                            </figcaption>
+                        </figure>
                     `).join("")}
                 </div>
             </div>
-        `;
-    } else {
-        mediaHtml = `
-            <div class="project-detail-media ${mainMedia ? "has-image" : ""}">
-                ${mainMedia
-                    ? `<img src="${mainMedia}" alt="${escapeHtml(project.title || "Project")} preview">`
-                    : (videoUrl
-                        ? `<video src="${videoUrl}" controls preload="metadata" style="width:100%;height:100%;object-fit:cover;display:block;background:#000;" aria-label="${escapeHtml(project.title || "Project")} video preview"></video>`
-                        : `<span>${escapeHtml((project.title || "P").substring(0, 2).toUpperCase())}</span>`)}
+        `
+        : `<div class="project-detail-gallery-empty">No images uploaded for this project.</div>`;
+
+    const videoTabContent = videoFiles.length
+        ? `
+            <div class="project-detail-video-list project-detail-video-list--stacked">
+                ${videoFiles.map((video, idx) => `
+                    <article class="project-detail-video-card project-detail-video-card--stacked">
+                        <div class="project-detail-video-frame">
+                            <video src="${escapeHtml(video.videoFile?.downloadUrl || "")}" controls preload="metadata" aria-label="${escapeHtml(video.title || project.title || "Project")} video preview"></video>
+                        </div>
+                        <div class="project-detail-video-meta">
+                            <strong>${escapeHtml(video.title || `Video ${idx + 1}`)}</strong>
+                            <span>${escapeHtml(video.videoFile?.originalFileName || "Uploaded video")}</span>
+                        </div>
+                    </article>
+                `).join("")}
             </div>
-        `;
-    }
+        `
+        : `<div class="project-detail-gallery-empty">No videos uploaded for this project.</div>`;
+
+    const overviewTabLabel = `
+        <span class="project-detail-tab-icon"><i class="fa-solid fa-circle-info"></i></span>
+        <span class="project-detail-tab-copy">Overview</span>
+    `;
+    const imageTabLabel = `
+        <span class="project-detail-tab-icon"><i class="fa-solid fa-images"></i></span>
+        <span class="project-detail-tab-copy">Images</span>
+        ${imageFiles.length ? `<span class="project-detail-tab-count">${imageFiles.length}</span>` : ""}
+    `;
+    const videoTabLabel = `
+        <span class="project-detail-tab-icon"><i class="fa-solid fa-video"></i></span>
+        <span class="project-detail-tab-copy">Videos</span>
+        ${videoFiles.length ? `<span class="project-detail-tab-count">${videoFiles.length}</span>` : ""}
+    `;
 
     return `
         <div class="project-detail-shell">
+            <div class="project-detail-tabs" role="tablist" aria-label="Project details sections">
+                <button class="project-detail-tab is-active" type="button" data-detail-tab="overview" role="tab" aria-selected="true" tabindex="0">${overviewTabLabel}</button>
+                <button class="project-detail-tab" type="button" data-detail-tab="images" role="tab" aria-selected="false" tabindex="-1">${imageTabLabel}</button>
+                <button class="project-detail-tab" type="button" data-detail-tab="videos" role="tab" aria-selected="false" tabindex="-1">${videoTabLabel}</button>
+            </div>
             <div class="project-detail-hero">
                 <div class="project-detail-hero-main" style="flex-direction: column; align-items: flex-start; gap: 20px;">
-                    ${mediaHtml}
+                    <div class="project-detail-media project-detail-media--hero ${mainMedia || primaryVideoUrl ? "has-image" : ""}">
+                        ${heroMedia}
+                    </div>
                     <div class="project-detail-hero-copy" style="padding-left: 0;">
                         <p class="eyebrow" style="color: var(--accent-alt); margin-bottom: 6px;">PROJECT DETAILS</p>
                         <h2 style="margin-top: 0;">${escapeHtml(project.title || "Untitled project")}</h2>
@@ -1597,35 +1740,37 @@ function buildProjectDetailMarkup(project) {
                     <span class="chip">${escapeHtml(formatProjectStatus(project.status))}</span>
                 </div>
             </div>
-            <div class="project-detail-grid">
-                ${rows.map((row) => `
-                    <article class="project-detail-card">
-                        <span>${escapeHtml(row.label)}</span>
-                        <strong>${escapeHtml(String(row.value))}</strong>
-                    </article>
-                `).join("")}
-            </div>
-            <div class="project-detail-body">
-                <p>${escapeHtml(project.detailedDescription || "No detailed description provided.")}</p>
-                ${videoUrl ? `
-                <div class="project-detail-gallery">
-                    <span class="project-detail-section-label">Video Preview</span>
-                    <div class="project-detail-gallery-frame has-image" style="background:#000;">
-                        <video src="${videoUrl}" controls preload="metadata" style="width:100%;height:100%;min-height:240px;object-fit:cover;display:block;background:#000;" aria-label="${escapeHtml(project.title || "Project")} video preview"></video>
+            <div class="project-detail-tab-panels">
+                <section class="project-detail-tab-panel is-active" data-detail-panel="overview">
+                    <div class="project-detail-grid">
+                        ${rows.map((row) => `
+                            <article class="project-detail-card">
+                                <span>${escapeHtml(row.label)}</span>
+                                <strong>${escapeHtml(String(row.value))}</strong>
+                            </article>
+                        `).join("")}
                     </div>
-                </div>
-                ` : ""}
-                <div class="chip-row" style="margin-top: 4px;">
-                    ${technologies.map((tech) => `<span class="chip">${escapeHtml(tech)}</span>`).join("") || '<span class="chip">Stack unavailable</span>'}
-                </div>
-            </div>
-            <div class="project-detail-actions">
-                <a class="button button-outline project-notes-link" href="/api/v1/admin/project-notes.html?projectId=${project.id}" data-project-notes="${project.id}">
-                    <i class="fa-solid fa-file-lines"></i>
-                    <span>Notes page</span>
-                </a>
-                ${project.githubUrl ? `<a class="button button-outline" href="${escapeHtml(project.githubUrl)}" target="_blank" rel="noreferrer">GitHub</a>` : ""}
-                ${project.liveUrl ? `<a class="button button-outline" href="${escapeHtml(project.liveUrl)}" target="_blank" rel="noreferrer">Live</a>` : ""}
+                    <div class="project-detail-body">
+                        <p>${escapeHtml(project.detailedDescription || "No detailed description provided.")}</p>
+                        <div class="chip-row" style="margin-top: 4px;">
+                            ${technologies.map((tech) => `<span class="chip">${escapeHtml(tech)}</span>`).join("") || '<span class="chip">Stack unavailable</span>'}
+                        </div>
+                    </div>
+                    <div class="project-detail-actions">
+                        <a class="button button-outline project-notes-link" href="/api/v1/admin/project-notes.html?projectId=${project.id}" data-project-notes="${project.id}">
+                            <i class="fa-solid fa-file-lines"></i>
+                            <span>Notes page</span>
+                        </a>
+                        ${project.githubUrl ? `<a class="button button-outline" href="${escapeHtml(project.githubUrl)}" target="_blank" rel="noreferrer">GitHub</a>` : ""}
+                        ${project.liveUrl ? `<a class="button button-outline" href="${escapeHtml(project.liveUrl)}" target="_blank" rel="noreferrer">Live</a>` : ""}
+                    </div>
+                </section>
+                <section class="project-detail-tab-panel hidden" data-detail-panel="images">
+                    ${imageTabContent}
+                </section>
+                <section class="project-detail-tab-panel hidden" data-detail-panel="videos">
+                    ${videoTabContent}
+                </section>
             </div>
         </div>
     `;
@@ -1641,15 +1786,36 @@ function openProjectDetail(project) {
     title.textContent = "Project overview";
     content.innerHTML = buildProjectDetailMarkup(project);
 
-    // Bind thumbnail click events if they exist
+    const tabs = content.querySelectorAll(".project-detail-tab");
+    const panels = content.querySelectorAll(".project-detail-tab-panel");
+    const switchDetailTab = (tabName) => {
+        tabs.forEach((tab) => {
+            const active = tab.dataset.detailTab === tabName;
+            tab.classList.toggle("is-active", active);
+            tab.setAttribute("aria-selected", String(active));
+            tab.setAttribute("tabindex", active ? "0" : "-1");
+        });
+        panels.forEach((panel) => {
+            panel.classList.toggle("hidden", panel.dataset.detailPanel !== tabName);
+            panel.classList.toggle("is-active", panel.dataset.detailPanel === tabName);
+        });
+    };
+
+    tabs.forEach((tab) => {
+        tab.addEventListener("click", () => switchDetailTab(tab.dataset.detailTab || "overview"));
+    });
+
     const mainImg = content.querySelector("#project-detail-main-media");
-    const thumbs = content.querySelectorAll(".project-detail-thumb");
+    const thumbs = content.querySelectorAll(".project-detail-thumb[data-url]");
     thumbs.forEach((thumb) => {
         thumb.addEventListener("click", () => {
             const url = thumb.getAttribute("data-url");
-            if (mainImg) mainImg.src = url;
-            thumbs.forEach(t => t.style.borderColor = "var(--border)");
-            thumb.style.borderColor = "var(--accent)";
+            if (mainImg && url) {
+                mainImg.src = url;
+            }
+            thumbs.forEach((t) => t.classList.remove("active"));
+            thumb.classList.add("active");
+            switchDetailTab("overview");
         });
     });
 
@@ -2367,21 +2533,35 @@ function renderTabPanelContent(tabName) {
     } else if (tabName === "gallery") {
         const container = document.getElementById("gallery-image-wrapper");
         if (container) {
-            const imgUrl = project.imageFile?.downloadUrl || project.imageUrl;
-            if (imgUrl) {
-                const urls = imgUrl.split(",").map(u => u.trim()).filter(Boolean);
-                if (urls.length > 1) {
-                    container.innerHTML = `
+            const images = getProjectImageFiles(project);
+            const videos = getProjectVideoFiles(project);
+            if (images.length || videos.length) {
+                const imageMarkup = images.length ? `
+                    <div style="display: grid; gap: 12px; margin-bottom: ${videos.length ? "20px" : "0"};">
+                        <span class="project-detail-section-label">Images</span>
                         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px;">
-                            ${urls.map((url, idx) => `
+                            ${images.map((image, idx) => `
                                 <div style="border-radius: 12px; overflow: hidden; border: 1px solid var(--border); padding-top: 56.25%; position: relative;">
-                                    <img src="${url}" style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover;" alt="${escapeHtml(project.title)} Screenshot ${idx + 1}">
+                                    <img src="${image.downloadUrl}" style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover;" alt="${escapeHtml(project.title)} Screenshot ${idx + 1}">
                                 </div>
                             `).join("")}
-                        </div>`;
-                } else {
-                    container.innerHTML = `<img src="${urls[0]}" alt="${escapeHtml(project.title)} Project Screenshot">`;
-                }
+                        </div>
+                    </div>
+                ` : "";
+                const videoMarkup = videos.length ? `
+                    <div style="display:grid; gap: 12px;">
+                        <span class="project-detail-section-label">Videos</span>
+                        ${videos.map((video, idx) => `
+                            <div style="border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background:#000;">
+                                <video src="${escapeHtml(video.videoFile?.downloadUrl || "")}" controls preload="metadata" style="width:100%; min-height:240px; object-fit:cover; display:block;" aria-label="${escapeHtml(video.title || `Video ${idx + 1}`)}"></video>
+                            </div>
+                            <div class="chip-row">
+                                <span class="chip">${escapeHtml(video.title || `Video ${idx + 1}`)}</span>
+                            </div>
+                        `).join("")}
+                    </div>
+                ` : "";
+                container.innerHTML = `${imageMarkup}${videoMarkup}`;
             } else {
                 container.innerHTML = `<div class="gallery-no-image"><i class="fa-regular fa-image fa-3x"></i><p>No project image uploaded yet.</p></div>`;
             }
@@ -2496,7 +2676,7 @@ async function initProjectNotesPage() {
     state.currentProject = projectResponse.data;
     const renderProjectNotesHero = (noteCount = state.currentProjectNotes.length) => {
         const project = state.currentProject || {};
-        const mediaUrl = (project.imageFile?.downloadUrl || project.imageUrl || "").split(",")[0].trim();
+        const mediaUrl = getProjectPrimaryImageUrl(project);
         const techCount = parseTags(project.technologies).length;
         const statusOptions = PROJECT_STATUSES.map((status) => {
             const selected = status === (project.status || PROJECT_STATUSES[0]) ? " selected" : "";
@@ -2584,13 +2764,7 @@ async function initProjectNotesPage() {
         }
         const newStatus = event.target.value;
         try {
-            const payload = {
-                ...state.currentProject,
-                status: newStatus
-            };
-            if (state.currentProject.imageFile) {
-                payload.imageFileId = state.currentProject.imageFile.id;
-            }
+            const payload = buildProjectPayload(state.currentProject, { status: newStatus });
             await projectsApi.update(state.currentProject.id, payload);
             state.currentProject.status = newStatus;
             renderProjectNotesHero();
@@ -2834,10 +3008,9 @@ async function loadProjectsAdmin() {
         menuPanel?.querySelector(`[data-project-edit="${project.id}"]`)?.addEventListener("click", () => {
             state.editingProjectId = project.id;
             state.currentProject = project;
+            hydrateProjectEditorMedia(project);
             openProjectEditor();
             fillForm(document.getElementById("project-form"), project);
-            document.getElementById("project-imageUrl-field")?.dispatchEvent(new Event("input"));
-            document.getElementById("project-videoUrl-field")?.dispatchEvent(new Event("input"));
         });
 
         duplicateButton?.addEventListener("click", async () => {
@@ -2952,25 +3125,33 @@ function bindProjectForm() {
         });
     });
 
-    // Multi-Image Upload & Preview Logic
+    // Media upload & preview logic
     const dragDrop = form.querySelector("#project-drag-drop");
     const fileInput = form.querySelector("#project-files-input");
     const uploadStatus = form.querySelector("#project-upload-status");
-    const imgField = form.querySelector("#project-imageUrl-field");
     const previewGrid = form.querySelector("#project-images-preview-grid");
-    const videoDrop = form.querySelector("#project-video-drop");
+    const videoList = form.querySelector("#project-video-list");
+    const addVideoBtn = form.querySelector("#project-add-video-btn");
     const videoInput = form.querySelector("#project-video-input");
     const videoStatus = form.querySelector("#project-video-upload-status");
-    const videoField = form.querySelector("#project-videoUrl-field");
-    const videoPreview = form.querySelector("#project-video-preview");
-    let projectImages = [];
+    const mediaState = state.projectEditorMedia ?? { imageFiles: [], videoFiles: [] };
+    state.projectEditorMedia = mediaState;
+    let projectImages = mediaState.imageFiles;
+    let projectVideos = mediaState.videoFiles;
+    let pendingVideoIndex = null;
+
+    function syncMediaState() {
+        state.projectEditorMedia = {
+            imageFiles: projectImages,
+            videoFiles: projectVideos
+        };
+    }
 
     function renderImagesPreview() {
         if (!previewGrid) return;
-        projectImages = imgField.value.split(",").map(url => url.trim()).filter(Boolean);
-        previewGrid.innerHTML = projectImages.map((url, idx) => `
+        previewGrid.innerHTML = projectImages.map((img, idx) => `
             <div class="project-img-preview-card" style="position: relative; border-radius: 12px; border: 1px solid var(--border); overflow: hidden; background: var(--surface-soft); padding-top: 56.25%;">
-                <img src="${url}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;" alt="Project Image ${idx + 1}">
+                <img src="${img.url}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;" alt="Project Image ${idx + 1}">
                 <button class="project-img-delete-btn" data-index="${idx}" type="button" style="position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%; border: none; background: rgba(239, 68, 68, 0.9); color: white; display: grid; place-items: center; cursor: pointer; transition: background 0.2s ease;" aria-label="Delete image">
                     <i class="fa-solid fa-trash-can" style="font-size: 0.75rem;"></i>
                 </button>
@@ -2980,42 +3161,78 @@ function bindProjectForm() {
         previewGrid.querySelectorAll(".project-img-delete-btn").forEach((btn) => {
             btn.addEventListener("click", (e) => {
                 e.stopPropagation();
-                const idx = parseInt(btn.dataset.index);
+                const idx = parseInt(btn.dataset.index, 10);
                 projectImages.splice(idx, 1);
-                imgField.value = projectImages.join(", ");
+                syncMediaState();
                 renderImagesPreview();
             });
         });
     }
 
-    function renderVideoPreview() {
-        if (!videoPreview || !videoField) return;
-        const videoUrls = videoField.value.split(",").map((url) => url.trim()).filter(Boolean);
-        const videoUrl = videoUrls[0] || "";
-        if (!videoUrl) {
-            videoPreview.innerHTML = "";
-            return;
-        }
-        videoPreview.innerHTML = `
-            <div class="project-video-preview-card" style="border-radius: 16px; overflow: hidden; border: 1px solid var(--border); background: var(--surface-soft); box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);">
-                <video src="${videoUrl}" controls preload="metadata" style="width: 100%; max-height: 280px; display: block; background: #000;"></video>
-                <div style="padding: 12px 14px; display: flex; justify-content: space-between; gap: 12px; align-items: center;">
-                    <div style="min-width: 0;">
-                        <div style="font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);">Uploaded video</div>
-                        <div style="font-size: 0.9rem; font-weight: 600; color: var(--text); word-break: break-all;">${escapeHtml(videoUrl)}</div>
-                    </div>
-                    <button class="button button-ghost" type="button" id="project-video-clear-btn" style="border-radius: 99px; padding: 8px 14px; font-size: 0.82rem;">Remove</button>
+    function renderVideoList() {
+        if (!videoList) return;
+        videoList.innerHTML = projectVideos.length ? projectVideos.map((video, idx) => `
+            <div class="project-video-card" style="border: 1px solid var(--border); border-radius: 16px; padding: 16px; background: var(--surface-soft); display: grid; gap: 14px;">
+                <div class="field-grid">
+                    <label>
+                        <span>Video title</span>
+                        <input class="input" data-video-title="${idx}" type="text" maxlength="150" value="${escapeHtml(video.title || "")}" placeholder="Enter a title for this video">
+                    </label>
+                    <label>
+                        <span>Video file</span>
+                        <button class="button button-ghost" data-video-upload="${idx}" type="button" style="width: 100%; border-radius: 12px; padding: 12px 14px;">${video.url ? "Replace video" : "Upload video"}</button>
+                    </label>
+                </div>
+                <div class="video-preview-shell" style="display: grid; gap: 10px;">
+                    ${video.url ? `
+                        <video src="${video.url}" controls preload="metadata" style="width: 100%; min-height: 240px; background: #000; border-radius: 12px; object-fit: cover;"></video>
+                    ` : `<div class="empty-state">No video uploaded yet.</div>`}
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; gap: 12px;">
+                    <span class="muted-label">${video.videoFileId ? "Uploaded" : "Awaiting upload"}</span>
+                    <button class="button button-ghost" data-video-remove="${idx}" type="button" style="border-radius: 99px; padding: 8px 14px; font-size: 0.82rem;">Remove</button>
                 </div>
             </div>
-        `;
-        document.getElementById("project-video-clear-btn")?.addEventListener("click", () => {
-            videoField.value = "";
-            renderVideoPreview();
+        `).join("") : `<div class="empty-state">Add one or more videos and give each a title.</div>`;
+
+        videoList.querySelectorAll("[data-video-title]").forEach((input) => {
+            input.addEventListener("input", () => {
+                const idx = Number(input.getAttribute("data-video-title"));
+                projectVideos[idx].title = input.value;
+                syncMediaState();
+            });
+        });
+
+        videoList.querySelectorAll("[data-video-upload]").forEach((button) => {
+            button.addEventListener("click", () => {
+                pendingVideoIndex = Number(button.getAttribute("data-video-upload"));
+                videoInput?.click();
+            });
+        });
+
+        videoList.querySelectorAll("[data-video-remove]").forEach((button) => {
+            button.addEventListener("click", () => {
+                const idx = Number(button.getAttribute("data-video-remove"));
+                projectVideos.splice(idx, 1);
+                syncMediaState();
+                renderVideoList();
+            });
         });
     }
 
-    imgField?.addEventListener("input", renderImagesPreview);
-    videoField?.addEventListener("input", renderVideoPreview);
+    function addVideoEntry() {
+        projectVideos.push({
+            title: "",
+            videoFileId: null,
+            url: ""
+        });
+        syncMediaState();
+        renderVideoList();
+        window.requestAnimationFrame(() => {
+            const lastTitle = videoList?.querySelector(`[data-video-title="${projectVideos.length - 1}"]`);
+            lastTitle?.focus();
+        });
+    }
 
     dragDrop?.addEventListener("click", () => fileInput?.click());
 
@@ -3048,73 +3265,24 @@ function bindProjectForm() {
         }
     });
 
-    videoDrop?.addEventListener("click", () => videoInput?.click());
-
-    videoDrop?.addEventListener("dragover", (e) => {
-        e.preventDefault();
-        videoDrop.style.borderColor = "var(--accent)";
-        videoDrop.style.background = "rgba(var(--accent-rgb), 0.04)";
-    });
-
-    ["dragleave", "drop"].forEach((type) => {
-        videoDrop?.addEventListener(type, () => {
-            if (videoDrop) {
-                videoDrop.style.borderColor = "rgba(var(--accent-rgb), 0.25)";
-                videoDrop.style.background = "rgba(var(--accent-rgb), 0.01)";
-            }
-        });
-    });
-
-    videoDrop?.addEventListener("drop", async (e) => {
-        e.preventDefault();
-        const files = e.dataTransfer.files;
-        if (files.length) {
-            await handleProjectVideoUpload(files[0]);
-        }
-    });
+    addVideoBtn?.addEventListener("click", addVideoEntry);
 
     videoInput?.addEventListener("change", async () => {
-        if (videoInput.files.length) {
-            await handleProjectVideoUpload(videoInput.files[0]);
+        const file = videoInput.files?.[0];
+        if (!file || pendingVideoIndex === null || pendingVideoIndex === undefined) {
+            return;
         }
-    });
-
-    async function handleProjectImagesUpload(files) {
-        if (!uploadStatus) return;
-        uploadStatus.style.display = "block";
-        uploadStatus.style.color = "var(--accent)";
-        uploadStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin" style="margin-right:6px;"></i>Uploading image(s)... (0/${files.length})`;
-
-        let successCount = 0;
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            if (!file.type.startsWith("image/")) continue;
-            try {
-                const response = await filesApi.upload(file, "PROJECT_IMAGE");
-                projectImages.push(response.data.downloadUrl);
-                successCount++;
-                uploadStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin" style="margin-right:6px;"></i>Uploading image(s)... (${successCount}/${files.length})`;
-            } catch (err) {
-                console.error("Image upload failed:", err);
-            }
-        }
-
-        imgField.value = projectImages.join(", ");
-        renderImagesPreview();
-
-        uploadStatus.style.color = "#10b981";
-        uploadStatus.innerHTML = `<i class="fa-solid fa-circle-check" style="margin-right:6px;"></i>Uploaded ${successCount} image(s) successfully!`;
-        setTimeout(() => {
-            uploadStatus.style.display = "none";
-        }, 3000);
-    }
-
-    async function handleProjectVideoUpload(file) {
-        if (!file || !videoStatus || !videoField) return;
+        const targetIndex = pendingVideoIndex;
+        pendingVideoIndex = null;
         if (!file.type.startsWith("video/")) {
-            videoStatus.style.display = "block";
-            videoStatus.style.color = "#ef4444";
-            videoStatus.textContent = "Please upload a valid video file.";
+            if (videoStatus) {
+                videoStatus.style.display = "block";
+                videoStatus.style.color = "#ef4444";
+                videoStatus.textContent = "Please upload a valid video file.";
+            }
+            return;
+        }
+        if (!videoStatus) {
             return;
         }
         videoStatus.style.display = "block";
@@ -3122,8 +3290,14 @@ function bindProjectForm() {
         videoStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin" style="margin-right:6px;"></i>Uploading video...`;
         try {
             const response = await filesApi.upload(file, "PROJECT_VIDEO");
-            videoField.value = response.data.downloadUrl;
-            renderVideoPreview();
+            const nextItem = projectVideos[targetIndex] || {};
+            projectVideos[targetIndex] = {
+                ...nextItem,
+                videoFileId: response.data.id,
+                url: response.data.downloadUrl
+            };
+            syncMediaState();
+            renderVideoList();
             videoStatus.style.color = "#10b981";
             videoStatus.innerHTML = `<i class="fa-solid fa-circle-check" style="margin-right:6px;"></i>Video uploaded successfully!`;
             setTimeout(() => {
@@ -3133,7 +3307,48 @@ function bindProjectForm() {
             videoStatus.style.color = "#ef4444";
             videoStatus.textContent = `Video upload failed: ${error.message}`;
         }
+        videoInput.value = "";
+    });
+
+    function handleProjectImagesUpload(files) {
+        if (!uploadStatus) return Promise.resolve();
+        uploadStatus.style.display = "block";
+        uploadStatus.style.color = "var(--accent)";
+        uploadStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin" style="margin-right:6px;"></i>Uploading image(s)... (0/${files.length})`;
+
+        return (async () => {
+            let successCount = 0;
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                if (!file.type.startsWith("image/")) continue;
+                try {
+                    const response = await filesApi.upload(file, "PROJECT_IMAGE");
+                    projectImages.push({ id: response.data.id, url: response.data.downloadUrl });
+                    successCount++;
+                    syncMediaState();
+                    uploadStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin" style="margin-right:6px;"></i>Uploading image(s)... (${successCount}/${files.length})`;
+                } catch (err) {
+                    console.error("Image upload failed:", err);
+                }
+            }
+
+            renderImagesPreview();
+
+            uploadStatus.style.color = "#10b981";
+            uploadStatus.innerHTML = `<i class="fa-solid fa-circle-check" style="margin-right:6px;"></i>Uploaded ${successCount} image(s) successfully!`;
+            setTimeout(() => {
+                uploadStatus.style.display = "none";
+            }, 3000);
+        })();
     }
+
+    if (state.editingProjectId && state.projectEditorMedia) {
+        projectImages = state.projectEditorMedia.imageFiles;
+        projectVideos = state.projectEditorMedia.videoFiles;
+    }
+    syncMediaState();
+    renderImagesPreview();
+    renderVideoList();
 
     form.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -3153,14 +3368,16 @@ function bindProjectForm() {
                 technologies: fd.get("technologies"),
                 githubUrl: fd.get("githubUrl"),
                 liveUrl: fd.get("liveUrl"),
-                imageUrl: fd.get("imageUrl"),
-                videoUrl: fd.get("videoUrl"),
                 category: fd.get("category"),
                 status: fd.get("status"),
                 featured: fd.get("featured") === "on",
                 displayed: fd.get("displayed") === "on",
                 completionDate: fd.get("completionDate") || null
             };
+            Object.assign(payload, getProjectMediaPayload({
+                imageFiles: projectImages,
+                videoFiles: projectVideos
+            }));
             if (isEditing) {
                 await projectsApi.update(state.editingProjectId, payload);
             } else {
@@ -3250,13 +3467,7 @@ async function initProjects() {
         if (!state.currentProject) return;
         const newStatus = event.target.value;
         try {
-            const payload = {
-                ...state.currentProject,
-                status: newStatus
-            };
-            if (state.currentProject.imageFile) {
-                payload.imageFileId = state.currentProject.imageFile.id;
-            }
+            const payload = buildProjectPayload(state.currentProject, { status: newStatus });
             await projectsApi.update(state.currentProject.id, payload);
             state.currentProject.status = newStatus;
             await loadProjectsAdmin();

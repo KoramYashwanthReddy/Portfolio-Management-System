@@ -1562,6 +1562,186 @@ html[data-theme="dark"] .masonry-skill-item {
     gap: 20px;
 }
 
+.project-detail-tabs {
+    display: flex;
+    width: 100%;
+    gap: 8px;
+    flex-wrap: nowrap;
+    align-items: center;
+    padding: 10px 12px;
+    border-radius: 24px;
+    background: linear-gradient(180deg, rgba(var(--surface-rgb), 0.98), rgba(var(--accent-rgb), 0.03));
+    border: 1px solid rgba(var(--accent-rgb), 0.12);
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.project-detail-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.project-detail-tab {
+    appearance: none;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    font-weight: 700;
+    padding: 12px 18px;
+    min-height: 46px;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.project-detail-tab:hover {
+    color: var(--text);
+    background: rgba(var(--surface-rgb), 0.9);
+}
+
+.project-detail-tab.is-active {
+    color: var(--accent);
+    background: var(--surface);
+    border-color: rgba(var(--accent-rgb), 0.12);
+    box-shadow: 0 12px 28px rgba(var(--accent-rgb), 0.1);
+}
+
+.project-detail-tab-icon {
+    width: 1.1rem;
+    height: 1.1rem;
+    display: inline-grid;
+    place-items: center;
+    color: inherit;
+    flex: 0 0 auto;
+}
+
+.project-detail-tab-copy {
+    line-height: 1;
+}
+
+.project-detail-tab-count {
+    display: inline-grid;
+    place-items: center;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 6px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: rgba(var(--accent-rgb), 0.1);
+    color: var(--accent);
+}
+
+.project-detail-tab-panels {
+    display: grid;
+    gap: 22px;
+}
+
+.project-detail-tab-panel {
+    display: grid;
+    gap: 22px;
+}
+
+.project-detail-tab-panel.hidden {
+    display: none;
+}
+
+.project-detail-gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 14px;
+}
+
+.project-detail-gallery-grid--full {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.project-detail-media-card,
+.project-detail-video-card {
+    margin: 0;
+    display: grid;
+    gap: 10px;
+    padding: 14px;
+    border-radius: 20px;
+    background: linear-gradient(180deg, rgba(var(--surface-rgb), 0.98), rgba(var(--surface-rgb), 0.92));
+    border: 1px solid var(--border);
+    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.06);
+}
+
+.project-detail-media-frame,
+.project-detail-video-frame {
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #0f172a;
+    aspect-ratio: 16 / 10;
+}
+
+.project-detail-media-frame img,
+.project-detail-video-frame video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.project-detail-media-card figcaption,
+.project-detail-video-meta {
+    display: grid;
+    gap: 4px;
+}
+
+.project-detail-media-card figcaption strong,
+.project-detail-video-meta strong {
+    font-size: 0.96rem;
+    color: var(--text);
+}
+
+.project-detail-media-card figcaption span,
+.project-detail-video-meta span {
+    color: var(--muted);
+    font-size: 0.82rem;
+}
+
+.project-detail-video-list {
+    display: grid;
+    gap: 14px;
+}
+
+.project-detail-video-list--stacked {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+.project-detail-thumb--large {
+    appearance: none;
+    padding: 0;
+    border: 2px solid var(--border);
+    overflow: hidden;
+    background: var(--surface);
+    cursor: pointer;
+}
+
+.project-detail-thumb--large img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.project-detail-thumb--large.active {
+    border-color: var(--accent);
+    box-shadow: 0 12px 26px rgba(var(--accent-rgb), 0.12);
+}
+
 .project-detail-hero {
     display: grid;
     grid-template-columns: minmax(0, 1.15fr) auto;

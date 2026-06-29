@@ -619,81 +619,150 @@ function mncProjectCard(project, index = 0) {
 
 function buildProjectDetailMarkup(project) {
     const technologies = splitTechnologies(project);
-    const imageUrl = project?.imageFile?.downloadUrl || project?.imageUrl || "";
-    const videoUrl = project?.videoFile?.downloadUrl || project?.videoUrl || "";
+    const imageFiles = Array.isArray(project?.imageFiles) && project.imageFiles.length
+        ? project.imageFiles.filter(Boolean)
+        : project?.imageFile
+            ? [project.imageFile]
+            : [];
+    const videoFiles = Array.isArray(project?.videoFiles) && project.videoFiles.length
+        ? project.videoFiles.filter(Boolean)
+        : project?.videoFile
+            ? [{ title: project.videoFile.originalFileName || "Video", videoFile: project.videoFile }]
+            : [];
+    const imageUrl = imageFiles[0]?.downloadUrl || project?.imageUrl || "";
+    const primaryVideoUrl = videoFiles[0]?.videoFile?.downloadUrl || "";
     const imageFallback = "/api/v1/assets/images/profile-placeholder.jpg";
     const highlights = projectHighlights(project);
-    const mediaPreviews = [
-        imageUrl ? `
-        <div class="project-detail-gallery">
-            <span class="project-detail-section-label">Preview</span>
-            <div class="project-detail-gallery-frame has-image">
-                <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(project.title)} preview image" onerror="this.onerror=null;this.src='${imageFallback}';">
-            </div>
-        </div>
-        ` : "",
-        videoUrl ? `
-        <div class="project-detail-gallery">
-            <span class="project-detail-section-label">Video Preview</span>
-            <div class="project-detail-gallery-frame has-image" style="background:#000;">
-                <video src="${escapeHtml(videoUrl)}" controls preload="metadata" aria-label="${escapeHtml(project.title)} video preview" style="width:100%;height:100%;min-height:240px;object-fit:cover;display:block;background:#000;"></video>
-            </div>
-        </div>
-        ` : ""
-    ].filter(Boolean).join("");
-    const paragraphs = [project.shortDescription, project.detailedDescription]
+    const galleryImageFiles = imageFiles.length
+        ? imageFiles
+        : imageUrl
+            ? [{
+                downloadUrl: imageUrl,
+                originalFileName: project?.title ? `${project.title} image` : "Project image"
+            }]
+            : [];
+    const overviewParagraphs = [project.shortDescription, project.detailedDescription]
         .filter(Boolean)
         .map((item) => String(item).trim())
         .filter(Boolean);
-    return `
-        <div class="project-detail-shell">
-            <div class="project-detail-hero">
-                <div class="project-detail-hero-main">
-                    <div class="project-detail-media project-detail-media--hero ${imageUrl ? "has-image" : ""}">
-                        ${imageUrl
-                            ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(project.title)} preview" onerror="this.onerror=null;this.src='${imageFallback}';">`
+    const overviewTabLabel = `
+        <span class="project-detail-tab-icon"><i class="fa-solid fa-circle-info"></i></span>
+        <span class="project-detail-tab-copy">Overview</span>
+    `;
+    const imageTabLabel = `
+        <span class="project-detail-tab-icon"><i class="fa-solid fa-images"></i></span>
+        <span class="project-detail-tab-copy">Images</span>
+        ${galleryImageFiles.length ? `<span class="project-detail-tab-count">${galleryImageFiles.length}</span>` : ""}
+    `;
+    const videoTabLabel = `
+        <span class="project-detail-tab-icon"><i class="fa-solid fa-video"></i></span>
+        <span class="project-detail-tab-copy">Videos</span>
+        ${videoFiles.length ? `<span class="project-detail-tab-count">${videoFiles.length}</span>` : ""}
+    `;
+
+    const overviewPanel = `
+        <div class="project-detail-hero">
+            <div class="project-detail-hero-main">
+                <div class="project-detail-media project-detail-media--hero ${imageUrl || primaryVideoUrl ? "has-image" : ""}">
+                    ${imageUrl
+                        ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(project.title)} preview" onerror="this.onerror=null;this.src='${imageFallback}';">`
+                        : primaryVideoUrl
+                            ? `<video src="${escapeHtml(primaryVideoUrl)}" controls preload="metadata" aria-label="${escapeHtml(project.title)} video preview" style="width:100%;height:100%;object-fit:cover;display:block;background:#000;"></video>`
                             : `<img src="${imageFallback}" alt="${escapeHtml(project.title)} preview">`}
-                    </div>
-                    <div class="project-detail-hero-copy">
-                        <p class="eyebrow" style="color: var(--accent-alt); margin-bottom: 2px;">PROJECT DETAILS</p>
-                        <h2 style="margin: 0;">${escapeHtml(project.title || "Untitled project")}</h2>
-                        <p class="project-detail-subtitle">${escapeHtml(project.shortDescription || "No short description available.")}</p>
-                    </div>
                 </div>
-                <div class="project-detail-hero-aside">
-                    <span class="chip">${project.featured ? "Featured" : "Selected work"}</span>
-                    <span class="chip">${project.status || "Unknown status"}</span>
-                    <span class="chip">${project.category || "Uncategorized"}</span>
+                <div class="project-detail-hero-copy">
+                    <p class="eyebrow" style="color: var(--accent-alt); margin-bottom: 2px;">PROJECT DETAILS</p>
+                    <h2 style="margin: 0;">${escapeHtml(project.title || "Untitled project")}</h2>
+                    <p class="project-detail-subtitle">${escapeHtml(project.shortDescription || "No short description available.")}</p>
                 </div>
             </div>
-            <div class="project-detail-grid">
-                ${projectInsightRows(project).map((row) => `
-                    <article class="project-detail-card">
-                        <span>${row.label}</span>
-                        <strong>${row.value}</strong>
-                    </article>
+            <div class="project-detail-hero-aside">
+                <span class="chip">${project.featured ? "Featured" : "Selected work"}</span>
+                <span class="chip">${project.status || "Unknown status"}</span>
+                <span class="chip">${project.category || "Uncategorized"}</span>
+            </div>
+        </div>
+        <div class="project-detail-grid">
+            ${projectInsightRows(project).map((row) => `
+                <article class="project-detail-card">
+                    <span>${row.label}</span>
+                    <strong>${row.value}</strong>
+                </article>
+            `).join("")}
+        </div>
+        <div class="project-detail-body">
+            <div class="project-detail-copy">
+                ${overviewParagraphs.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}
+            </div>
+            ${highlights.length ? `
+            <div class="project-detail-highlights">
+                <span class="project-detail-section-label">Highlights</span>
+                <ul class="project-detail-highlight-list">
+                    ${highlights.map((highlight) => `<li>${escapeHtml(highlight)}</li>`).join("")}
+                </ul>
+            </div>
+            ` : ""}
+            <div class="mnc-card-tags">
+                ${technologies.map((tech) => `<span class="mnc-tech-tag">${escapeHtml(tech)}</span>`).join("")}
+            </div>
+        </div>
+        <div class="project-detail-actions">
+            ${project.githubUrl ? `<a class="button button-outline" href="${project.githubUrl}" target="_blank" rel="noreferrer">GitHub</a>` : ""}
+            ${project.liveUrl ? `<a class="button button-outline" href="${project.liveUrl}" target="_blank" rel="noreferrer">Live</a>` : ""}
+        </div>
+    `;
+
+    const imagesPanel = galleryImageFiles.length ? `
+        <div class="project-detail-gallery">
+            <div class="project-detail-gallery-grid project-detail-gallery-grid--full">
+                ${galleryImageFiles.map((image, index) => `
+                    <figure class="project-detail-media-card">
+                        <div class="project-detail-media-frame">
+                            <img src="${escapeHtml(image.downloadUrl || "")}" alt="${escapeHtml(project.title)} image ${index + 1}" onerror="this.onerror=null;this.src='${imageFallback}';">
+                        </div>
+                        <figcaption>
+                            <strong>Image ${index + 1}</strong>
+                            <span>${escapeHtml(image.originalFileName || `Image ${index + 1}`)}</span>
+                        </figcaption>
+                    </figure>
                 `).join("")}
             </div>
-            <div class="project-detail-body">
-                <div class="project-detail-copy">
-                    ${paragraphs.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}
-                </div>
-                ${highlights.length ? `
-                <div class="project-detail-highlights">
-                    <span class="project-detail-section-label">Highlights</span>
-                    <ul class="project-detail-highlight-list">
-                        ${highlights.map((highlight) => `<li>${escapeHtml(highlight)}</li>`).join("")}
-                    </ul>
-                </div>
-                ` : ""}
-                ${mediaPreviews ? `<div class="project-detail-media-grid">${mediaPreviews}</div>` : ""}
-                <div class="mnc-card-tags">
-                    ${technologies.map((tech) => `<span class="mnc-tech-tag">${escapeHtml(tech)}</span>`).join("")}
-                </div>
+        </div>
+    ` : `<div class="project-detail-gallery-empty">No images uploaded for this project.</div>`;
+
+    const videosPanel = videoFiles.length ? `
+        <div class="project-detail-video-list project-detail-video-list--stacked">
+            ${videoFiles.map((video, index) => `
+                <article class="project-detail-video-card project-detail-video-card--stacked">
+                    <div class="project-detail-video-frame">
+                        <video src="${escapeHtml(video.videoFile?.downloadUrl || "")}" controls preload="metadata" aria-label="${escapeHtml(video.title || project.title || "Project")} video preview"></video>
+                    </div>
+                    <div class="project-detail-video-meta">
+                        <strong>${escapeHtml(video.title || `Video ${index + 1}`)}</strong>
+                        <span>${escapeHtml(video.videoFile?.originalFileName || "Uploaded video")}</span>
+                    </div>
+                </article>
+            `).join("")}
+        </div>
+    ` : `<div class="project-detail-gallery-empty">No videos uploaded for this project.</div>`;
+
+    return `
+        <div class="project-detail-shell">
+            <div class="project-detail-tabs" role="tablist" aria-label="Project details sections">
+                <button class="project-detail-tab is-active" type="button" data-detail-tab="overview" role="tab" aria-selected="true" tabindex="0">${overviewTabLabel}</button>
+                <button class="project-detail-tab" type="button" data-detail-tab="images" role="tab" aria-selected="false" tabindex="-1">${imageTabLabel}</button>
+                <button class="project-detail-tab" type="button" data-detail-tab="videos" role="tab" aria-selected="false" tabindex="-1">${videoTabLabel}</button>
             </div>
-            <div class="project-detail-actions">
-                ${project.githubUrl ? `<a class="button button-outline" href="${project.githubUrl}" target="_blank" rel="noreferrer">GitHub</a>` : ""}
-                ${project.liveUrl ? `<a class="button button-outline" href="${project.liveUrl}" target="_blank" rel="noreferrer">Live</a>` : ""}
+            <div class="project-detail-tab-panels">
+                <section class="project-detail-tab-panel is-active" data-detail-panel="overview">
+                    ${overviewPanel}
+                </section>
+                <section class="project-detail-tab-panel hidden" data-detail-panel="images">
+                    ${imagesPanel}
+                </section>
+                <section class="project-detail-tab-panel hidden" data-detail-panel="videos">
+                    ${videosPanel}
+                </section>
             </div>
         </div>
     `;
@@ -1073,6 +1142,24 @@ function bindProjectInteractions() {
             }
             state.projectDetail = project;
             detailContent.innerHTML = buildProjectDetailMarkup(project);
+            const tabs = detailContent.querySelectorAll(".project-detail-tab");
+            const panels = detailContent.querySelectorAll(".project-detail-tab-panel");
+            const switchDetailTab = (tabName) => {
+                tabs.forEach((tab) => {
+                    const active = tab.dataset.detailTab === tabName;
+                    tab.classList.toggle("is-active", active);
+                    tab.setAttribute("aria-selected", String(active));
+                    tab.setAttribute("tabindex", active ? "0" : "-1");
+                });
+                panels.forEach((panel) => {
+                    const active = panel.dataset.detailPanel === tabName;
+                    panel.classList.toggle("hidden", !active);
+                    panel.classList.toggle("is-active", active);
+                });
+            };
+            tabs.forEach((tab) => {
+                tab.addEventListener("click", () => switchDetailTab(tab.dataset.detailTab || "overview"));
+            });
             detailModal.classList.remove("hidden");
             document.body.style.overflow = "hidden";
             document.querySelectorAll(".project-more-toggle").forEach((toggle) => {

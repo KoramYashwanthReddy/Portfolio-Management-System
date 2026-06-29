@@ -1,12 +1,14 @@
 package com.yashwanth.portfolio.service.impl;
 
 import com.yashwanth.portfolio.dto.request.ProjectRequest;
+import com.yashwanth.portfolio.dto.request.ProjectVideoRequest;
 import com.yashwanth.portfolio.dto.response.PageResponse;
 import com.yashwanth.portfolio.dto.response.ProjectResponse;
 import com.yashwanth.portfolio.entity.Project;
 import com.yashwanth.portfolio.entity.ProjectCategory;
 import com.yashwanth.portfolio.entity.ProjectStatus;
 import com.yashwanth.portfolio.entity.StoredFile;
+import com.yashwanth.portfolio.entity.ProjectVideo;
 import com.yashwanth.portfolio.exception.ResourceNotFoundException;
 import com.yashwanth.portfolio.mapper.PortfolioMapper;
 import com.yashwanth.portfolio.repository.ProjectRepository;
@@ -126,17 +128,48 @@ public class ProjectServiceImpl implements ProjectService {
         project.setTechnologies(request.technologies());
         project.setGithubUrl(request.githubUrl());
         project.setLiveUrl(request.liveUrl());
-        project.setVideoUrl(request.videoUrl());
         project.setCategory(request.category());
         project.setStatus(request.status());
         project.setFeatured(request.featured());
         project.setDisplayed(request.displayed() == null ? Boolean.TRUE : request.displayed());
         project.setCompletionDate(request.completionDate());
-        StoredFile imageFile = request.imageFileId() != null ? fileStorageService.getById(request.imageFileId()) : null;
-        StoredFile videoFile = request.videoFileId() != null ? fileStorageService.getById(request.videoFileId()) : null;
-        project.setImageFile(imageFile);
-        project.setImageUrl(imageFile != null ? "/api/v1/public/files/" + imageFile.getId() + "/download" : request.imageUrl());
-        project.setVideoFile(videoFile);
-        project.setVideoUrl(videoFile != null ? "/api/v1/public/files/" + videoFile.getId() + "/download" : request.videoUrl());
+
+        List<StoredFile> imageFiles = new ArrayList<>();
+        if (request.imageFileIds() != null) {
+            for (Long id : request.imageFileIds()) {
+                imageFiles.add(fileStorageService.getById(id));
+            }
+        }
+        project.getImageFiles().clear();
+        project.getImageFiles().addAll(imageFiles);
+
+        List<ProjectVideo> videoFiles = new ArrayList<>();
+        List<ProjectVideoRequest> requestedVideos = request.videoFiles() != null ? request.videoFiles() : List.of();
+        int sortOrder = 0;
+        for (ProjectVideoRequest videoRequest : requestedVideos) {
+            if (videoRequest == null) {
+                continue;
+            }
+            StoredFile videoFile = fileStorageService.getById(videoRequest.videoFileId());
+            ProjectVideo projectVideo = new ProjectVideo();
+            projectVideo.setProject(project);
+            projectVideo.setTitle(videoRequest.title());
+            projectVideo.setVideoFile(videoFile);
+            projectVideo.setSortOrder(sortOrder++);
+            videoFiles.add(projectVideo);
+        }
+        if (videoFiles.isEmpty() && request.videoFileId() != null) {
+            ProjectVideo projectVideo = new ProjectVideo();
+            projectVideo.setProject(project);
+            projectVideo.setTitle(request.title() + " video");
+            projectVideo.setVideoFile(fileStorageService.getById(request.videoFileId()));
+            projectVideo.setSortOrder(0);
+            videoFiles.add(projectVideo);
+        }
+        project.getVideoFiles().clear();
+        for (ProjectVideo video : videoFiles) {
+            video.setProject(project);
+            project.getVideoFiles().add(video);
+        }
     }
 }
