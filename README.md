@@ -4,10 +4,26 @@ Spring Boot based portfolio platform with a public-facing personal website and a
 
 The application exposes REST APIs for portfolio data, authentication, file uploads, contact messages, and dashboard metrics. It also serves a polished static frontend that reads from the same backend.
 
+---
+
+## 📖 Table of Contents
+1. [Overview](#overview)
+2. [Key Features](#key-features)
+3. [Recent Upgrades & Dynamic Features](#recent-upgrades--dynamic-features)
+4. [Tech Stack](#tech-stack)
+5. [Project Architecture](#project-architecture)
+6. [Database Schema & JPA Entities](#database-schema--jpa-entities)
+7. [API Reference](#api-reference)
+8. [Configuration & Environment Variables](#configuration--environment-variables)
+9. [Run Locally](#run-locally)
+10. [Run Tests](#run-tests)
+11. [Security & Stateless Authentication](#security--stateless-authentication)
+
+---
+
 ## Overview
 
 This project is designed to help a developer present and manage a professional portfolio from one place. It includes:
-
 - A public website for showcasing about information, skills, projects, certifications, and resume details.
 - An admin area for maintaining content without changing the frontend code.
 - JWT-based authentication with access and refresh tokens.
@@ -15,196 +31,186 @@ This project is designed to help a developer present and manage a professional p
 - File storage for resumes and other uploaded assets.
 - Swagger/OpenAPI documentation for exploring the API.
 
+---
+
 ## Key Features
 
-- Public portfolio homepage with live backend content.
-- Project catalog with search, filtering, sorting, pagination, and featured project support.
-- Skills, certifications, resume, and about sections managed from the backend.
-- Contact form for receiving messages from visitors.
-- Secure admin dashboard for CRUD operations on portfolio content.
-- Redesigned, interactive Project Notes console with tabbed views (Overview, About, Tech Stack, Features, Gallery, Notes status-filtered grid, and chronological timeline history).
-- Multipart file upload support for resumes and media assets.
-- JWT security with stateless sessions and role-protected admin routes.
-- Email support for password recovery flows.
-- Global JSON error handling and consistent API responses.
+- **Public Portfolio Homepage**: Fully dynamic website loaded with live backend database content.
+- **Project Catalog**: Interactive grid with full-text search, category pill filtering, status filters, sorting options, pagination, and featured items.
+- **Dynamic Content Sections**: Live skills metrics, verification-linked certifications, and download-ready resumes.
+- **Visitor Communication**: Integrated contact/feedback channels delivering messages directly to the admin dashboard.
+- **Secure Admin Panel**: Responsive layout for managing profile metadata, uploading certificates, starring projects, and editing technical skill points.
+- **File Upload Engine**: Handles PDF documents and image assets securely using categorized uploads.
+
+---
+
+## Recent Upgrades & Dynamic Features
+
+This section highlights the advanced frontend interactions and responsive design systems added recently:
+
+### 1. Multi-Directional Staggered Marquee
+* **Double-Row Marquee**: Refactored the technology banner into two rows scrolling in opposite directions (Row 1 left, Row 2 right).
+* **Vibrant Styling**: Large tech labels (`2.2rem`) separated by bright violet dots (`var(--accent)`).
+* **Fade Masks**: Smooth side fading using CSS gradient masking (`mask-image: linear-gradient(...)`) so keywords fade gracefully at the viewport boundaries.
+
+### 2. Live "Currently Building" Card Overlay
+* **Automated JPA Status Sync**: Links the profile card overlay pill directly to the database. It dynamically queries your project records and selects the first project marked with `status = "IN_PROGRESS"`.
+* **Designation Fallback**: Automatically displays your default professional title if no project is currently in the active development phase.
+
+### 3. Glassmorphic Aura Background
+* **Living Neon Backdrops**: Added a multicolor pulsing glow (Indigo -> Violet -> Rose pink) behind the profile card.
+* **Organic Pulse Keyframes**: Animations slowly resize and translation-shift the glows (`profileGlowPulse`) to breathe life into the landing screen.
+
+### 4. Interactive Image Lightbox
+* **Fullscreen Lightbox Gallery**: Custom JS engine mapping all screenshot thumbnails and hero media to a fullscreen overlay.
+* **Backdrop Filters**: Uses glass blur filters, zoom transitions, keyboard Escape hooks, and body scroll prevention for an immersive viewer experience.
+
+### 5. Responsive Top Nav Header
+* **Mobile Breakpoint Adaptability**: Transforms the vertical dashboard admin sidebar into a sticky horizontal mobile navigation bar on smaller viewports.
+* **Swipe-to-Scroll Links**: Standardized navigation pill decks for mobile screens with circular responsive utility buttons.
+
+---
 
 ## Tech Stack
 
-- Java 17
-- Spring Boot 3.5.4
-- Spring Web
-- Spring Data JPA
-- Spring Security
-- Spring Validation
-- Spring Mail
-- MySQL
-- H2 for tests
-- JJWT for token handling
-- springdoc-openapi for API docs
-- Maven
+* **Backend Core**: Java 17, Spring Boot 3.5.4
+* **Security & Auth**: Spring Security, JJWT (JSON Web Tokens)
+* **Persistence**: Spring Data JPA, Hibernate, MySQL, H2 (for unit and integration tests)
+* **API Documentation**: Springdoc OpenAPI, Swagger UI
+* **Frontend**: Vanilla HTML5, CSS3 (Custom design systems, custom media queries, variables), Modern ES6 JavaScript
 
-## Project Structure
+---
 
-- `src/main/java/com/yashwanth/portfolio/controller` - REST controllers for public and admin features.
-- `src/main/java/com/yashwanth/portfolio/service` - business logic and service contracts.
-- `src/main/java/com/yashwanth/portfolio/service/impl` - service implementations.
-- `src/main/java/com/yashwanth/portfolio/entity` - JPA entities.
-- `src/main/java/com/yashwanth/portfolio/repository` - Spring Data repositories.
-- `src/main/java/com/yashwanth/portfolio/security` - JWT and Spring Security configuration.
-- `src/main/java/com/yashwanth/portfolio/dto` - request and response models.
-- `src/main/resources/static` - public site and admin UI assets.
-- `src/test/java` - integration and application tests.
+## Project Architecture
 
-## Main Modules
+The codebase adheres to a modular, layered clean architecture:
+
+```
+src/main/java/com/yashwanth/portfolio/
+├── controller/        # REST Controllers exposing public and admin API endpoints
+├── service/           # Service interfaces describing business logic rules
+│   └── impl/          # JPA-backed implementations of the service layer
+├── entity/            # JPA Entities mapped to MySQL database tables
+├── repository/        # Spring Data JPA Repository definitions
+├── security/          # Security filters, CORS configurations, and JWT token utilities
+├── dto/               # Data Transfer Objects for clean request/response serialization
+└── exception/         # Centralized global handler converting errors to structured JSON
+```
+
+The frontend assets are contained within:
+```
+src/main/resources/
+├── static/            # SPA web root serving HTML templates
+│   ├── admin/         # Admin console HTML views
+│   └── assets/        # Shared assets
+│       ├── css/       # UI styling (global.css, dashboard.css, components.css, responsive.css)
+│       └── js/        # Application engines (main.js, admin.js)
+```
+
+---
+
+## Database Schema & JPA Entities
+
+* **`About`**: Manages profile metadata, bios, experience counters, designations, and social media handles.
+* **`Project`**: Core project records, category fields, GitHub links, completion dates, and display state flags.
+* **`ProjectNotes`**: Detailed project diaries or release logs linked to parent projects, featuring status groupings.
+* **`Skill`**: Stores technical skills, categories, proficiency percentages, and display orders.
+* **`Certification`**: Stores verified credentials, issuer badges, issue dates, expiry details, and file references.
+* **`FileEntity`**: File entity mapping disk files to URLs, restricting file uploads to allowed content types (images/PDFs).
+* **`Message`**: Stores incoming inquiries (names, subjects, emails, body, read status, starred flags).
+
+---
+
+## API Reference
 
 ### Public APIs
+* `GET /api/v1/public/about` - Fetch profile biography and summary details.
+* `GET /api/v1/public/dashboard` - Retrieve aggregated public homepage metrics.
+* `GET /api/v1/public/projects` - Paginated catalog with parameters for search, category, status, and sorting.
+* `GET /api/v1/public/projects/featured` - Fetch starred/selected portfolio items.
+* `GET /api/v1/public/certifications` - Fetch list of active certificates.
+* `GET /api/v1/public/resume/download` - Stream PDF resume file.
+* `POST /api/v1/public/contact` - Submit contact messages.
 
-- `GET /api/v1/public/about`
-- `GET /api/v1/public/dashboard`
-- `GET /api/v1/public/skills`
-- `GET /api/v1/public/projects`
-- `GET /api/v1/public/projects/featured`
-- `GET /api/v1/public/projects/{id}`
-- `GET /api/v1/public/certifications`
-- `GET /api/v1/public/resume`
-- `GET /api/v1/public/resume/download`
-- `POST /api/v1/public/contact`
-- `GET /api/v1/public/files/{id}/download`
+### Authentication APIs
+* `POST /api/v1/auth/login` - Authenticate and retrieve Access + Refresh tokens.
+* `POST /api/v1/auth/refresh` - Swap refresh token for new access tokens.
+* `POST /api/v1/auth/logout` - Invalidate session.
+* `POST /api/v1/auth/forgot-password` - Request password recovery email.
+* `POST /api/v1/auth/reset-password` - Submit new password with validation token.
 
-### Authentication
+### Admin APIs (Protected)
+* `GET|PUT /api/v1/admin/about` - View/Update biography profile info.
+* `GET|POST|PUT|DELETE /api/v1/admin/skills` - CRUD endpoints for technical skill metrics.
+* `GET|POST|PUT|DELETE /api/v1/admin/projects` - CRUD endpoints for portfolio project entries.
+* `GET|POST|PUT|DELETE /api/v1/admin/certifications` - CRUD endpoints for credentials.
+* `GET|PATCH|DELETE /api/v1/admin/messages` - Retrieve, star, archive, or delete inbox inquiries.
 
-- `POST /api/v1/auth/login`
-- `POST /api/v1/auth/refresh`
-- `POST /api/v1/auth/forgot-password`
-- `POST /api/v1/auth/reset-password`
-- `POST /api/v1/auth/logout`
-- `POST /api/v1/auth/change-password`
-- `GET /api/v1/auth/me`
-- `GET /api/v1/auth/validate`
+---
 
-### Admin APIs
+## Configuration & Environment Variables
 
-- `GET /api/v1/admin/dashboard`
-- `GET|PUT /api/v1/admin/about`
-- `GET|POST|PUT|DELETE /api/v1/admin/skills`
-- `GET|POST|PUT|DELETE /api/v1/admin/projects`
-- `GET|POST|PUT|DELETE /api/v1/admin/projects/{projectId}/notes`
-- `GET|POST|PUT|DELETE /api/v1/admin/certifications`
-- `GET|POST /api/v1/admin/resume`
-- `POST /api/v1/admin/files`
-- `GET|PATCH|DELETE /api/v1/admin/messages`
+Create or configure `src/main/resources/application.properties` with the following variables:
 
-## Prerequisites
+```properties
+# MySQL Datasource Connection
+spring.datasource.url=jdbc:mysql://localhost:3306/portfolio_db?useSSL=false&serverTimezone=UTC
+spring.datasource.username=root
+spring.datasource.password=your_mysql_password
 
-- Java 17 or newer
-- Maven 3.9+ or the included Maven Wrapper
-- MySQL 8+
-- SMTP credentials for password reset email delivery
+# JWT Security Config
+app.security.jwt.secret=your_super_secret_base64_encoded_jwt_key_with_at_least_256_bits
+app.security.jwt.access-token-expiration-ms=900000
+app.security.jwt.refresh-token-expiration-ms=604800000
 
-## Configuration
+# Mail Configuration (SMTP)
+spring.mail.host=smtp.example.com
+spring.mail.port=587
+spring.mail.username=your_email@example.com
+spring.mail.password=your_email_password
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
 
-The application reads its configuration from `src/main/resources/application.properties`.
+# Initial Admin Seeding Data
+app.admin.email=admin@example.com
+app.admin.password=SecureAdminPassword123
+app.admin.name=Koram Yashwanth Reddy
 
-Update the following values for your environment:
+# Local Upload Directory Path
+app.file.upload-dir=./uploads
+```
 
-- `spring.datasource.url`
-- `spring.datasource.username`
-- `spring.datasource.password`
-- `spring.mail.host`
-- `spring.mail.port`
-- `spring.mail.username`
-- `spring.mail.password`
-- `app.security.jwt.secret`
-- `app.admin.email`
-- `app.admin.password`
-- `app.admin.name`
-- `app.file.upload-dir`
-
-Notes:
-
-- The application runs with a context path of `/api/v1`.
-- Uploaded files are stored in the directory defined by `app.file.upload-dir`.
-- Allowed upload types are restricted to images and PDFs.
+---
 
 ## Run Locally
 
-1. Clone the repository.
-2. Create the MySQL database, or allow the application to create it automatically.
-3. Update `src/main/resources/application.properties` with your local credentials.
-4. Start the application:
+1. **Verify Prerequisites**: Java 17+, Maven 3.8+, MySQL 8+ installed and running.
+2. **Build Project**:
+   ```bash
+   ./mvnw clean package
+   ```
+3. **Execute Application**:
+   ```bash
+   ./mvnw spring-boot:run
+   ```
+4. **Access Endpoints**:
+   * Home Landing Webpage: [http://localhost:8080/](http://localhost:8080/)
+   * Admin Login Console: [http://localhost:8080/admin/login.html](http://localhost:8080/admin/login.html)
+   * Swagger Documentation Panel: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
 
-```bash
-./mvnw spring-boot:run
-```
-
-On Windows:
-
-```bash
-mvnw.cmd spring-boot:run
-```
-
-Open the application at:
-
-- Public site: `http://localhost:8080/api/v1/`
-- Swagger UI: `http://localhost:8080/api/v1/swagger-ui.html`
-- OpenAPI JSON: `http://localhost:8080/api/v1/v3/api-docs`
+---
 
 ## Run Tests
 
+Execute the automated test suite covering authentication filters, JWT validation logic, and entity CRUD transactions using H2:
 ```bash
 ./mvnw test
 ```
 
-The test profile uses an in-memory H2 database and a separate test admin user.
+---
 
-## Authentication Summary
+## Security & Stateless Authentication
 
-- Login returns an access token and a refresh token.
-- Access tokens are used in the `Authorization: Bearer <token>` header.
-- Refresh tokens can be exchanged for new tokens.
-- Admin endpoints require authentication.
-- The security layer is stateless and backed by JWT filters.
-
-## File Handling
-
-- Resume uploads are handled as multipart form data.
-- General file uploads are supported from the admin area.
-- Public downloads stream files directly from storage with the correct content type.
-
-## API Response Format
-
-Most endpoints return a consistent wrapper structure:
-
-- `success`
-- `message`
-- `data`
-
-This makes the frontend and any external client easier to integrate.
-
-## Frontend Notes
-
-The static frontend is served from `src/main/resources/static` and includes:
-
-- A public landing page.
-- Admin login and dashboard pages.
-- Client-side scripts for fetching portfolio data from the backend.
-- Responsive styling, theme toggling, and animation support.
-
-## Testing
-
-The repository includes integration coverage for:
-
-- Login, token refresh, and current-user profile flow.
-- Unauthorized request handling.
-- Public API behavior.
-
-## Security Notes
-
-- CSRF is disabled because the API is stateless and JWT-based.
-- Public endpoints are explicitly whitelisted.
-- Password reset and login-lock logic are built into the authentication service.
-- For production, externalize secrets instead of keeping them in source control.
-
-## License
-
-No license has been defined in this repository yet.
+* **Stateless Architecture**: CSRF protection is disabled; sessions are entirely stateless, relying on client-side JWT authorization headers.
+* **Token Handshake**: Login grants a short-lived Access Token and a long-lived HTTP-only Refresh Token.
+* **Granular Whitelist**: Public routes (landing pages, public download folders, Swagger paths) are explicitly bypassed in the security filters. All admin dashboards and operations require authenticated credentials.
