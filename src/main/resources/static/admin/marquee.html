@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script>
+        try {
+            const auth = JSON.parse(localStorage.getItem("pms-auth") || "{}");
+            if (!auth.accessToken) {
+                window.location.replace("/api/v1/admin/login.html");
+            }
+        } catch {
+            window.location.replace("/api/v1/admin/login.html");
+        }
+        (function() {
+            var t = localStorage.getItem("pms-theme") || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+            document.documentElement.dataset.theme = t;
+            document.documentElement.style.backgroundColor = t === "dark" ? "#000000" : "#fdfdfd";
+        })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrolling Words</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/api/v1/assets/css/variables.css">
+    <link rel="stylesheet" href="/api/v1/assets/css/global.css">
+    <link rel="stylesheet" href="/api/v1/assets/css/components.css">
+    <link rel="stylesheet" href="/api/v1/assets/css/dashboard.css">
+    <link rel="stylesheet" href="/api/v1/assets/css/responsive.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script type="module" src="/api/v1/assets/js/admin.js"></script>
+</head>
+<body data-page="marquee" class="admin-body marquee-admin-page">
+    <div class="admin-shell">
+        <aside class="admin-sidebar"></aside>
+        <main class="admin-main">
+            <section class="admin-header marquee-hero panel">
+                <div class="marquee-hero-copy">
+                    <p class="eyebrow">About API</p>
+                    <h1>Scrolling words</h1>
+                    <p class="section-copy">Edit the exact words that scroll across the public portfolio ribbon. Keep them short, comma-separated, and on brand.</p>
+                </div>
+                <div class="marquee-hero-meta">
+                    <span class="chip"><i class="fa-solid fa-wave-square" style="margin-right:6px;"></i>Public ribbon</span>
+                    <span class="chip"><i class="fa-solid fa-pen-to-square" style="margin-right:6px;"></i>Admin editable</span>
+                </div>
+            </section>
+
+            <section id="marquee-summary" class="panel marquee-summary-panel"></section>
+
+            <section class="marquee-admin-grid">
+                <section class="panel form-panel marquee-editor-panel">
+                    <div class="form-hero">
+                        <div>
+                            <p class="eyebrow">Marquee editor</p>
+                            <h2>Public ribbon text</h2>
+                            <p class="form-help">These words are stored with your About profile, but edited here in a dedicated admin section.</p>
+                        </div>
+                        <div class="table-actions marquee-toolbar">
+                            <button id="marquee-reload-btn" class="button button-ghost" type="button"><i class="fa-solid fa-rotate-right" style="margin-right:6px;"></i>Reload</button>
+                            <button id="marquee-reset-btn" class="button button-ghost" type="button"><i class="fa-solid fa-undo" style="margin-right:6px;"></i>Reset</button>
+                        </div>
+                    </div>
+
+                    <form id="marquee-form" class="welcome-contact-form" novalidate>
+                        <div class="marquee-editor-content">
+                            <div class="marquee-current-strip" aria-label="Current scrolling words preview"></div>
+                            <label class="marquee-field">
+                                <span>Scrolling marquee words</span>
+                                <textarea class="input textarea marquee-textarea" name="marqueeWords" required placeholder="Spring Boot, REST APIs, Microservices, Backend Architecture, Systems Engineering, Java Enterprise"></textarea>
+                            </label>
+                            <p class="form-help">Use commas between words. The public strip will scroll only these entries.</p>
+                        </div>
+                        <div class="table-actions marquee-form-actions">
+                            <button class="button button-primary" type="submit"><i class="fa-solid fa-floppy-disk" style="margin-right:6px;"></i>Save words</button>
+                        </div>
+                        <p id="marquee-status" class="form-status" aria-live="polite"></p>
+                    </form>
+                </section>
+
+                <section class="panel marquee-preview-panel">
+                    <div class="form-hero" style="margin-bottom: 0;">
+                        <div>
+                            <p class="eyebrow">Live Preview</p>
+                            <h2>Ribbon appearance</h2>
+                            <p class="form-help">This mirrors the public site so you can see spacing and rhythm before saving.</p>
+                        </div>
+                    </div>
+                    <div id="marquee-preview" class="marquee-preview-stage"></div>
+                </section>
+            </section>
+        </main>
+    </div>
+</body>
+</html>

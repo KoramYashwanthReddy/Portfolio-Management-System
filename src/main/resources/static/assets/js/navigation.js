@@ -2,35 +2,72 @@ export function initNavigation() {
     const nav = document.getElementById("site-nav") || document.querySelector(".site-nav");
     const toggle = document.getElementById("nav-toggle") || document.querySelector(".nav-toggle");
     const header = document.querySelector(".site-header");
+    const moreWrap = document.querySelector(".nav-more-wrap");
+    const moreToggle = document.getElementById("nav-more-toggle");
+    const moreMenu = document.getElementById("nav-more-menu");
 
     if (!nav || !toggle) {
         return;
     }
 
+    if (nav.dataset.navBound === "true") {
+        return;
+    }
+    nav.dataset.navBound = "true";
+
     const indicator = document.createElement("div");
     indicator.className = "section-indicator";
     indicator.setAttribute("aria-live", "polite");
-    indicator.textContent = "Home";
+    indicator.textContent = "I AM";
+    header?.querySelectorAll(".section-indicator").forEach((existing) => existing.remove());
     if (header) {
         header.insertBefore(indicator, header.querySelector(".header-actions") || header.children[header.children.length - 1]);
     }
 
     // ── Mobile drawer open/close ──────────────────────────────────────────
     function openNav() {
+        closeMoreMenu();
         nav.classList.add("open");
         toggle.setAttribute("aria-expanded", "true");
         document.body.classList.add("nav-open");
     }
 
     function closeNav() {
+        closeMoreMenu();
         nav.classList.remove("open");
         toggle.setAttribute("aria-expanded", "false");
         document.body.classList.remove("nav-open");
     }
 
+    function openMoreMenu() {
+        if (!moreWrap || !moreToggle || !moreMenu) {
+            return;
+        }
+        moreWrap.classList.add("open");
+        moreToggle.setAttribute("aria-expanded", "true");
+    }
+
+    function closeMoreMenu() {
+        if (!moreWrap || !moreToggle || !moreMenu) {
+            return;
+        }
+        moreWrap.classList.remove("open");
+        moreToggle.setAttribute("aria-expanded", "false");
+    }
+
     toggle.addEventListener("click", () => {
         const isOpen = nav.classList.contains("open");
         isOpen ? closeNav() : openNav();
+    });
+
+    moreToggle?.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!moreMenu) {
+            return;
+        }
+        const isOpen = moreWrap?.classList.contains("open");
+        isOpen ? closeMoreMenu() : openMoreMenu();
     });
 
     document.addEventListener("click", (event) => {
@@ -39,14 +76,28 @@ export function initNavigation() {
         closeNav();
     });
 
+    document.addEventListener("click", (event) => {
+        if (!moreWrap || !moreMenu || !moreWrap.classList.contains("open")) {
+            return;
+        }
+        if (moreWrap.contains(event.target)) {
+            return;
+        }
+        closeMoreMenu();
+    });
+
     document.addEventListener("keydown", (event) => {
         if (event.key === "Escape" && nav.classList.contains("open")) {
             closeNav();
+        }
+        if (event.key === "Escape" && moreWrap?.classList.contains("open")) {
+            closeMoreMenu();
         }
     });
 
     nav.querySelectorAll("a").forEach((link) => {
         link.addEventListener("click", () => closeNav());
+        link.addEventListener("click", () => closeMoreMenu());
     });
 
     // ── Active link tracking ──────────────────────────────────────────────
@@ -56,11 +107,15 @@ export function initNavigation() {
 
     function labelForId(id) {
         const mapping = {
-            "command-center": "Home",
+            "command-center": "I AM",
             overview: "About",
             ecosystem: "Stack",
+            systems: "Projects",
             knowledge: "Resume",
-            collaboration: "Contact"
+            certifications: "Certificates",
+            faq: "FAQ",
+            collaboration: "Contact",
+            feedback: "Feedback"
         };
         return mapping[id] || id.replace(/-/g, " ");
     }
@@ -93,16 +148,19 @@ export function initNavigation() {
         }
 
         let activeSection = sections[0];
-        let bestScore = -Infinity;
+        const markerLine = Math.max(120, Math.round(window.innerHeight * 0.28));
 
         sections.forEach((section) => {
             const rect = section.getBoundingClientRect();
-            const visibleHeight = Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0);
-            const ratio = rect.height ? visibleHeight / rect.height : 0;
-            const distance = Math.abs(rect.top - 140);
-            const score = ratio * 100 - distance / 10;
-            if (score > bestScore) {
-                bestScore = score;
+            const inMarkerBand = rect.top <= markerLine && rect.bottom >= markerLine;
+            if (inMarkerBand) {
+                activeSection = section;
+                return;
+            }
+
+            const currentDistance = Math.abs(rect.top - markerLine);
+            const activeDistance = Math.abs(activeSection.getBoundingClientRect().top - markerLine);
+            if (currentDistance < activeDistance) {
                 activeSection = section;
             }
         });

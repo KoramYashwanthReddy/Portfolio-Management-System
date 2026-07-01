@@ -41,9 +41,11 @@ const state = {
     projects: [],
     featuredProjects: [],
     skills: [],
+    certifications: [],
     resume: null,
     projectFeaturedFilter: "",
     projectEscapeBound: false,
+    projectImageLightboxBound: false,
     heroBiographyEscapeBound: false,
     heroBiographyPopupBound: false,
     projectDetail: null,
@@ -84,6 +86,96 @@ function setSrc(id, value, fallback = "") {
     if (node) {
         node.src = value || fallback;
     }
+}
+
+function ensureProjectImageLightbox() {
+    let overlay = document.getElementById("project-image-lightbox");
+    if (overlay) {
+        return overlay;
+    }
+
+    overlay = document.createElement("div");
+    overlay.id = "project-image-lightbox";
+    overlay.className = "lightbox-overlay";
+    overlay.hidden = true;
+    overlay.setAttribute("aria-hidden", "true");
+    overlay.innerHTML = `
+        <button class="lightbox-close" type="button" aria-label="Close image preview">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        <img class="lightbox-content" alt="">
+    `;
+    document.body.appendChild(overlay);
+
+    const closeLightbox = () => {
+        if (overlay._hideTimer) {
+            window.clearTimeout(overlay._hideTimer);
+            overlay._hideTimer = null;
+        }
+        overlay.classList.remove("is-active");
+        overlay.setAttribute("aria-hidden", "true");
+        document.body.style.overflow = "";
+        overlay._hideTimer = window.setTimeout(() => {
+            overlay.hidden = true;
+            overlay._hideTimer = null;
+        }, 250);
+    };
+
+    overlay.addEventListener("click", (event) => {
+        if (event.target === overlay || event.target.closest(".lightbox-close")) {
+            closeLightbox();
+        }
+    });
+
+    return overlay;
+}
+
+function openProjectImageLightbox(imageUrl, altText) {
+    if (!imageUrl) {
+        return;
+    }
+
+    const overlay = ensureProjectImageLightbox();
+    const content = overlay.querySelector(".lightbox-content");
+    if (!content) {
+        return;
+    }
+
+    if (overlay._hideTimer) {
+        window.clearTimeout(overlay._hideTimer);
+        overlay._hideTimer = null;
+    }
+    content.src = imageUrl;
+    content.alt = altText || "Project image preview";
+    overlay.hidden = false;
+    overlay.setAttribute("aria-hidden", "false");
+    overlay.classList.remove("is-active");
+    requestAnimationFrame(() => overlay.classList.add("is-active"));
+    document.body.style.overflow = "hidden";
+}
+
+function closeProjectImageLightbox() {
+    const overlay = document.getElementById("project-image-lightbox");
+    if (!overlay) {
+        return;
+    }
+
+    const content = overlay.querySelector(".lightbox-content");
+    if (overlay._hideTimer) {
+        window.clearTimeout(overlay._hideTimer);
+        overlay._hideTimer = null;
+    }
+    overlay.classList.remove("is-active");
+    overlay.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+    if (content) {
+        content.src = "";
+        content.alt = "";
+    }
+    overlay._hideTimer = window.setTimeout(() => {
+        overlay.hidden = true;
+        overlay._hideTimer = null;
+    }, 250);
 }
 
 function syncHeroBiographyPopup(rawBiography) {
@@ -188,6 +280,20 @@ function buildTickerItems(rawTicker) {
         .map((item) => item.trim())
         .filter(Boolean);
     const sequence = items.length ? items : fallback;
+    return [...sequence, ...sequence];
+}
+
+function buildMarqueeWords(rawWords) {
+    const fallback = ["Spring Boot", "REST APIs", "Microservices", "Backend Architecture", "Systems Engineering", "Java Enterprise"];
+    const items = String(rawWords || "")
+        .split(/,|\n/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+    const base = items.length ? items : fallback;
+    let sequence = [...base];
+    while (sequence.length < 15) {
+        sequence = [...sequence, ...base];
+    }
     return [...sequence, ...sequence];
 }
 
@@ -431,6 +537,29 @@ function renderAbout(about) {
     initTypewriter("hero-typewriter-text", about?.headlineTicker);
     initTypewriter("feedback-typewriter-text", about?.headlineTicker);
 
+    const marquee1 = element("focus-marquee-content-1");
+    const marquee2 = element("focus-marquee-content-2");
+    if (marquee1 && marquee2) {
+        const words = buildMarqueeWords(about?.marqueeWords);
+        const mid = Math.ceil(words.length / 2);
+        const half1 = words.slice(0, mid);
+        const half2 = words.slice(mid);
+        marquee1.innerHTML = half1
+            .map((word) => `<span class="marquee-item">${escapeHtml(word)}</span>`)
+            .join("");
+        marquee2.innerHTML = half2
+            .map((word) => `<span class="marquee-item">${escapeHtml(word)}</span>`)
+            .join("");
+    } else {
+        const marqueeContent = element("focus-marquee-content");
+        if (marqueeContent) {
+            const words = buildMarqueeWords(about?.marqueeWords);
+            marqueeContent.innerHTML = words
+                .map((word) => `<span class="marquee-item">${escapeHtml(word)}</span>`)
+                .join("");
+        }
+    }
+
     const heroHeader = element("hero-name-header");
     if (heroHeader && !element("hero-full-name") && about?.name) {
         heroHeader.innerHTML = `Hi, I'm <span class="highlight-violet">${escapeHtml(about.name)}</span>.`;
@@ -440,13 +569,21 @@ function renderAbout(about) {
 }
 
 function renderAboutMetrics(dashboard) {
+    const uniqueProjectCount = uniqueById([
+        ...(state.projects || []),
+        ...(state.featuredProjects || [])
+    ].filter(isDisplayedRecord)).length;
+    const featuredProjectCount = uniqueById((state.featuredProjects || []).filter(isDisplayedRecord)).length;
+    const skillCount = (state.skills || []).filter(isDisplayedRecord).length;
+    const certificationCount = (state.certifications || []).filter(isDisplayedRecord).length;
+
     const metrics = [
-        { id: "about-total-projects", value: dashboard?.totalProjects ?? 0 },
-        { id: "about-featured-projects", value: dashboard?.totalFeaturedProjects ?? 0 },
-        { id: "about-skills", value: dashboard?.totalSkills ?? 0 },
-        { id: "about-certifications", value: dashboard?.totalCertifications ?? 0 },
+        { id: "about-total-projects", value: dashboard?.totalProjects ?? state.dashboard?.totalProjects ?? uniqueProjectCount },
+        { id: "about-featured-projects", value: dashboard?.totalFeaturedProjects ?? state.dashboard?.totalFeaturedProjects ?? featuredProjectCount },
+        { id: "about-skills", value: dashboard?.totalSkills ?? state.dashboard?.totalSkills ?? skillCount },
+        { id: "about-certifications", value: dashboard?.totalCertifications ?? state.dashboard?.totalCertifications ?? certificationCount },
         { id: "about-experience", value: `${state.about?.experienceYears ?? 0}y` },
-        { id: "about-messages", value: dashboard?.totalMessages ?? 0 }
+        { id: "about-messages", value: dashboard?.totalMessages ?? state.dashboard?.totalMessages ?? 0 }
     ];
 
     metrics.forEach((metric) => setText(metric.id, metric.value));
@@ -645,13 +782,18 @@ function buildProjectDetailMarkup(project) {
         .filter(Boolean)
         .map((item) => String(item).trim())
         .filter(Boolean);
+    const projectTitle = escapeHtml(project.title || "Untitled project");
+    const projectSubtitle = escapeHtml(project.shortDescription || "No short description available.");
+    const featuredLabel = project.featured ? "Featured" : "Selected work";
+    const statusLabel = escapeHtml(project.status || "Unknown status");
+    const categoryLabel = escapeHtml(project.category || "Uncategorized");
     const overviewTabLabel = `
         <span class="project-detail-tab-icon"><i class="fa-solid fa-circle-info"></i></span>
         <span class="project-detail-tab-copy">Overview</span>
     `;
     const imageTabLabel = `
         <span class="project-detail-tab-icon"><i class="fa-solid fa-images"></i></span>
-        <span class="project-detail-tab-copy">Images</span>
+        <span class="project-detail-tab-copy">Gallery</span>
         ${galleryImageFiles.length ? `<span class="project-detail-tab-count">${galleryImageFiles.length}</span>` : ""}
     `;
     const videoTabLabel = `
@@ -659,29 +801,32 @@ function buildProjectDetailMarkup(project) {
         <span class="project-detail-tab-copy">Videos</span>
         ${videoFiles.length ? `<span class="project-detail-tab-count">${videoFiles.length}</span>` : ""}
     `;
+    const otherTabLabel = `
+        <span class="project-detail-tab-icon"><i class="fa-solid fa-table-cells-large"></i></span>
+        <span class="project-detail-tab-copy">Other</span>
+    `;
 
     const overviewPanel = `
         <div class="project-detail-hero">
-            <div class="project-detail-hero-main">
-                <div class="project-detail-media project-detail-media--hero ${imageUrl || primaryVideoUrl ? "has-image" : ""}">
-                    ${imageUrl
-                        ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(project.title)} preview" onerror="this.onerror=null;this.src='${imageFallback}';">`
-                        : primaryVideoUrl
-                            ? `<video src="${escapeHtml(primaryVideoUrl)}" controls preload="metadata" aria-label="${escapeHtml(project.title)} video preview" style="width:100%;height:100%;object-fit:cover;display:block;background:#000;"></video>`
-                            : `<img src="${imageFallback}" alt="${escapeHtml(project.title)} preview">`}
-                </div>
-                <div class="project-detail-hero-copy">
-                    <p class="eyebrow" style="color: var(--accent-alt); margin-bottom: 2px;">PROJECT DETAILS</p>
-                    <h2 style="margin: 0;">${escapeHtml(project.title || "Untitled project")}</h2>
-                    <p class="project-detail-subtitle">${escapeHtml(project.shortDescription || "No short description available.")}</p>
-                </div>
+            <div class="project-detail-media project-detail-media--hero ${imageUrl || primaryVideoUrl ? "has-image" : ""}">
+                ${imageUrl
+                    ? `<button class="project-detail-media-link" type="button" data-project-image-preview data-image-url="${escapeHtml(imageUrl)}" data-image-alt="${projectTitle} preview" aria-label="Open ${projectTitle} preview image">
+                        <img src="${escapeHtml(imageUrl)}" alt="${projectTitle} preview" onerror="this.onerror=null;this.src='${imageFallback}';">
+                    </button>`
+                    : primaryVideoUrl
+                        ? `<video src="${escapeHtml(primaryVideoUrl)}" controls preload="metadata" aria-label="${projectTitle} video preview" style="width:100%;height:100%;object-fit:cover;display:block;background:#000;"></video>`
+                        : `<img src="${imageFallback}" alt="${projectTitle} preview">`}
             </div>
-            <div class="project-detail-hero-aside">
-                <span class="chip">${project.featured ? "Featured" : "Selected work"}</span>
-                <span class="chip">${project.status || "Unknown status"}</span>
-                <span class="chip">${project.category || "Uncategorized"}</span>
+            <div class="project-detail-hero-copy">
+                <p class="eyebrow project-detail-eyebrow">Project overview</p>
+                ${overviewParagraphs.length
+                    ? overviewParagraphs.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")
+                    : `<p>${projectSubtitle}</p>`}
             </div>
         </div>
+    `;
+
+    const otherPanel = `
         <div class="project-detail-grid">
             ${projectInsightRows(project).map((row) => `
                 <article class="project-detail-card">
@@ -691,9 +836,6 @@ function buildProjectDetailMarkup(project) {
             `).join("")}
         </div>
         <div class="project-detail-body">
-            <div class="project-detail-copy">
-                ${overviewParagraphs.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}
-            </div>
             ${highlights.length ? `
             <div class="project-detail-highlights">
                 <span class="project-detail-section-label">Highlights</span>
@@ -702,29 +844,37 @@ function buildProjectDetailMarkup(project) {
                 </ul>
             </div>
             ` : ""}
-            <div class="mnc-card-tags">
-                ${technologies.map((tech) => `<span class="mnc-tech-tag">${escapeHtml(tech)}</span>`).join("")}
+            <div class="project-detail-highlights">
+                <span class="project-detail-section-label">Tech stack</span>
+                <div class="mnc-card-tags">
+                    ${technologies.length
+                        ? technologies.map((tech) => `<span class="mnc-tech-tag">${escapeHtml(tech)}</span>`).join("")
+                        : `<span class="project-detail-empty-copy">No technologies listed for this project.</span>`}
+                </div>
             </div>
         </div>
         <div class="project-detail-actions">
             ${project.githubUrl ? `<a class="button button-outline" href="${project.githubUrl}" target="_blank" rel="noreferrer">GitHub</a>` : ""}
             ${project.liveUrl ? `<a class="button button-outline" href="${project.liveUrl}" target="_blank" rel="noreferrer">Live</a>` : ""}
+            ${!project.githubUrl && !project.liveUrl ? `<span class="project-detail-empty-copy">No external project links available.</span>` : ""}
         </div>
     `;
 
     const imagesPanel = galleryImageFiles.length ? `
         <div class="project-detail-gallery">
-            <div class="project-detail-gallery-grid project-detail-gallery-grid--full">
-                ${galleryImageFiles.map((image, index) => `
-                    <figure class="project-detail-media-card">
-                        <div class="project-detail-media-frame">
-                            <img src="${escapeHtml(image.downloadUrl || "")}" alt="${escapeHtml(project.title)} image ${index + 1}" onerror="this.onerror=null;this.src='${imageFallback}';">
-                        </div>
-                        <figcaption>
-                            <strong>Image ${index + 1}</strong>
-                            <span>${escapeHtml(image.originalFileName || `Image ${index + 1}`)}</span>
-                        </figcaption>
-                    </figure>
+                <div class="project-detail-gallery-grid project-detail-gallery-grid--full">
+                    ${galleryImageFiles.map((image, index) => `
+                        <figure class="project-detail-media-card">
+                            <button class="project-detail-media-link" type="button" data-project-image-preview data-image-url="${escapeHtml(image.downloadUrl || "")}" data-image-alt="${escapeHtml(project.title)} image ${index + 1}" aria-label="Open ${projectTitle} image ${index + 1}">
+                                <div class="project-detail-media-frame">
+                                    <img src="${escapeHtml(image.downloadUrl || "")}" alt="${escapeHtml(project.title)} image ${index + 1}" onerror="this.onerror=null;this.src='${imageFallback}';">
+                                </div>
+                            </button>
+                            <figcaption>
+                                <strong>Image ${index + 1}</strong>
+                                <span>${escapeHtml(image.originalFileName || `Image ${index + 1}`)}</span>
+                            </figcaption>
+                        </figure>
                 `).join("")}
             </div>
         </div>
@@ -748,20 +898,36 @@ function buildProjectDetailMarkup(project) {
 
     return `
         <div class="project-detail-shell">
+            <div class="project-detail-top">
+                <div class="project-detail-title-wrap">
+                    <p class="eyebrow project-detail-eyebrow">Project details</p>
+                    <h2 class="project-detail-title">${projectTitle}</h2>
+                    <p class="project-detail-subtitle">${projectSubtitle}</p>
+                </div>
+                <div class="project-detail-hero-aside">
+                    <span class="chip">${featuredLabel}</span>
+                    <span class="chip">${statusLabel}</span>
+                    <span class="chip">${categoryLabel}</span>
+                </div>
+            </div>
             <div class="project-detail-tabs" role="tablist" aria-label="Project details sections">
-                <button class="project-detail-tab is-active" type="button" data-detail-tab="overview" role="tab" aria-selected="true" tabindex="0">${overviewTabLabel}</button>
-                <button class="project-detail-tab" type="button" data-detail-tab="images" role="tab" aria-selected="false" tabindex="-1">${imageTabLabel}</button>
-                <button class="project-detail-tab" type="button" data-detail-tab="videos" role="tab" aria-selected="false" tabindex="-1">${videoTabLabel}</button>
+                <button class="project-detail-tab is-active" type="button" id="project-detail-tab-overview" data-detail-tab="overview" role="tab" aria-selected="true" aria-controls="project-detail-panel-overview" tabindex="0">${overviewTabLabel}</button>
+                <button class="project-detail-tab" type="button" id="project-detail-tab-images" data-detail-tab="images" role="tab" aria-selected="false" aria-controls="project-detail-panel-images" tabindex="-1">${imageTabLabel}</button>
+                <button class="project-detail-tab" type="button" id="project-detail-tab-videos" data-detail-tab="videos" role="tab" aria-selected="false" aria-controls="project-detail-panel-videos" tabindex="-1">${videoTabLabel}</button>
+                <button class="project-detail-tab" type="button" id="project-detail-tab-other" data-detail-tab="other" role="tab" aria-selected="false" aria-controls="project-detail-panel-other" tabindex="-1">${otherTabLabel}</button>
             </div>
             <div class="project-detail-tab-panels">
-                <section class="project-detail-tab-panel is-active" data-detail-panel="overview">
+                <section class="project-detail-tab-panel is-active" id="project-detail-panel-overview" data-detail-panel="overview" role="tabpanel" aria-labelledby="project-detail-tab-overview">
                     ${overviewPanel}
                 </section>
-                <section class="project-detail-tab-panel hidden" data-detail-panel="images">
+                <section class="project-detail-tab-panel hidden" id="project-detail-panel-images" data-detail-panel="images" role="tabpanel" aria-labelledby="project-detail-tab-images">
                     ${imagesPanel}
                 </section>
-                <section class="project-detail-tab-panel hidden" data-detail-panel="videos">
+                <section class="project-detail-tab-panel hidden" id="project-detail-panel-videos" data-detail-panel="videos" role="tabpanel" aria-labelledby="project-detail-tab-videos">
                     ${videosPanel}
+                </section>
+                <section class="project-detail-tab-panel hidden" id="project-detail-panel-other" data-detail-panel="other" role="tabpanel" aria-labelledby="project-detail-tab-other">
+                    ${otherPanel}
                 </section>
             </div>
         </div>
@@ -772,6 +938,7 @@ function buildProjectDetailMarkup(project) {
 function renderFeaturedProjects(projects) {
     const uniqueProjects = uniqueById((projects || []).filter(isDisplayedRecord));
     state.featuredProjects = uniqueProjects;
+    renderAboutMetrics();
 }
 
 function renderTimeline(projects) {
@@ -806,6 +973,7 @@ function renderProjectCatalog(pageData) {
     const uniqueProjects = uniqueById((pageData.content || []).filter(isDisplayedRecord));
     state.projects = uniqueProjects;
     renderAllProjectsMnc();
+    renderAboutMetrics();
 }
 
 function buildHtmlResume(certifications, resume) {
@@ -1132,6 +1300,18 @@ function bindProjectInteractions() {
     const detailContent = element("project-detail-content");
     const detailClose = element("project-detail-close");
 
+    if (!state.projectImageLightboxBound) {
+        document.addEventListener("click", (event) => {
+            const trigger = event.target.closest("[data-project-image-preview]");
+            if (!trigger) {
+                return;
+            }
+            event.preventDefault();
+            openProjectImageLightbox(trigger.dataset.imageUrl || "", trigger.dataset.imageAlt || "Project image preview");
+        });
+        state.projectImageLightboxBound = true;
+    }
+
     document.querySelectorAll("[data-project-detail]").forEach((button) => {
         button.addEventListener("click", (event) => {
             const projectId = String(event.currentTarget.dataset.projectDetail);
@@ -1159,6 +1339,32 @@ function bindProjectInteractions() {
             };
             tabs.forEach((tab) => {
                 tab.addEventListener("click", () => switchDetailTab(tab.dataset.detailTab || "overview"));
+                tab.addEventListener("keydown", (keyboardEvent) => {
+                    const currentIndex = [...tabs].findIndex((item) => item === tab);
+                    if (keyboardEvent.key === "ArrowRight") {
+                        keyboardEvent.preventDefault();
+                        const nextTab = tabs[(currentIndex + 1) % tabs.length];
+                        nextTab?.focus();
+                        switchDetailTab(nextTab?.dataset.detailTab || "overview");
+                    }
+                    if (keyboardEvent.key === "ArrowLeft") {
+                        keyboardEvent.preventDefault();
+                        const previousTab = tabs[(currentIndex - 1 + tabs.length) % tabs.length];
+                        previousTab?.focus();
+                        switchDetailTab(previousTab?.dataset.detailTab || "overview");
+                    }
+                    if (keyboardEvent.key === "Home") {
+                        keyboardEvent.preventDefault();
+                        tabs[0]?.focus();
+                        switchDetailTab(tabs[0]?.dataset.detailTab || "overview");
+                    }
+                    if (keyboardEvent.key === "End") {
+                        keyboardEvent.preventDefault();
+                        const lastTab = tabs[tabs.length - 1];
+                        lastTab?.focus();
+                        switchDetailTab(lastTab?.dataset.detailTab || "overview");
+                    }
+                });
             });
             detailModal.classList.remove("hidden");
             document.body.style.overflow = "hidden";
@@ -1172,6 +1378,7 @@ function bindProjectInteractions() {
         if (!detailModal) {
             return;
         }
+        closeProjectImageLightbox();
         detailModal.classList.add("hidden");
         document.body.style.overflow = "";
         state.projectDetail = null;
@@ -1208,6 +1415,7 @@ function bindProjectInteractions() {
     if (!state.projectEscapeBound) {
         document.addEventListener("keydown", (event) => {
             if (event.key !== "Escape") return;
+            closeProjectImageLightbox();
             if (!detailModal?.classList.contains("hidden")) {
                 closeDetailModal();
             }
@@ -1607,14 +1815,20 @@ async function bootstrap() {
         syncSkillFilterOptions();
         renderSkills([]);
     }
+    renderAboutMetrics();
 
     const resumeError = resume.status === "rejected" && resume.reason?.status !== 404
         ? (resume.reason?.message || "Resume metadata is unavailable.")
         : "";
 
+    state.certifications = certifications.status === "fulfilled"
+        ? (certifications.value.data || []).filter(isDisplayedRecord)
+        : [];
+    renderAboutMetrics();
+
     renderKnowledge(
         resume.status === "fulfilled" ? resume.value.data : null,
-        certifications.status === "fulfilled" ? (certifications.value.data || []).filter(isDisplayedRecord) : [],
+        state.certifications,
         resumeError
     );
 

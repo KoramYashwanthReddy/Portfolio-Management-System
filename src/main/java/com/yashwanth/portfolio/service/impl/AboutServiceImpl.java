@@ -33,6 +33,7 @@ public class AboutServiceImpl implements AboutService {
         about.setPortfolioUrl(request.portfolioUrl());
         about.setProfileImageUrl(request.profileImageUrl());
         about.setHeadlineTicker(request.headlineTicker());
+        about.setMarqueeWords(request.marqueeWords());
         return PortfolioMapper.toAbout(aboutRepository.save(about));
     }
 

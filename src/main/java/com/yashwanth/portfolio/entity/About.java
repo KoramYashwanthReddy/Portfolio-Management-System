@@ -43,4 +43,7 @@ public class About extends AuditableEntity {
 
     @Column(columnDefinition = "TEXT")
     private String headlineTicker;
+
+    @Column(columnDefinition = "TEXT")
+    private String marqueeWords;
 }

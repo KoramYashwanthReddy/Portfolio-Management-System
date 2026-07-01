@@ -37,15 +37,26 @@
             Yashwanth<span class="highlight-blue" aria-hidden="true">.</span>
         </a>
         <nav class="site-nav" id="site-nav" role="navigation" aria-label="Main navigation">
-            <a href="#command-center" data-nav="work">Work</a>
+            <a href="#command-center" data-nav="home">I am</a>
             <a href="#overview" data-nav="about">About</a>
             <a href="#ecosystem" data-nav="stack">Stack</a>
+            <a href="#systems" data-nav="projects">Projects</a>
             <a href="#knowledge" data-nav="resume">Resume</a>
-            <a href="#collaboration" data-nav="contact">Contact</a>
-            <a href="#" id="nav-feedback-link" data-nav="feedback">Feedback</a>
-            <a href="/api/v1/admin/login.html" class="nav-admin-link" aria-label="Admin login">
-                <i class="fa-solid fa-lock" aria-hidden="true"></i> Admin
+            <a href="/api/v1/admin/login.html" class="nav-admin-link" data-nav="login" aria-label="Admin login">
+                <i class="fa-solid fa-lock" aria-hidden="true"></i> Login
             </a>
+            <div class="nav-more-wrap">
+                <button id="nav-more-toggle" class="nav-more-toggle" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="nav-more-menu">
+                    <span>More</span>
+                    <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+                </button>
+                <div id="nav-more-menu" class="nav-more-menu">
+                    <a href="#certifications" data-nav="certifications">Certificates</a>
+                    <a href="#faq" data-nav="faq">FAQ</a>
+                    <a href="#collaboration" data-nav="contact">Contact</a>
+                    <a href="#" id="nav-feedback-link" data-nav="feedback">Feedback</a>
+                </div>
+            </div>
         </nav>
         <div class="header-actions">
             <a href="#" id="header-github" target="_blank" rel="noreferrer" aria-label="GitHub profile"><i class="fa-brands fa-github" aria-hidden="true"></i></a>
@@ -156,22 +167,16 @@
             </div>
         </section>
 
-        <div class="marquee-container">
-            <div class="marquee-content">
-                <span>Spring Boot</span>
-                <span>REST APIs</span>
-                <span>Microservices</span>
-                <span>Backend Architecture</span>
-                <span>Systems Engineering</span>
-                <span>Java Enterprise</span>
-                <span>Spring Boot</span>
-                <span>REST APIs</span>
-                <span>Microservices</span>
-                <span>Backend Architecture</span>
-                <span>Systems Engineering</span>
-                <span>Java Enterprise</span>
+        <section class="section marquee-section" aria-label="Technology marquee">
+            <div class="section-shell marquee-shell">
+                <div class="marquee-container" role="region" aria-label="Scrollable focus keywords">
+                    <div id="focus-marquee-content-1" class="marquee-content marquee-row-1"></div>
+                </div>
+                <div class="marquee-container" role="region" aria-label="Scrollable focus keywords" style="margin-top: 14px;">
+                    <div id="focus-marquee-content-2" class="marquee-content marquee-row-2"></div>
+                </div>
             </div>
-        </div>
+        </section>
 
         <section id="overview" class="section">
             <div class="section-shell split-grid">
@@ -314,7 +319,7 @@
                 </div>
                 <div id="resume-preview-wrapper" data-reveal></div>
             </div>
-            <div class="section-shell" style="margin-top: 60px;">
+            <div id="certifications" class="section-shell" style="margin-top: 60px;">
                 <div class="cert-section-header" data-reveal>
                     <div class="cert-section-heading">
                         <p class="eyebrow" style="color: var(--accent-alt);">— CREDENTIALS</p>
@@ -323,6 +328,65 @@
                     </div>
                 </div>
                 <div id="certification-grid" class="cert-grid" style="margin-top: 32px;"></div>
+            </div>
+            <div id="faq" class="section-shell faq-section-shell" style="margin-top: 60px;">
+                <div class="faq-section-header" data-reveal>
+                    <div class="faq-section-heading">
+                        <p class="eyebrow" style="color: var(--accent-alt);">FAQ</p>
+                        <h2 style="letter-spacing: -0.02em; margin: 8px 0 0;">Frequently asked <span class="highlight-violet">questions.</span></h2>
+                        <p class="section-copy" style="margin-top: 12px; max-width: 58ch;">A quick view into availability, working style, backend focus, and how I approach production-ready engineering work.</p>
+                    </div>
+                </div>
+                <div class="faq-grid" data-reveal>
+                    <details class="faq-item" open>
+                        <summary class="faq-question">
+                            <span class="faq-question-copy">
+                                <span class="faq-item-icon" aria-hidden="true"><i class="fa-solid fa-briefcase"></i></span>
+                                <span class="faq-question-text">What kind of roles and projects am I best suited for?</span>
+                            </span>
+                            <i class="fa-solid fa-plus faq-icon" aria-hidden="true"></i>
+                        </summary>
+                        <div class="faq-answer">
+                            <p>I am strongest in Java backend, Spring Boot APIs, security-focused systems, database design, and full-stack projects where the backend architecture needs to be reliable and production-ready.</p>
+                        </div>
+                    </details>
+                    <details class="faq-item">
+                        <summary class="faq-question">
+                            <span class="faq-question-copy">
+                                <span class="faq-item-icon" aria-hidden="true"><i class="fa-solid fa-code"></i></span>
+                                <span class="faq-question-text">What technologies do I work with most often?</span>
+                            </span>
+                            <i class="fa-solid fa-plus faq-icon" aria-hidden="true"></i>
+                        </summary>
+                        <div class="faq-answer">
+                            <p>My core stack includes Java, Spring Boot, REST APIs, JWT authentication, MySQL, JPA, and modern frontend integration. I also work on deployment-minded backend design and clean API contracts.</p>
+                        </div>
+                    </details>
+                    <details class="faq-item">
+                        <summary class="faq-question">
+                            <span class="faq-question-copy">
+                                <span class="faq-item-icon" aria-hidden="true"><i class="fa-solid fa-laptop"></i></span>
+                                <span class="faq-question-text">Do I build only academic projects or production-style systems too?</span>
+                            </span>
+                            <i class="fa-solid fa-plus faq-icon" aria-hidden="true"></i>
+                        </summary>
+                        <div class="faq-answer">
+                            <p>I build with a production mindset. That means authentication flows, validation, layered architecture, clean error handling, maintainable database structure, and polished admin or public interfaces when needed.</p>
+                        </div>
+                    </details>
+                    <details class="faq-item">
+                        <summary class="faq-question">
+                            <span class="faq-question-copy">
+                                <span class="faq-item-icon" aria-hidden="true"><i class="fa-solid fa-users"></i></span>
+                                <span class="faq-question-text">Am I open to collaboration, freelance work, or full-time roles?</span>
+                            </span>
+                            <i class="fa-solid fa-plus faq-icon" aria-hidden="true"></i>
+                        </summary>
+                        <div class="faq-answer">
+                            <p>Yes. I am open to backend-heavy collaboration, portfolio-grade product builds, internship or entry-level opportunities, and full-time roles where I can contribute to real engineering outcomes.</p>
+                        </div>
+                    </details>
+                </div>
             </div>
         </section>
 

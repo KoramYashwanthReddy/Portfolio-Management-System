@@ -46,6 +46,8 @@ const state = {
     notesPinnedOnly: false
 };
 
+let projectImageLightboxBound = false;
+
 const PROJECT_NOTE_TYPES = ["FEATURE_USED", "TECHNOLOGY_USED", "IMPLEMENTATION_DECISION", "MILESTONE", "REMINDER", "REFERENCE", "PENDING", "IN_PROGRESS", "REVIEW", "COMPLETED"];
 const PROJECT_NOTE_PAGE_TYPES = ["PENDING", "IN_PROGRESS", "REVIEW", "COMPLETED"];
 
@@ -70,6 +72,82 @@ function safeStorageSet(key, value) {
     }
 }
 
+function ensureProjectImageLightbox() {
+    let overlay = document.getElementById("project-image-lightbox");
+    if (overlay) {
+        return overlay;
+    }
+
+    overlay = document.createElement("div");
+    overlay.id = "project-image-lightbox";
+    overlay.className = "lightbox-overlay";
+    overlay.hidden = true;
+    overlay.setAttribute("aria-hidden", "true");
+    overlay.innerHTML = `
+        <button class="lightbox-close" type="button" aria-label="Close image preview">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        <img class="lightbox-content" alt="">
+    `;
+    document.body.appendChild(overlay);
+
+    overlay.addEventListener("click", (event) => {
+        if (event.target === overlay || event.target.closest(".lightbox-close")) {
+            closeProjectImageLightbox();
+        }
+    });
+
+    return overlay;
+}
+
+function openProjectImageLightbox(imageUrl, altText) {
+    if (!imageUrl) {
+        return;
+    }
+
+    const overlay = ensureProjectImageLightbox();
+    const content = overlay.querySelector(".lightbox-content");
+    if (!content) {
+        return;
+    }
+
+    if (overlay._hideTimer) {
+        window.clearTimeout(overlay._hideTimer);
+        overlay._hideTimer = null;
+    }
+    content.src = imageUrl;
+    content.alt = altText || "Project image preview";
+    overlay.hidden = false;
+    overlay.setAttribute("aria-hidden", "false");
+    overlay.classList.remove("is-active");
+    requestAnimationFrame(() => overlay.classList.add("is-active"));
+    document.body.style.overflow = "hidden";
+}
+
+function closeProjectImageLightbox() {
+    const overlay = document.getElementById("project-image-lightbox");
+    if (!overlay) {
+        return;
+    }
+
+    const content = overlay.querySelector(".lightbox-content");
+    if (overlay._hideTimer) {
+        window.clearTimeout(overlay._hideTimer);
+        overlay._hideTimer = null;
+    }
+    overlay.classList.remove("is-active");
+    overlay.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+    if (content) {
+        content.src = "";
+        content.alt = "";
+    }
+    overlay._hideTimer = window.setTimeout(() => {
+        overlay.hidden = true;
+        overlay._hideTimer = null;
+    }, 250);
+}
+
 function createSidebar() {
     const sidebar = document.querySelector(".admin-sidebar");
     if (!sidebar) {
@@ -82,6 +160,7 @@ function createSidebar() {
         ["certifications", "Certifications", "fa-solid fa-certificate"],
         ["messages", "Messages", "fa-solid fa-envelope"],
         ["profile", "Profile", "fa-solid fa-user"],
+        ["marquee", "Marquee", "fa-solid fa-arrows-rotate"],
         ["resume", "Resume", "fa-solid fa-file-pdf"]
     ];
     const collapsed = safeStorageGet("pms-admin-sidebar") === "collapsed";
@@ -491,6 +570,34 @@ function splitTechnologiesList(technologies) {
     return parseTags(technologies);
 }
 
+function buildAboutPayload(snapshot = {}, overrides = {}) {
+    return {
+        name: overrides.name ?? snapshot.name ?? "",
+        designation: overrides.designation ?? snapshot.designation ?? "",
+        biography: overrides.biography ?? snapshot.biography ?? "",
+        experienceYears: Number(overrides.experienceYears ?? snapshot.experienceYears ?? 0),
+        currentLocation: overrides.currentLocation ?? snapshot.currentLocation ?? "",
+        email: overrides.email ?? snapshot.email ?? "",
+        phone: overrides.phone ?? snapshot.phone ?? "",
+        linkedinUrl: overrides.linkedinUrl ?? snapshot.linkedinUrl ?? "",
+        githubUrl: overrides.githubUrl ?? snapshot.githubUrl ?? "",
+        portfolioUrl: overrides.portfolioUrl ?? snapshot.portfolioUrl ?? "",
+        profileImageUrl: overrides.profileImageUrl ?? snapshot.profileImageUrl ?? "",
+        headlineTicker: overrides.headlineTicker ?? snapshot.headlineTicker ?? "",
+        marqueeWords: overrides.marqueeWords ?? snapshot.marqueeWords ?? ""
+    };
+}
+
+function renderTechnologyChips(technologies, limit = 4) {
+    const visibleTechs = technologies.slice(0, limit);
+    const overflowCount = technologies.length - visibleTechs.length;
+    const overflowChip = overflowCount > 0
+        ? `<span class="chip is-overflow-tech" title="${escapeHtml(`${overflowCount} more`)}">+</span>`
+        : "";
+
+    return `${visibleTechs.map((tech) => `<span class="chip">${escapeHtml(tech)}</span>`).join("")}${overflowChip}`;
+}
+
 function getProjectYear(project) {
     const source = project?.completionDate || project?.createdAt || "";
     if (!source) {
@@ -707,6 +814,10 @@ function projectCardMarkup(project, index = 0) {
                                 <i class="fa-solid fa-file-lines"></i>
                                 <span>Open notes</span>
                             </button>
+                            <button class="project-card-menu-item" data-project-timeline-open="${project.id}" type="button" role="menuitem">
+                                <i class="fa-solid fa-timeline"></i>
+                                <span>Timeline</span>
+                            </button>
                             <div class="project-card-menu-divider" role="separator"></div>
                             <button class="project-card-menu-item is-danger" data-project-delete="${project.id}" type="button" role="menuitem">
                                 <i class="fa-solid fa-trash"></i>
@@ -726,7 +837,7 @@ function projectCardMarkup(project, index = 0) {
                     <span class="project-stack-hint">${escapeHtml(techs.length ? `${techs.length} technologies` : "No stack listed")}</span>
                 </div>
                 <div class="project-card-tech-list">
-                    ${techs.slice(0, 6).map((tech) => `<span class="chip">${escapeHtml(tech)}</span>`).join("") || '<span class="chip">Stack unavailable</span>'}
+                    ${techs.length ? renderTechnologyChips(techs, 4) : '<span class="chip">Stack unavailable</span>'}
                 </div>
             </div>
             <div class="project-card-footer">
@@ -745,65 +856,140 @@ function projectCardMarkup(project, index = 0) {
     `;
 }
 
-function projectCompareCardMarkup(project) {
+function renderProjectCompareCell(value, fallback = "-") {
+    const text = value === null || value === undefined || value === "" ? fallback : String(value);
+    return `<span class="project-compare-value">${escapeHtml(text)}</span>`;
+}
+
+function renderProjectCompareLinks(project) {
+    const links = [];
+    if (project.githubUrl) {
+        links.push(`<a class="project-compare-link" href="${escapeHtml(project.githubUrl)}" target="_blank" rel="noreferrer"><i class="fa-brands fa-github"></i> GitHub</a>`);
+    }
+    if (project.liveUrl) {
+        links.push(`<a class="project-compare-link" href="${escapeHtml(project.liveUrl)}" target="_blank" rel="noreferrer"><i class="fa-solid fa-arrow-up-right-from-square"></i> Live site</a>`);
+    }
+    if (project.notesCount != null) {
+        links.push(`<span class="project-compare-note">Notes: ${escapeHtml(String(project.notesCount))}</span>`);
+    }
+    return links.length ? `<div class="project-compare-links">${links.join("")}</div>` : `<span class="project-compare-value">No links available</span>`;
+}
+
+function renderProjectCompareTechs(project) {
     const technologies = parseTags(project.technologies);
-    const progressMeta = getProjectProgressMeta(project);
-    const year = getProjectYear(project) || "In progress";
-    const rows = [
-        { label: "Category", value: project.category || "Project" },
-        { label: "Status", value: formatProjectStatus(project.status) },
-        { label: "Featured", value: project.featured ? "Yes" : "No" },
-        { label: "Displayed", value: project.displayed === false ? "Hidden" : "Visible" },
-        { label: "Year", value: year },
-        { label: "Stack", value: `${technologies.length} tech${technologies.length === 1 ? "" : "s"}` }
-    ];
+    if (!technologies.length) {
+        return `<span class="project-compare-value">Stack unavailable</span>`;
+    }
     return `
-        <article class="project-compare-card ${progressMeta.stateClass}">
-            <div class="project-compare-card-top">
-                <span class="project-number">${getProjectYear(project) || "-"}</span>
-                <div class="project-progress-pill ${progressMeta.stateClass}">
-                    <div class="project-progress-pill-top">
-                        <span class="project-progress-pill-label">
-                            <i class="${progressMeta.iconClass}${progressMeta.spinIcon ? " fa-spin" : ""}"></i>
-                            <span>${escapeHtml(progressMeta.label)}</span>
-                        </span>
-                        <span class="project-progress-pill-percent">${progressMeta.percent}%</span>
-                    </div>
-                    <div class="project-progress-track" aria-hidden="true">
-                        <span class="project-progress-fill" style="width: ${progressMeta.percent}%"></span>
-                    </div>
+        <div class="chip-row project-compare-tech-list">
+            ${renderTechnologyChips(technologies, 4)}
+        </div>
+    `;
+}
+
+function renderProjectCompareMedia(project) {
+    const imageFiles = getProjectImageFiles(project);
+    const videoFiles = getProjectVideoFiles(project);
+    const pieces = [];
+    if (imageFiles.length) {
+        pieces.push(`${imageFiles.length} image${imageFiles.length === 1 ? "" : "s"}`);
+    }
+    if (videoFiles.length) {
+        pieces.push(`${videoFiles.length} video${videoFiles.length === 1 ? "" : "s"}`);
+    }
+    return pieces.length ? `<span class="project-compare-value">${escapeHtml(pieces.join(" | "))}</span>` : `<span class="project-compare-value">No media uploaded</span>`;
+}
+
+function getProjectCompareGrade(project) {
+    const status = String(project?.status || "").toLowerCase();
+    if (status.includes("complete")) {
+        return "Production Ready";
+    }
+    if (status.includes("progress")) {
+        return "In development";
+    }
+    if (status.includes("archiv")) {
+        return "Archived";
+    }
+    if (status.includes("plan")) {
+        return "Planned";
+    }
+    return "Under review";
+}
+
+function buildProjectCompareTableMarkup(projects) {
+    const selected = projects.slice(0, 3);
+    const rows = [
+        { label: "Status", render: (project) => renderProjectCompareCell(formatProjectStatus(project.status)) },
+        { label: "Category", render: (project) => renderProjectCompareCell(project.category || "Project") },
+        { label: "Grade", render: (project) => renderProjectCompareCell(getProjectCompareGrade(project)) },
+        { label: "Tech Stack", render: (project) => renderProjectCompareTechs(project) },
+        { label: "Description", render: (project) => `<p class="project-compare-text">${escapeHtml(project.shortDescription || "No short description provided.")}</p>` },
+        { label: "Detailed Insights", render: (project) => `<p class="project-compare-text project-compare-text--long">${escapeHtml(project.detailedDescription || "No detailed description provided.")}</p>` },
+        { label: "Repository", render: (project) => renderProjectCompareLinks(project) }
+    ];
+
+    return `
+        <div class="project-compare-panel">
+            <div class="project-compare-intro">
+                <p class="eyebrow">&lt; benchmark &gt;</p>
+                <h3>System <span>Comparison.</span></h3>
+                <p>Side-by-side technical evaluation of selected engineering projects.</p>
+            </div>
+            <div class="project-compare-table-shell">
+                <div class="project-compare-table-scroller">
+                    <table class="project-compare-table">
+                        <thead>
+                            <tr>
+                                <th scope="col" class="project-compare-th project-compare-th--field">Feature</th>
+                                ${selected.map((project, index) => {
+        const progressMeta = getProjectProgressMeta(project);
+        const year = getProjectYear(project) || "-";
+        return `
+                                        <th scope="col" class="project-compare-th project-compare-th--project ${progressMeta.stateClass}">
+                                            <div class="project-compare-project-head">
+                                                <span class="project-number">${escapeHtml(year)}</span>
+                                                <div class="project-compare-project-head-copy">
+                                                    <div class="project-compare-project-title-row">
+                                                        <h3>${escapeHtml(project.title || `Untitled project ${index + 1}`)}</h3>
+                                                        <span class="project-compare-project-index">${index + 1}</span>
+                                                    </div>
+                                                    <p>${escapeHtml(project.shortDescription || "No short description provided.")}</p>
+                                                </div>
+                                            </div>
+                                            <div class="project-progress-pill ${progressMeta.stateClass}">
+                                                <div class="project-progress-pill-top">
+                                                    <span class="project-progress-pill-label">
+                                                        <i class="${progressMeta.iconClass}${progressMeta.spinIcon ? " fa-spin" : ""}"></i>
+                                                        <span>${escapeHtml(progressMeta.label)}</span>
+                                                    </span>
+                                                    <span class="project-progress-pill-percent">${progressMeta.percent}%</span>
+                                                </div>
+                                                <div class="project-progress-track" aria-hidden="true">
+                                                    <span class="project-progress-fill" style="width: ${progressMeta.percent}%"></span>
+                                                </div>
+                                            </div>
+                                        </th>
+                                    `;
+    }).join("")}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows.map((row) => `
+                                <tr>
+                                    <th scope="row" class="project-compare-row-label">${escapeHtml(row.label)}</th>
+                                    ${selected.map((project) => `
+                                        <td class="project-compare-cell">
+                                            ${row.render(project)}
+                                        </td>
+                                    `).join("")}
+                                </tr>
+                            `).join("")}
+                        </tbody>
+                    </table>
                 </div>
             </div>
-            <div class="project-compare-card-title">
-                <h3>${escapeHtml(project.title || "Untitled project")}</h3>
-                <p class="section-copy">${escapeHtml(project.shortDescription || "No short description provided.")}</p>
-            </div>
-            <div class="project-compare-card-grid">
-                ${rows.map((row) => `
-                    <article class="project-compare-meta">
-                        <span>${escapeHtml(row.label)}</span>
-                        <strong>${escapeHtml(String(row.value))}</strong>
-                    </article>
-                `).join("")}
-            </div>
-            <div class="project-compare-card-body">
-                <p>${escapeHtml(project.detailedDescription || "No detailed description provided.")}</p>
-            </div>
-            <div class="project-stack-block">
-                <div class="project-stack-header">
-                    <span class="project-stack-label">Stacks</span>
-                    <span class="project-stack-hint">${escapeHtml(year)}</span>
-                </div>
-                <div class="chip-row project-tech-row">
-                    ${technologies.slice(0, 8).map((tech) => `<span class="chip">${escapeHtml(tech)}</span>`).join("") || '<span class="chip">Stack unavailable</span>'}
-                </div>
-            </div>
-            <div class="project-compare-card-links">
-                ${project.githubUrl ? `<a class="button button-outline" href="${escapeHtml(project.githubUrl)}" target="_blank" rel="noreferrer">GitHub</a>` : ""}
-                ${project.liveUrl ? `<a class="button button-outline" href="${escapeHtml(project.liveUrl)}" target="_blank" rel="noreferrer">Live site</a>` : ""}
-                ${project.notesCount != null ? `<span class="chip">Notes: ${escapeHtml(String(project.notesCount))}</span>` : ""}
-            </div>
-        </article>
+        </div>
     `;
 }
 
@@ -853,11 +1039,7 @@ function renderProjectCompareModal() {
         content.innerHTML = emptyMarkup("Select at least two projects to compare.");
         return;
     }
-    content.innerHTML = `
-        <div class="project-compare-grid">
-            ${selected.map((project) => projectCompareCardMarkup(project)).join("")}
-        </div>
-    `;
+    content.innerHTML = buildProjectCompareTableMarkup(selected);
 }
 
 function openProjectCompareModal() {
@@ -1659,7 +1841,9 @@ function buildProjectDetailMarkup(project) {
     ];
 
     const heroMedia = mainMedia
-        ? mainImageMarkup
+        ? `<button class="project-detail-media-link" type="button" data-project-image-preview data-image-url="${escapeHtml(mainMedia)}" data-image-alt="${escapeHtml(project.title || "Project")} preview image" aria-label="Open ${escapeHtml(project.title || "Project")} preview image">
+            ${mainImageMarkup}
+        </button>`
         : primaryVideoUrl
             ? `<video src="${primaryVideoUrl}" controls preload="metadata" style="width:100%;height:100%;object-fit:cover;display:block;background:#000;" aria-label="${escapeHtml(project.title || "Project")} video preview"></video>`
             : `<span>${escapeHtml((project.title || "P").substring(0, 2).toUpperCase())}</span>`;
@@ -1670,9 +1854,11 @@ function buildProjectDetailMarkup(project) {
                 <div class="project-detail-gallery-grid project-detail-gallery-grid--full">
                     ${imageFiles.map((image, idx) => `
                         <figure class="project-detail-media-card">
-                            <div class="project-detail-media-frame">
-                                <img src="${image.downloadUrl}" alt="${escapeHtml(project.title || "Project")} screenshot ${idx + 1}">
-                            </div>
+                            <button class="project-detail-media-link" type="button" data-project-image-preview data-image-url="${escapeHtml(image.downloadUrl || "")}" data-image-alt="${escapeHtml(project.title || "Project")} image ${idx + 1}" aria-label="Open ${escapeHtml(project.title || "Project")} image ${idx + 1}">
+                                <div class="project-detail-media-frame">
+                                    <img src="${image.downloadUrl}" alt="${escapeHtml(project.title || "Project")} screenshot ${idx + 1}">
+                                </div>
+                            </button>
                             <figcaption>
                                 <strong>Image ${idx + 1}</strong>
                                 <span>${escapeHtml(image.originalFileName || `Image ${idx + 1}`)}</span>
@@ -1725,19 +1911,17 @@ function buildProjectDetailMarkup(project) {
                 <button class="project-detail-tab" type="button" data-detail-tab="videos" role="tab" aria-selected="false" tabindex="-1">${videoTabLabel}</button>
             </div>
             <div class="project-detail-hero">
-                <div class="project-detail-hero-main" style="flex-direction: column; align-items: flex-start; gap: 20px;">
-                    <div class="project-detail-media project-detail-media--hero ${mainMedia || primaryVideoUrl ? "has-image" : ""}">
-                        ${heroMedia}
-                    </div>
-                    <div class="project-detail-hero-copy" style="padding-left: 0;">
-                        <p class="eyebrow" style="color: var(--accent-alt); margin-bottom: 6px;">PROJECT DETAILS</p>
-                        <h2 style="margin-top: 0;">${escapeHtml(project.title || "Untitled project")}</h2>
-                        <p class="project-detail-subtitle">${escapeHtml(project.shortDescription || "No short description provided.")}</p>
-                    </div>
+                <div class="project-detail-media project-detail-media--hero ${mainMedia || primaryVideoUrl ? "has-image" : ""}">
+                    ${heroMedia}
                 </div>
-                <div class="project-detail-hero-aside">
-                    <span class="chip">${project.displayed === false ? "Hidden" : "Displayed"}</span>
-                    <span class="chip">${escapeHtml(formatProjectStatus(project.status))}</span>
+                <div class="project-detail-hero-copy" style="padding-left: 0;">
+                    <div class="project-detail-badge-row" style="margin-bottom: 6px;">
+                        <span class="chip">${project.displayed === false ? "Hidden" : "Displayed"}</span>
+                        <span class="chip">${escapeHtml(formatProjectStatus(project.status))}</span>
+                    </div>
+                    <p class="eyebrow" style="color: var(--accent-alt); margin: 0 0 2px 0;">PROJECT DETAILS</p>
+                    <h2 style="margin: 0 0 6px 0; font-size: 1.8rem; font-weight: 700; line-height: 1.2;">${escapeHtml(project.title || "Untitled project")}</h2>
+                    <p class="project-detail-subtitle" style="margin: 0; line-height: 1.4; font-size: 0.95rem;">${escapeHtml(project.shortDescription || "No short description provided.")}</p>
                 </div>
             </div>
             <div class="project-detail-tab-panels">
@@ -1829,6 +2013,7 @@ function closeProjectDetail() {
     if (!modal) {
         return;
     }
+    closeProjectImageLightbox();
     modal.classList.add("hidden");
     modal.setAttribute("aria-hidden", "true");
     document.body.style.overflow = "";
@@ -1947,7 +2132,7 @@ function renderProjectNoteCounts(notes = []) {
             <strong>${escapeHtml(String(value))}</strong>
         </button>
     `).join("");
-        grid.querySelectorAll("[data-note-count-filter]").forEach((button) => {
+    grid.querySelectorAll("[data-note-count-filter]").forEach((button) => {
         button.addEventListener("click", () => {
             const filter = button.dataset.noteCountFilter || "total";
             if (filter === "total") {
@@ -2289,12 +2474,12 @@ function renderRedesignedNotesList() {
     if (!listContainer) return;
 
     let notes = state.currentProjectNotes || [];
-    
+
     // Filter
     if (notesFilter !== "ALL") {
         notes = notes.filter(n => n.type === notesFilter);
     }
-    
+
     // Sort
     const [field, direction] = notesSort.split("_");
     notes.sort((left, right) => {
@@ -2318,7 +2503,7 @@ function renderRedesignedNotesList() {
         const statusLabel = formatEnumLabel(note.type || "PENDING");
         const dateStr = formatTimestamp(note.createdAt).split(",")[0] || "";
         const timeStr = formatTimestamp(note.createdAt).split(",")[1] || "";
-        
+
         return `
             <div class="note-card-redesigned border-${statusClass}" data-note-id="${note.id}">
                 <div class="note-card-main-content">
@@ -2456,7 +2641,7 @@ document.addEventListener("click", () => {
 function switchNotesTab(tabName) {
     const modal = document.getElementById("project-notes-modal");
     if (!modal) return;
-    
+
     // Toggle active classes on buttons
     modal.querySelectorAll(".project-notes-tabs .tab-btn").forEach(btn => {
         if (btn.getAttribute("data-tab") === tabName) {
@@ -2487,11 +2672,11 @@ function renderTabPanelContent(tabName) {
     if (tabName === "overview") {
         document.getElementById("overview-title").textContent = project.title || "";
         document.getElementById("overview-category").textContent = formatEnumLabel(project.category || "");
-        document.getElementById("overview-url").innerHTML = project.liveUrl 
-            ? `<a href="${project.liveUrl}" target="_blank" class="admin-link">${project.liveUrl} <i class="fa-solid fa-arrow-up-right-from-square"></i></a>` 
+        document.getElementById("overview-url").innerHTML = project.liveUrl
+            ? `<a href="${project.liveUrl}" target="_blank" class="admin-link">${project.liveUrl} <i class="fa-solid fa-arrow-up-right-from-square"></i></a>`
             : '<span class="muted-label">None</span>';
-        document.getElementById("overview-github").innerHTML = project.githubUrl 
-            ? `<a href="${project.githubUrl}" target="_blank" class="admin-link">${project.githubUrl} <i class="fa-solid fa-arrow-up-right-from-square"></i></a>` 
+        document.getElementById("overview-github").innerHTML = project.githubUrl
+            ? `<a href="${project.githubUrl}" target="_blank" class="admin-link">${project.githubUrl} <i class="fa-solid fa-arrow-up-right-from-square"></i></a>`
             : '<span class="muted-label">None</span>';
         document.getElementById("overview-date").textContent = project.completionDate || "Not completed yet";
         document.getElementById("overview-featured").textContent = project.featured ? "Yes" : "No";
@@ -2515,7 +2700,7 @@ function renderTabPanelContent(tabName) {
             const bulletLines = desc.split("\n")
                 .map(line => line.trim())
                 .filter(line => line.startsWith("-") || line.startsWith("*") || line.startsWith("•") || /^\d+\./.test(line));
-            
+
             if (bulletLines.length === 0) {
                 const sentences = desc.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 15);
                 if (sentences.length === 0) {
@@ -2572,7 +2757,7 @@ function renderTabPanelContent(tabName) {
         const container = document.getElementById("panel-timeline-content") || document.getElementById("panel-timeline");
         if (container) {
             const timelineNotes = [...notes].sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
-            
+
             if (timelineNotes.length === 0) {
                 container.innerHTML = `<div class="about-content-box"><h3>Timeline History</h3>${emptyMarkup("No activity logged yet.")}</div>`;
             } else {
@@ -2592,7 +2777,7 @@ function renderTabPanelContent(tabName) {
                         </div>
                     `;
                 }).join("");
-                
+
                 container.innerHTML = `
                     <div class="about-content-box">
                         <h3>Timeline History</h3>
@@ -2623,6 +2808,10 @@ function closeProjectNotes() {
 
 async function initProjectNotesPage() {
     const projectId = new URLSearchParams(window.location.search).get("projectId");
+    const requestedTab = new URLSearchParams(window.location.search).get("tab");
+    const initialTab = ["overview", "about", "tech", "features", "gallery", "notes", "timeline", "count"].includes(requestedTab)
+        ? requestedTab
+        : "notes";
     const hero = document.getElementById("project-notes-page-hero");
     const tabs = document.getElementById("project-notes-page-tabs");
     const summary = document.getElementById("project-notes-page-summary");
@@ -2687,8 +2876,8 @@ async function initProjectNotesPage() {
                 <div class="project-notes-hero-main">
                     <div class="project-notes-avatar ${mediaUrl ? "has-image" : ""}">
                         ${mediaUrl
-                            ? `<img class="project-notes-avatar-image" src="${mediaUrl}" alt="${escapeHtml(project.title || "Project")}" loading="lazy">`
-                            : `<span class="project-notes-avatar-initials">${escapeHtml(getInitials(project.title || "Project"))}</span>`}
+                ? `<img class="project-notes-avatar-image" src="${mediaUrl}" alt="${escapeHtml(project.title || "Project")}" loading="lazy">`
+                : `<span class="project-notes-avatar-initials">${escapeHtml(getInitials(project.title || "Project"))}</span>`}
                     </div>
                     <div class="project-notes-hero-copy">
                         <p class="eyebrow">Project Notes</p>
@@ -2719,15 +2908,15 @@ async function initProjectNotesPage() {
         tabs.innerHTML = `
             <nav class="project-notes-tabs" aria-label="Project sections">
                 ${[
-                    ["overview", "Overview"],
-                    ["about", "About Project"],
-                    ["tech", "Tech Stack"],
-                    ["features", "Features"],
-                    ["gallery", "Gallery"],
-                    ["notes", "Notes", true],
-                    ["timeline", "Timeline"],
-                    ["count", "Count"]
-                ].map(([key, label, active]) => `<button class="tab-btn ${active ? "active" : ""}" type="button" data-tab="${key}">${label}</button>`).join("")}
+                ["overview", "Overview"],
+                ["about", "About Project"],
+                ["tech", "Tech Stack"],
+                ["features", "Features"],
+                ["gallery", "Gallery"],
+                ["notes", "Notes", true],
+                ["timeline", "Timeline"],
+                ["count", "Count"]
+            ].map(([key, label, active]) => `<button class="tab-btn ${active ? "active" : ""}" type="button" data-tab="${key}">${label}</button>`).join("")}
             </nav>
         `;
     };
@@ -2833,7 +3022,7 @@ async function initProjectNotesPage() {
             state.currentProjectNotes = notes;
             renderProjectNotesHero(notes.length);
             ["overview", "about", "tech", "features", "gallery", "timeline", "count"].forEach((tabName) => renderTabPanelContent(tabName));
-            switchProjectNotesPageTab(tabs?.querySelector(".tab-btn.active")?.dataset.tab || "notes");
+            switchProjectNotesPageTab(initialTab);
             renderProjectNotesList(notes, {
                 containerId: "project-notes-page-list",
                 formId: "project-notes-page-form",
@@ -2950,6 +3139,7 @@ async function loadProjectsAdmin() {
         const toggleVisibilityButton = menuPanel?.querySelector(`[data-project-toggle-visibility="${project.id}"]`);
         const copyLinkButton = menuPanel?.querySelector(`[data-project-copy-link="${project.id}"]`);
         const notesButton = menuPanel?.querySelector(`[data-project-notes-open="${project.id}"]`);
+        const timelineButton = menuPanel?.querySelector(`[data-project-timeline-open="${project.id}"]`);
         const deleteButton = menuPanel?.querySelector(`[data-project-delete="${project.id}"]`);
 
         syncProjectCardToggle(
@@ -3037,6 +3227,10 @@ async function loadProjectsAdmin() {
             closeProjectMenus();
             window.location.href = `/api/v1/admin/project-notes.html?projectId=${project.id}`;
         });
+        timelineButton?.addEventListener("click", () => {
+            closeProjectMenus();
+            window.location.href = `/api/v1/admin/project-notes.html?projectId=${project.id}&tab=timeline`;
+        });
         deleteButton?.addEventListener("click", async () => {
             closeProjectMenus();
             await handleProjectDelete(project);
@@ -3049,6 +3243,12 @@ async function loadProjectsAdmin() {
             button.addEventListener("click", () => {
                 closeProjectMenus();
                 window.location.href = `/api/v1/admin/project-notes.html?projectId=${project.id}`;
+            });
+        });
+        document.querySelectorAll(`[data-project-timeline-open="${project.id}"]`).forEach((button) => {
+            button.addEventListener("click", () => {
+                closeProjectMenus();
+                window.location.href = `/api/v1/admin/project-notes.html?projectId=${project.id}&tab=timeline`;
             });
         });
     });
@@ -3391,7 +3591,7 @@ function bindProjectForm() {
     });
 
     // Wire cancel button
-    form.querySelector("#project-wizard-prev")?.addEventListener("click", () => {}); // handled above
+    form.querySelector("#project-wizard-prev")?.addEventListener("click", () => { }); // handled above
 }
 
 async function initProjects() {
@@ -3448,10 +3648,10 @@ async function initProjects() {
     filterContainer?.addEventListener("click", (event) => {
         const button = event.target.closest(".filter-pill");
         if (!button) return;
-        
+
         filterContainer.querySelectorAll(".filter-pill").forEach(btn => btn.classList.remove("active"));
         button.classList.add("active");
-        
+
         notesFilter = button.getAttribute("data-filter");
         renderRedesignedNotesList();
     });
@@ -3484,16 +3684,16 @@ async function initProjects() {
         const titleInput = document.getElementById("quick-note-title");
         const contentInput = document.getElementById("quick-note-content");
         const statusSelect = document.getElementById("quick-note-status");
-        
+
         const title = titleInput.value.trim();
         const content = contentInput.value.trim();
         const status = statusSelect.value;
-        
+
         if (!title || !content) {
             alert("Note title and description are required.");
             return;
         }
-        
+
         try {
             const payload = {
                 title,
@@ -3502,18 +3702,18 @@ async function initProjects() {
                 tags: "",
                 pinned: false
             };
-            
+
             if (state.editingProjectNoteId) {
                 await projectsApi.updateNote(state.currentProject.id, state.editingProjectNoteId, payload);
             } else {
                 await projectsApi.createNote(state.currentProject.id, payload);
             }
-            
+
             state.editingProjectNoteId = null;
             quickForm.reset();
             const submitBtn = quickForm.querySelector(".quick-add-btn");
             if (submitBtn) submitBtn.textContent = "Add Note";
-            
+
             await refreshRedesignedNotes();
         } catch (error) {
             alert("Failed to save note: " + error.message);
@@ -3607,6 +3807,22 @@ async function initProjects() {
         state.projectPage += 1;
         await loadProjectsAdmin();
     });
+    if (!projectImageLightboxBound) {
+        document.addEventListener("click", (event) => {
+            const trigger = event.target.closest("[data-project-image-preview]");
+            if (!trigger) {
+                return;
+            }
+            event.preventDefault();
+            openProjectImageLightbox(trigger.dataset.imageUrl || "", trigger.dataset.imageAlt || "Project image preview");
+        });
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape") {
+                closeProjectImageLightbox();
+            }
+        });
+        projectImageLightboxBound = true;
+    }
     document.getElementById("project-detail-close").addEventListener("click", closeProjectDetail);
     document.getElementById("project-detail-modal").addEventListener("click", (event) => {
         if (event.target.id === "project-detail-modal") {
@@ -3848,7 +4064,7 @@ async function loadSkillsAdmin() {
     const category = document.getElementById("admin-skill-category").value;
     const response = await skillsApi.listAdmin(category);
     const skills = response.data || [];
-    
+
     const search = normalizeValue(document.getElementById("admin-skill-search")?.value).toLowerCase();
     const visibility = document.getElementById("admin-skill-visibility")?.value || "";
     const proficiency = document.getElementById("admin-skill-proficiency")?.value || "";
@@ -3857,7 +4073,7 @@ async function loadSkillsAdmin() {
     // 1. Apply Filtering
     let filtered = skills.filter((skill) => {
         const matchesSearch = !search || (skill.skillName || "").toLowerCase().includes(search);
-        
+
         const isVisible = skill.displayed !== false;
         const matchesVisibility = !visibility
             || (visibility === "displayed" && isVisible)
@@ -4090,7 +4306,7 @@ async function initSkills() {
     });
 
     document.getElementById("admin-skill-category").innerHTML = markupOptions(SKILL_CATEGORIES, true);
-    
+
     // Bind search and filter change listeners
     document.getElementById("admin-skill-search")?.addEventListener("input", loadSkillsAdmin);
     document.getElementById("admin-skill-category").addEventListener("change", loadSkillsAdmin);
@@ -4934,7 +5150,7 @@ async function initProfile() {
 
         // Toggle control buttons visibility
         prevBtn.style.visibility = currentStep === 1 ? "hidden" : "visible";
-        
+
         if (currentStep === 4) {
             nextBtn.style.display = "none";
             submitBtn.style.display = "inline-flex";
@@ -5089,8 +5305,7 @@ async function initProfile() {
     aboutForm.addEventListener("submit", async (event) => {
         event.preventDefault();
         try {
-            const payload = Object.fromEntries(new FormData(aboutForm).entries());
-            payload.experienceYears = Number(payload.experienceYears);
+            const payload = buildAboutPayload(state.aboutSnapshot, Object.fromEntries(new FormData(aboutForm).entries()));
             await aboutApi.update(payload);
             setFormStatus(aboutForm, "Profile updated successfully.", "success");
             state.aboutSnapshot = { ...state.aboutSnapshot, ...payload };
@@ -5111,6 +5326,118 @@ async function initProfile() {
             closeEditor();
         } catch (error) {
             setFormStatus(passwordForm, error.message, "error");
+        }
+    });
+}
+
+async function initMarqueeWords() {
+    const form = document.getElementById("marquee-form");
+    const preview = document.getElementById("marquee-preview");
+    const summary = document.getElementById("marquee-summary");
+    const currentStrip = document.querySelector(".marquee-current-strip");
+    const reloadBtn = document.getElementById("marquee-reload-btn");
+    const resetBtn = document.getElementById("marquee-reset-btn");
+
+    if (!form || !preview || !summary) {
+        return;
+    }
+
+    const parseWords = (rawWords) => {
+        const fallback = ["Spring Boot", "REST APIs", "Microservices", "Backend Architecture", "Systems Engineering", "Java Enterprise"];
+        const items = String(rawWords || "")
+            .split(/,|\n/)
+            .map((word) => word.trim())
+            .filter(Boolean);
+        const base = items.length ? items : fallback;
+        let sequence = [...base];
+        while (sequence.length < 15) {
+            sequence = [...sequence, ...base];
+        }
+        return sequence;
+    };
+
+    const renderPreview = (rawWords) => {
+        const words = parseWords(rawWords);
+        if (currentStrip) {
+            currentStrip.innerHTML = `
+                <div class="marquee-current-strip-inner">
+                    ${words.slice(0, 6).map((word) => `<span class="marquee-current-chip">${escapeHtml(word)}</span>`).join("")}
+                </div>
+            `;
+        }
+        preview.innerHTML = `
+            <div class="marquee-preview-frame">
+                <div class="marquee-preview-browser">
+                    <span></span><span></span><span></span>
+                </div>
+                <div class="marquee-container marquee-preview-strip">
+                    <button class="marquee-preview-arrow" type="button" aria-label="Previous word" disabled><i class="fa-solid fa-chevron-left"></i></button>
+                    <div class="marquee-content">
+                        ${[...words, ...words].map((word) => `<span class="marquee-item">${escapeHtml(word)}</span>`).join("")}
+                    </div>
+                    <button class="marquee-preview-arrow" type="button" aria-label="Next word" disabled><i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+                <div class="marquee-preview-grid">
+                    ${words.slice(0, 3).map(() => `<div class="marquee-preview-tile"></div>`).join("")}
+                </div>
+            </div>
+        `;
+        summary.innerHTML = `
+            <div class="summary-grid">
+                <div class="summary-card marquee-summary-card">
+                    <div class="summary-card-topline">
+                        <div>
+                            <span class="muted-label"><i class="fa-solid fa-rotate" style="margin-right:6px;"></i>Scrolling strip</span>
+                            <strong>${words.length} editable words</strong>
+                            <p class="section-copy">This ribbon is shown on the public portfolio page and scrolls only these words.</p>
+                        </div>
+                        <div class="summary-icon"><i class="fa-solid fa-pen"></i></div>
+                    </div>
+                </div>
+                <div class="summary-card marquee-summary-card">
+                    <div class="summary-card-topline">
+                        <div>
+                            <span class="muted-label"><i class="fa-solid fa-list" style="margin-right:6px;"></i>Current words</span>
+                            <p class="section-copy marquee-summary-words">${words.slice(0, 6).map((word) => escapeHtml(word)).join(", ")}</p>
+                        </div>
+                        <div class="summary-icon"><i class="fa-solid fa-eye"></i></div>
+                    </div>
+                </div>
+            </div>
+        `;
+    };
+
+    const aboutResponse = await aboutApi.getAdmin();
+    state.aboutSnapshot = aboutResponse.data || {};
+    fillForm(form, state.aboutSnapshot);
+    renderPreview(state.aboutSnapshot.marqueeWords);
+
+    form.addEventListener("input", () => {
+        renderPreview(form.elements.marqueeWords?.value);
+    });
+
+    reloadBtn?.addEventListener("click", async () => {
+        const fresh = await aboutApi.getAdmin();
+        state.aboutSnapshot = fresh.data || {};
+        fillForm(form, state.aboutSnapshot);
+        renderPreview(state.aboutSnapshot.marqueeWords);
+    });
+
+    resetBtn?.addEventListener("click", () => {
+        form.elements.marqueeWords.value = state.aboutSnapshot?.marqueeWords || "";
+        renderPreview(form.elements.marqueeWords.value);
+    });
+
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        try {
+            const payload = buildAboutPayload(state.aboutSnapshot, { marqueeWords: form.elements.marqueeWords.value });
+            await aboutApi.update(payload);
+            state.aboutSnapshot = { ...state.aboutSnapshot, ...payload };
+            setFormStatus(form, "Scrolling words updated successfully.", "success");
+            renderPreview(state.aboutSnapshot.marqueeWords);
+        } catch (error) {
+            setFormStatus(form, error.message, "error");
         }
     });
 }
@@ -5335,8 +5662,8 @@ async function initResume() {
                     <strong>${message}</strong>
                     <span class="section-copy">
                         ${error?.status === 404
-                            ? "Click 'Add Resume' above to upload a file."
-                            : "Check the API response or refresh after confirming the backend is running."}
+                    ? "Click 'Add Resume' above to upload a file."
+                    : "Check the API response or refresh after confirming the backend is running."}
                     </span>
                 </div>
             `;
@@ -5387,6 +5714,7 @@ async function bootstrap() {
         certifications: initCertifications,
         messages: initMessages,
         profile: initProfile,
+        marquee: initMarqueeWords,
         resume: initResume
     };
 

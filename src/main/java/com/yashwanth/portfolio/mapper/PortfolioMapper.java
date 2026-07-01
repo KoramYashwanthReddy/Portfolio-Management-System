@@ -154,7 +154,8 @@ public final class PortfolioMapper {
                 about.getGithubUrl(),
                 about.getPortfolioUrl(),
                 about.getProfileImageUrl(),
-                about.getHeadlineTicker()
+                about.getHeadlineTicker(),
+                about.getMarqueeWords()
         );
     }
 

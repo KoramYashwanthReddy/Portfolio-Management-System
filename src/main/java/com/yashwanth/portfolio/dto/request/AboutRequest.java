@@ -17,6 +17,7 @@ public record AboutRequest(
         String githubUrl,
         String portfolioUrl,
         String profileImageUrl,
-        String headlineTicker
+        String headlineTicker,
+        String marqueeWords
 ) {
 }

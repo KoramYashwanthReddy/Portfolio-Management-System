@@ -13,6 +13,7 @@ public record AboutResponse(
         String githubUrl,
         String portfolioUrl,
         String profileImageUrl,
-        String headlineTicker
+        String headlineTicker,
+        String marqueeWords
 ) {
 }

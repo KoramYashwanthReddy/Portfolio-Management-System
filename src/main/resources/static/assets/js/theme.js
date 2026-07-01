@@ -1,4 +1,8 @@
 const ACCENTS = ["blue", "violet"];
+const THEME_BACKGROUNDS = {
+    dark: "#000000",
+    light: "#fdfdfd"
+};
 
 function safeStorageGet(key) {
     try {
@@ -16,6 +20,14 @@ function safeStorageSet(key, value) {
     }
 }
 
+function syncThemeCanvas(theme) {
+    const backgroundColor = THEME_BACKGROUNDS[theme] || THEME_BACKGROUNDS.light;
+    document.documentElement.style.backgroundColor = backgroundColor;
+    if (document.body) {
+        document.body.style.backgroundColor = backgroundColor;
+    }
+}
+
 export function initTheme() {
     // Keep legacy accent support if needed
     const savedAccent = safeStorageGet("pms-accent") || ACCENTS[0];
@@ -28,6 +40,7 @@ export function initTheme() {
     
     document.documentElement.dataset.theme = initialTheme;
     document.body.dataset.theme = initialTheme;
+    syncThemeCanvas(initialTheme);
     updateThemeIcon(initialTheme);
 
     // Bind to theme-toggle buttons using event delegation
@@ -39,6 +52,7 @@ export function initTheme() {
             
             document.documentElement.dataset.theme = newTheme;
             document.body.dataset.theme = newTheme;
+            syncThemeCanvas(newTheme);
             safeStorageSet("pms-theme", newTheme);
             updateThemeIcon(newTheme);
         }

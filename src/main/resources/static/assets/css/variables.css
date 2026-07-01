@@ -32,7 +32,7 @@
     --surface-rgb: 10, 10, 10;
     --surface-strong: rgba(255, 255, 255, 0.03);
     --surface-soft: rgba(255, 255, 255, 0.02);
-    --surface-soft-rgb: 255, 255, 255;
+    --surface-soft-rgb: 10, 10, 10;
     --border: rgba(255, 255, 255, 0.08);
     --border-hover: rgba(255, 255, 255, 0.15);
     --text: #fafafa;
