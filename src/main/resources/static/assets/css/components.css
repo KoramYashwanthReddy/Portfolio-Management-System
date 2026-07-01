@@ -615,7 +615,7 @@ html[data-theme="dark"] .project-card {
 .profile-card-container {
     position: relative;
     display: inline-block;
-    width: min(100%, 332px);
+    width: min(100%, 280px);
     padding: 18px 14px 12px;
     isolation: isolate;
 }
@@ -624,13 +624,14 @@ html[data-theme="dark"] .project-card {
     position: absolute;
     inset: -36px -28px 6px;
     background:
-        radial-gradient(circle at 50% 42%, rgba(168, 85, 247, 0.34), transparent 56%),
-        radial-gradient(circle at 50% 58%, rgba(99, 102, 241, 0.22), transparent 68%);
+        radial-gradient(circle at 50% 42%, rgba(168, 85, 247, 0.26), transparent 58%),
+        radial-gradient(circle at 50% 58%, rgba(99, 102, 241, 0.18), transparent 70%);
     border-radius: 50%;
-    filter: blur(34px);
-    opacity: 0.62;
+    filter: blur(46px);
+    opacity: 0.48;
     z-index: 0;
     pointer-events: none;
+    animation: profileGlowPulse 10s ease-in-out infinite;
 }
 
 .profile-card {
@@ -657,16 +658,30 @@ html[data-theme="dark"] .project-card {
 
 [data-theme="dark"] .profile-card-glow {
     background:
-        radial-gradient(circle at 50% 42%, rgba(168, 85, 247, 0.28), transparent 56%),
-        radial-gradient(circle at 50% 58%, rgba(99, 102, 241, 0.2), transparent 68%);
-    opacity: 0.5;
+        radial-gradient(circle at 50% 42%, rgba(168, 85, 247, 0.22), transparent 58%),
+        radial-gradient(circle at 50% 58%, rgba(99, 102, 241, 0.16), transparent 70%);
+    opacity: 0.34;
+}
+
+@keyframes profileGlowPulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.45;
+    }
+
+    50% {
+        transform: scale(1.03);
+        opacity: 0.58;
+    }
 }
 
 .profile-image-container {
     position: relative;
     border-radius: 24px;
     overflow: hidden;
-    min-height: 256px;
+    min-height: 210px;
     background: linear-gradient(180deg, rgba(245, 245, 245, 0.94), rgba(238, 238, 238, 0.9));
 }
 
@@ -6302,12 +6317,14 @@ html[data-theme="dark"] .cert-card-year {
     justify-content: center;
     z-index: 9999;
     opacity: 0;
+    pointer-events: none;
     transition: opacity 0.25s ease;
     cursor: zoom-out;
 }
 
 .lightbox-overlay.is-active {
     opacity: 1;
+    pointer-events: auto;
 }
 
 .lightbox-content {

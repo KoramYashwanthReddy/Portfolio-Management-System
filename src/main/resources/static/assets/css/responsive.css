@@ -473,12 +473,12 @@
     }
 
     .profile-card-container {
-        width: min(100%, 340px);
+        width: min(100%, 280px);
         padding: 18px 12px 12px;
     }
 
     .profile-image-container {
-        min-height: 288px;
+        min-height: 210px;
     }
 
     .profile-card-footer {

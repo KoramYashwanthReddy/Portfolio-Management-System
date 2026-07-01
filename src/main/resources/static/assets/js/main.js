@@ -462,10 +462,15 @@ function renderMetrics(metrics) {
     }
 }
 
+function buildProfileSummary(about) {
+    return String(about?.designation || "Java Backend Developer | Spring Boot Developer").trim();
+}
+
 function renderAbout(about) {
     state.about = about;
     setText("hero-name", about?.name || "Portfolio System");
-    syncHeroBiographyPopup(about?.biography || "No biography available.");
+    const profileSummary = buildProfileSummary(about);
+    syncHeroBiographyPopup(profileSummary);
     setText("overview-copy", about?.biography || "Awaiting about information.");
     setText("experience-years", `${about?.experienceYears || 0} years`);
     setText("hero-location", about?.currentLocation || "Unavailable");
@@ -491,7 +496,7 @@ function renderAbout(about) {
     setText("feedback-designation", about?.designation || "Backend Engineer");
     setText("feedback-location", about?.currentLocation || "Unavailable");
     setText("feedback-email", about?.email || "Unavailable");
-    setText("feedback-bio", about?.biography || "Production-grade Java + Spring Boot engineer.");
+    setText("feedback-bio", profileSummary);
 
     const initTypewriter = (elId, rawTicker) => {
         const typewriterTextEl = element(elId);
@@ -939,6 +944,7 @@ function renderFeaturedProjects(projects) {
     const uniqueProjects = uniqueById((projects || []).filter(isDisplayedRecord));
     state.featuredProjects = uniqueProjects;
     renderAboutMetrics();
+    updateCurrentlyBuildingProject();
 }
 
 function renderTimeline(projects) {
@@ -974,6 +980,24 @@ function renderProjectCatalog(pageData) {
     state.projects = uniqueProjects;
     renderAllProjectsMnc();
     renderAboutMetrics();
+    updateCurrentlyBuildingProject();
+}
+
+function updateCurrentlyBuildingProject() {
+    const inlineTitleEl = element("hero-profile-title-inline");
+    if (!inlineTitleEl) return;
+
+    const allProjects = uniqueById([
+        ...(state.featuredProjects || []),
+        ...(state.projects || [])
+    ].filter(isDisplayedRecord));
+
+    const inProgressProject = allProjects.find(p => p.status === "IN_PROGRESS");
+    if (inProgressProject) {
+        inlineTitleEl.textContent = inProgressProject.title;
+    } else {
+        inlineTitleEl.textContent = state.about?.designation || "Backend Developer";
+    }
 }
 
 function buildHtmlResume(certifications, resume) {

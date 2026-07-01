@@ -663,6 +663,7 @@ p {
     0% {
         transform: translate3d(-50%, 0, 0);
     }
+
     100% {
         transform: translate3d(0, 0, 0);
     }
@@ -713,7 +714,7 @@ p {
 }
 
 .hero-grid {
-    grid-template-columns: minmax(0, 1.22fr) minmax(320px, 0.78fr);
+    grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
     align-items: center;
     gap: clamp(24px, 4vw, 48px);
 }
@@ -725,7 +726,7 @@ p {
     justify-self: end;
     align-self: start;
     width: 100%;
-    max-width: 390px;
+    max-width: 320px;
     margin-left: auto;
 }
 
@@ -752,15 +753,17 @@ p {
 .hero-glow {
     position: absolute;
     border-radius: 50%;
-    filter: blur(120px);
+    filter: blur(150px);
     z-index: 0;
     pointer-events: none;
-    opacity: 0.6;
-    transition: opacity 0.5s ease;
+    opacity: 0.38;
+    transition: opacity 0.8s ease, transform 0.8s ease;
+    transform: translate3d(0, 0, 0) scale(1);
+    animation: heroGlowFloat 14s ease-in-out infinite;
 }
 
 [data-theme="dark"] .hero-glow {
-    opacity: 0.45;
+    opacity: 0.26;
 }
 
 .hero-glow-1 {
@@ -768,7 +771,8 @@ p {
     left: -5%;
     width: 450px;
     height: 450px;
-    background: radial-gradient(circle, rgba(139, 92, 246, 0.22) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.18) 0%, transparent 68%);
+    animation-delay: -2s;
 }
 
 .hero-glow-2 {
@@ -776,7 +780,20 @@ p {
     right: 15%;
     width: 400px;
     height: 400px;
-    background: radial-gradient(circle, rgba(99, 102, 241, 0.18) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.14) 0%, transparent 68%);
+    animation-delay: -6s;
+}
+
+@keyframes heroGlowFloat {
+
+    0%,
+    100% {
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+
+    50% {
+        transform: translate3d(0, -10px, 0) scale(1.04);
+    }
 }
 
 .hero-subtitle {
@@ -1033,9 +1050,10 @@ body[data-page="portfolio"] .hero {
 body[data-page="portfolio"] .hero-copy {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
     align-items: flex-start;
-    max-width: 640px;
+    max-width: 760px;
+    padding-top: 8px;
 }
 
 body[data-page="portfolio"] .hero-text {
@@ -1061,24 +1079,24 @@ body[data-page="portfolio"] .hero-metrics {
 body[data-page="portfolio"] .hero-title-stack {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    line-height: 1.2;
+    gap: 4px;
+    line-height: 1.05;
     margin: 0;
 }
 
 body[data-page="portfolio"] .hero-title-kicker {
     display: block;
-    font-size: clamp(0.95rem, 1.6vw, 1.15rem);
+    font-size: clamp(1.08rem, 1.8vw, 1.3rem);
     color: var(--muted);
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.12em;
     margin-bottom: 0;
 }
 
 body[data-page="portfolio"] .hero-title-name {
     display: block;
-    font-size: clamp(2.4rem, 4.4vw, 4.2rem);
+    font-size: clamp(2.6rem, 4.6vw, 4.4rem);
     font-weight: 700;
     line-height: 1.1;
     letter-spacing: -0.03em;
@@ -1097,19 +1115,19 @@ body[data-page="portfolio"] .hero-title-name {
 body[data-page="portfolio"] .hero-title-line.subtitle,
 body[data-page="portfolio"] .hero-title-subline {
     display: block;
-    font-size: clamp(1.45rem, 2.25vw, 2rem);
+    font-size: clamp(1.55rem, 2.5vw, 2.25rem);
     font-weight: 700;
     color: var(--text);
-    line-height: 1.18;
+    line-height: 1.14;
     margin-top: 0;
     letter-spacing: -0.02em;
-    max-width: 22ch;
+    max-width: 24ch;
     white-space: normal;
 }
 
 body[data-page="portfolio"] .hero-ticker-clean {
     margin-top: 14px;
-    margin-bottom: 16px;
+    margin-bottom: 10px;
 }
 
 body[data-page="portfolio"] .hero-bio-block {
@@ -1118,7 +1136,7 @@ body[data-page="portfolio"] .hero-bio-block {
 }
 
 body[data-page="portfolio"] .hero-metrics-row {
-    margin-top: 8px;
+    margin-top: 6px;
 }
 
 body[data-page="portfolio"] .hero-ticker {

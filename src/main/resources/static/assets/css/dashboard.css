@@ -8075,7 +8075,7 @@ body[data-page="projects"] .admin-project-card:has(.project-card-menu-wrap.is-op
     .admin-sidebar-brand .admin-brand-copy {
         display: none !important;
     }
-    
+
     .admin-sidebar-actions .theme-toggle span,
     .admin-nav-cta span,
     .admin-logout-btn span {
